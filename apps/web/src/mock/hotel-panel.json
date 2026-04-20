@@ -1,0 +1,80 @@
+{
+  "brand": {
+    "name": "BookYourStay"
+  },
+  "navigation": {
+    "primaryAction": "Sign In",
+    "secondaryAction": "For Hosts"
+  },
+  "hero": {
+    "eyebrow": "Travel smarter",
+    "title": "Find Your Perfect Stay",
+    "description": "Explore our demo listings and plan your next getaway!",
+    "image": {
+      "src": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80",
+      "alt": "Oceanfront resort at sunset"
+    }
+  },
+  "search": {
+    "cta": "Search"
+  },
+  "searchFields": [
+    {
+      "label": "Destination",
+      "placeholder": "Where to?",
+      "icon": "pin"
+    },
+    {
+      "label": "Check In - Check Out",
+      "placeholder": "Mar 10 - Mar 15",
+      "icon": "calendar"
+    },
+    {
+      "label": "Guests",
+      "placeholder": "2 adults",
+      "icon": "guests"
+    }
+  ],
+  "featuredHeading": {
+    "title": "Featured Demo Listings",
+    "subtitle": "Explore our sample properties"
+  },
+  "featuredListings": [
+    {
+      "id": "seaside-resort-malibu",
+      "name": "Seaside Resort Malibu",
+      "category": "Demo Listing",
+      "rating": 4.8,
+      "reviewLabel": "128 reviews",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1200&q=80",
+        "alt": "Luxury seaside resort with pool at sunset"
+      }
+    },
+    {
+      "id": "mountain-lodge-aspen",
+      "name": "Mountain Lodge Aspen",
+      "category": "Demo Listing",
+      "rating": 4.7,
+      "reviewLabel": "94 reviews",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80",
+        "alt": "Wooden mountain lodge with snowy peaks in the background"
+      }
+    },
+    {
+      "id": "city-center-hotel-new-york",
+      "name": "City Center Hotel New York",
+      "category": "Demo Listing",
+      "rating": 4.6,
+      "reviewLabel": "206 reviews",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=1200&q=80",
+        "alt": "City skyline viewed from a rooftop hotel at dusk"
+      }
+    }
+  ],
+  "footer": {
+    "text": "Copyright 2026 BookYourStay MVP | All Rights Reserved."
+  }
+}
