@@ -175,6 +175,32 @@ When generating code:
 
 ---
 
+## 🧩 Architectural Principles
+
+* Separation of Concerns (SoC):
+  - Each module, feature, and panel MUST have a clear responsibility.
+  - Client, Partner, and Admin panels MUST be separated in structure, styling, and logic.
+  - Shared components (buttons, inputs, modals) MUST be placed in /components and reused.
+
+* Do Not Repeat Yourself (DRY):
+  - Common logic MUST be abstracted into utilities (/lib) or shared hooks.
+  - Shared UI MUST be centralized in /components.
+  - No duplication of API calls, validation, or business logic across panels.
+
+---
+
+## 📝 Type System Rules
+
+* All TypeScript types and interfaces MUST be defined in dedicated files under `/types`.
+* Types MUST be grouped logically (e.g., `User`, `Booking`, `Hotel`, `Room`, `Payment`).
+* File naming convention: lowercase with hyphens (e.g., `user.ts`, `booking.ts`).
+* Type names MUST use PascalCase (e.g., `UserProfile`, `BookingRequest`).
+* Shared types MUST be centralized in `/types` and imported where needed — no duplication.
+* Each type file MUST export its definitions explicitly for easy discovery.
+* Complex types MUST be documented with comments explaining their purpose and usage.
+
+---
+
 ## 🚦 Execution Discipline
 * The AI agent MUST only implement what is explicitly requested by the user.
 * The agent MUST NOT add extra features, screens, or logic unless the user confirms.
