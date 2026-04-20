@@ -156,5 +156,14 @@ When generating code:
 
 ---
 
+## ⚠️ Conflict Resolution Rules
+
+* If a user prompt conflicts with the instructions in AGENTS.md:
+  - The AI agent MUST notify the user about the conflict.
+  - The agent MUST pause and wait for explicit user confirmation before proceeding.
+  - No code or implementation should be generated until the user confirms how to resolve the conflict.
+
+---
+
 ## 🏁 Goal
-Build a scalable
+Build a scalable, clean, and production-ready hotel booking platform with shared backend and two clients (web + mobile), supporting Client, Partner, and Admin roles.
