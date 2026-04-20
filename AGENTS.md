@@ -156,6 +156,14 @@ When generating code:
 
 ---
 
+## 🚦 Execution Discipline
+* The AI agent MUST only implement what is explicitly requested by the user.
+* The agent MUST NOT add extra features, screens, or logic unless the user confirms.
+* If the agent detects a conflict between user prompt and AGENTS.md, it MUST notify the user and wait for confirmation before proceeding.
+* The agent MUST build step by step, following user instructions strictly.
+
+---
+
 ## ⚠️ Conflict Resolution Rules
 
 * If a user prompt conflicts with the instructions in AGENTS.md:
