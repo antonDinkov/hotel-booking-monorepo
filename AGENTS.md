@@ -156,6 +156,25 @@ When generating code:
 
 ---
 
+## 🎨 Styling Rules per Panel
+
+* Client Panel:
+  - All client-facing pages MUST share one unified style.
+  - Friendly, welcoming design with bright colors and inviting imagery.
+  - Focus on search and booking flow.
+
+* Partner Panel:
+  - All partner-facing pages MUST share one unified style.
+  - Professional, business-oriented design with neutral colors.
+  - Dashboard-like layout focused on property management.
+
+* Admin Panel:
+  - All admin-facing pages MUST share one unified style.
+  - Functional, utilitarian design with minimalistic components.
+  - Clear typography, focus on data tables and controls.
+
+---
+
 ## 🚦 Execution Discipline
 * The AI agent MUST only implement what is explicitly requested by the user.
 * The agent MUST NOT add extra features, screens, or logic unless the user confirms.
