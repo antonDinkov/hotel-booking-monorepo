@@ -3,7 +3,7 @@ import "dotenv/config";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 
-import { hotelImages, hotels } from "./schema";
+import { bookings, hotelImages, hotels, roomTypes } from "./schema";
 
 if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is not set");
@@ -325,12 +325,70 @@ const hotelsSeed = [
 ];
 
 async function seed() {
+    await db.delete(bookings);
     await db.delete(hotelImages);
+    await db.delete(roomTypes);
     await db.delete(hotels);
 
     const insertedHotels = await db.insert(hotels).values(hotelsSeed).returning({
         id: hotels.id,
         name: hotels.name,
+        pricePerNight: hotels.pricePerNight,
+    });
+
+    const roomTypesSeed = insertedHotels.flatMap((hotel) => {
+        const roomTypeConfigs = [
+            { name: "Standard", capacity: 2, priceMultiplier: 1, roomBias: 1 },
+            { name: "Deluxe", capacity: 3, priceMultiplier: 1.35, roomBias: 2 },
+            { name: "Suite", capacity: 4, priceMultiplier: 1.8, roomBias: 3 },
+        ] as const;
+
+        const typesForHotel = hotel.id % 2 === 0 ? roomTypeConfigs.slice(0, 2) : roomTypeConfigs;
+
+        return typesForHotel.map((typeConfig) => ({
+            hotelId: hotel.id,
+            name: typeConfig.name,
+            capacity: typeConfig.capacity,
+            pricePerNight: Math.round(hotel.pricePerNight * typeConfig.priceMultiplier),
+            totalRooms: 3 + ((hotel.id + typeConfig.roomBias) % 8),
+        }));
+    });
+
+    const insertedRoomTypes = await db.insert(roomTypes).values(roomTypesSeed).returning({
+        id: roomTypes.id,
+        capacity: roomTypes.capacity,
+    });
+
+    const summer2026 = new Date("2026-06-01T00:00:00.000Z");
+    const bookingOffsets = [0, 2, 12, 18];
+
+    const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
+
+    const bookingsSeed = insertedRoomTypes.flatMap((roomType) => {
+        const totalBookings = 2 + (roomType.id % 3);
+
+        return Array.from({ length: totalBookings }, (_, index) => {
+            const checkInOffset = (roomType.id * 7 + bookingOffsets[index]) % 92;
+            const checkIn = new Date(summer2026);
+            checkIn.setUTCDate(summer2026.getUTCDate() + checkInOffset);
+
+            const nights = 2 + ((roomType.id + index) % 4);
+            const checkOut = new Date(checkIn);
+            checkOut.setUTCDate(checkIn.getUTCDate() + nights);
+
+            return {
+                roomTypeId: roomType.id,
+                userId: ((roomType.id * 3 + index) % 40) + 1,
+                checkInDate: toDateOnly(checkIn),
+                checkOutDate: toDateOnly(checkOut),
+                guestsCount: 1 + ((roomType.id + index) % roomType.capacity),
+                status: "confirmed",
+            };
+        });
+    });
+
+    const insertedBookings = await db.insert(bookings).values(bookingsSeed).returning({
+        id: bookings.id,
     });
 
     const hotelImagesSeed = (
@@ -361,6 +419,8 @@ async function seed() {
         .returning({ id: hotelImages.id });
 
     console.log(`Inserted hotels: ${insertedHotels.length}`);
+    console.log(`Inserted room types: ${insertedRoomTypes.length}`);
+    console.log(`Inserted bookings: ${insertedBookings.length}`);
     console.log(`Inserted hotel images: ${insertedImages.length}`);
 }
 
