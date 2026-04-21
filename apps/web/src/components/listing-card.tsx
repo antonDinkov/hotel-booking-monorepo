@@ -1,6 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { Listing } from "../types/hotel-panel";
+import HotelImage from "./Hotelimage";
 
 function StarIcon({ filled }: { filled: boolean }) {
   return (
@@ -28,13 +28,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
     <Link href={`/listings/${listing.id}`}>
       <article className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(15,23,42,0.12)] cursor-pointer">
         <div className="relative h-56 overflow-hidden">
-          <Image
-            src={listing.image.src}
-            alt={listing.image.alt}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-            className="object-cover transition duration-500 group-hover:scale-105"
-          />
+          <HotelImage images={[listing.image.src]} alt={listing.image.alt} />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/20 via-transparent to-transparent" />
         </div>
 
