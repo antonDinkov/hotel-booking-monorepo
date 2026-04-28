@@ -12,34 +12,6 @@ if (!process.env.DATABASE_URL) {
 const sql = neon(process.env.DATABASE_URL);
 const db = drizzle({ client: sql });
 
-/* function buildImageUrls(hotelId: number): string[] {
-    return [
-        `https://picsum.photos/seed/hotel-${hotelId}-1/1200/800`,
-        `https://picsum.photos/seed/hotel-${hotelId}-2/1200/800`,
-        `https://picsum.photos/seed/hotel-${hotelId}-3/1200/800`,
-    ];
-}
-
-async function verifyImageUrls(urls: string[]) {
-    const checks = await Promise.all(
-        urls.map(async (url) => {
-            try {
-                const response = await fetch(url, { method: "GET" });
-                return { url, ok: response.ok, status: response.status };
-            } catch {
-                return { url, ok: false, status: 0 };
-            }
-        }),
-    );
-
-    const failed = checks.filter((check) => !check.ok);
-
-    if (failed.length > 0) {
-        throw new Error(
-            `Image URL validation failed for ${failed.length} URLs: ${failed.map((item) => `${item.url} (${item.status})`).join(", ")}`,
-        );
-    }
-} */
 
 async function getWorkingImages(urls: string[]): Promise<string[]> {
     const results: string[] = [];
