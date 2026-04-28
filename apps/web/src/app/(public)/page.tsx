@@ -1,9 +1,9 @@
-import { getPanelData } from "../api/hotel-panel";
-import { HeroSection } from "../components/hero-section";
-import { HeaderNavigation } from "../components/header-navigation";
-import { ListingCard } from "../components/listing-card";
-import { SearchEngine } from "../components/search-engine";
-import type { Listing } from "../types/hotel-panel";
+import { getHotelPanelData as getPanelData } from "../../server/services/hotelPanel";
+import { HeroSection } from "../../components/hero-section";
+import { HeaderNavigation } from "../../components/header-navigation";
+import { ListingCard } from "../../components/listing-card";
+import { SearchEngine } from "../../components/search-engine";
+import type { Listing } from "../../types/hotel-panel";
 
 export default async function Home() {
   const panelData = await getPanelData();
