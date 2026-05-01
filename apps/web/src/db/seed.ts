@@ -310,12 +310,13 @@ async function seed() {
 
     const roomTypesSeed = insertedHotels.flatMap((hotel) => {
         const roomTypeConfigs = [
+            { name: "Single", capacity: 1, priceMultiplier: 0.7, roomBias: 0 },
             { name: "Standard", capacity: 2, priceMultiplier: 1, roomBias: 1 },
             { name: "Deluxe", capacity: 3, priceMultiplier: 1.35, roomBias: 2 },
             { name: "Suite", capacity: 4, priceMultiplier: 1.8, roomBias: 3 },
         ] as const;
 
-        const typesForHotel = hotel.id % 2 === 0 ? roomTypeConfigs.slice(0, 2) : roomTypeConfigs;
+        const typesForHotel = hotel.id % 2 === 0 ? roomTypeConfigs.slice(0, 3) : roomTypeConfigs;
 
         return typesForHotel.map((typeConfig) => ({
             hotelId: hotel.id,
@@ -329,6 +330,8 @@ async function seed() {
     const insertedRoomTypes = await db.insert(roomTypes).values(roomTypesSeed).returning({
         id: roomTypes.id,
         capacity: roomTypes.capacity,
+        totalRooms: roomTypes.totalRooms,
+        hotelId: roomTypes.hotelId,
     });
 
     const summer2026 = new Date("2026-06-01T00:00:00.000Z");
@@ -357,6 +360,26 @@ async function seed() {
                 status: "confirmed",
             };
         });
+
+        const fullyBookedStart = "2026-06-17";
+        const fullyBookedEnd = "2026-07-17";
+        const fullyBookedHotelIds = new Set([1, 2, 3]);
+        const fullyBookedRoomTypes = insertedRoomTypes.filter((roomType) =>
+            fullyBookedHotelIds.has(roomType.hotelId)
+        );
+
+        for (const roomType of fullyBookedRoomTypes) {
+            for (let i = 0; i < roomType.totalRooms; i += 1) {
+                bookingsSeed.push({
+                    roomTypeId: roomType.id,
+                    userId: 101 + i,
+                    checkInDate: fullyBookedStart,
+                    checkOutDate: fullyBookedEnd,
+                    guestsCount: 1 + (i % roomType.capacity),
+                    status: "confirmed",
+                });
+            }
+        }
     });
 
     const insertedBookings = await db.insert(bookings).values(bookingsSeed).returning({

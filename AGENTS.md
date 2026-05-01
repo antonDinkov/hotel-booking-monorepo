@@ -293,6 +293,87 @@ DELETE /api/bookings/:id
 
 ---
 
+## 🧱 Database Migration Rules (CRITICAL)
+
+- ALL database schema changes MUST go through Drizzle migrations.
+
+### ✅ Allowed
+- npx drizzle-kit generate
+- npx drizzle-kit migrate
+
+### ❌ Forbidden
+- ❌ Direct SQL execution for schema changes
+- ❌ Automatic schema sync (db push)
+- ❌ Creating tables via runtime code
+- ❌ Modifying database schema outside migrations
+
+---
+
+### Migration Workflow (MANDATORY)
+
+1. Modify schema files (Drizzle schema)
+2. Generate migration:
+   npx drizzle-kit generate
+3. Review generated SQL (REQUIRED)
+4. Apply migration:
+   npx drizzle-kit migrate
+5. Verify:
+   - migration exists in drizzle.__drizzle_migrations
+   - schema matches expected state
+
+---
+
+### 🚫 Critical Rule
+
+The agent MUST NEVER:
+
+- execute schema-changing code directly against the database
+- create tables outside migration flow
+
+---
+
+### 🔍 Drift Prevention
+
+Before applying a new migration, ALWAYS:
+
+- check drizzle.__drizzle_migrations table
+- ensure migration history is in sync
+
+If drift is detected:
+- STOP
+- notify the user
+- DO NOT proceed automatically
+
+---
+
+### 🧪 Verification Step (MANDATORY)
+
+After every migration:
+
+Run:
+SELECT * FROM drizzle.__drizzle_migrations;
+
+Ensure:
+- number of records matches number of migration files
+
+---
+
+### 🔐 Environment Safety
+
+- Database credentials MUST NOT be used automatically by the agent
+- Any command that connects to the database MUST require explicit user approval
+
+---
+
+### 🛑 Failure Handling
+
+If migration fails:
+- DO NOT retry blindly
+- DO NOT modify DB manually
+- report error and wait for user decision
+
+---
+
 ## 🖥️ Web App Rules
 * Use App Router (NOT pages router)
 * Keep components modular
