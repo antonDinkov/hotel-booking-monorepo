@@ -334,53 +334,50 @@ async function seed() {
         hotelId: roomTypes.hotelId,
     });
 
-    const summer2026 = new Date("2026-06-01T00:00:00.000Z");
-    const bookingOffsets = [0, 2, 12, 18];
-
-    const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
-
     const bookingsSeed = insertedRoomTypes.flatMap((roomType) => {
         const totalBookings = 2 + (roomType.id % 3);
 
         return Array.from({ length: totalBookings }, (_, index) => {
-            const checkInOffset = (roomType.id * 7 + bookingOffsets[index]) % 92;
-            const checkIn = new Date(summer2026);
-            checkIn.setUTCDate(summer2026.getUTCDate() + checkInOffset);
+            const checkInOffset = (roomType.id * 7 + index * 3) % 92;
+            const checkIn = new Date("2026-06-01");
+            checkIn.setDate(checkIn.getDate() + checkInOffset);
 
             const nights = 2 + ((roomType.id + index) % 4);
             const checkOut = new Date(checkIn);
-            checkOut.setUTCDate(checkIn.getUTCDate() + nights);
+            checkOut.setDate(checkOut.getDate() + nights);
 
             return {
                 roomTypeId: roomType.id,
                 userId: ((roomType.id * 3 + index) % 40) + 1,
-                checkInDate: toDateOnly(checkIn),
-                checkOutDate: toDateOnly(checkOut),
-                guestsCount: 1 + ((roomType.id + index) % roomType.capacity),
+                checkInDate: checkIn.toISOString().slice(0, 10),
+                checkOutDate: checkOut.toISOString().slice(0, 10),
+                guestsCount: 1,
                 status: "confirmed",
             };
         });
-
-        const fullyBookedStart = "2026-06-17";
-        const fullyBookedEnd = "2026-07-17";
-        const fullyBookedHotelIds = new Set([1, 2, 3]);
-        const fullyBookedRoomTypes = insertedRoomTypes.filter((roomType) =>
-            fullyBookedHotelIds.has(roomType.hotelId)
-        );
-
-        for (const roomType of fullyBookedRoomTypes) {
-            for (let i = 0; i < roomType.totalRooms; i += 1) {
-                bookingsSeed.push({
-                    roomTypeId: roomType.id,
-                    userId: 101 + i,
-                    checkInDate: fullyBookedStart,
-                    checkOutDate: fullyBookedEnd,
-                    guestsCount: 1 + (i % roomType.capacity),
-                    status: "confirmed",
-                });
-            }
-        }
     });
+
+    const fullyBookedStart = "2026-06-17";
+    const fullyBookedEnd = "2026-07-17";
+
+    const fullyBookedHotelIds = new Set([1, 2, 3]);
+
+    const fullyBookedRoomTypes = insertedRoomTypes.filter((roomType) =>
+        fullyBookedHotelIds.has(roomType.hotelId)
+    );
+
+    for (const roomType of fullyBookedRoomTypes) {
+        for (let i = 0; i < roomType.totalRooms; i++) {
+            bookingsSeed.push({
+                roomTypeId: roomType.id,
+                userId: 1000 + i,
+                checkInDate: fullyBookedStart,
+                checkOutDate: fullyBookedEnd,
+                guestsCount: 1,
+                status: "confirmed",
+            });
+        }
+    }
 
     const insertedBookings = await db.insert(bookings).values(bookingsSeed).returning({
         id: bookings.id,

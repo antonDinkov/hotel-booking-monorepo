@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { AppButton } from "./app-button";
+import { ArrowLeftIcon } from "@heroicons/react/24/solid";
 import type { ListingDetails } from "../types/hotel-panel";
 
 export function ListingDetailsCard({ listing }: { listing: ListingDetails }) {
@@ -17,11 +18,7 @@ export function ListingDetailsCard({ listing }: { listing: ListingDetails }) {
           variant="ghost"
           size="sm"
           className="mb-6 justify-start px-0 py-0 hover:-translate-x-0.5 hover:-translate-y-0"
-          leftIcon={
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          }
+            leftIcon={<ArrowLeftIcon className="h-5 w-5" />}
         >
           Back
         </AppButton>

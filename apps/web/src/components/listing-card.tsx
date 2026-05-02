@@ -1,23 +1,21 @@
 import Link from "next/link";
 import type { Listing } from "../types/hotel-panel";
 import HotelImage from "./Hotelimage";
-
-function StarIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className={`h-4 w-4 ${filled ? "text-amber-400" : "text-amber-200"}`} fill="currentColor">
-      <path d="m12 2.4 3 6.1 6.7 1-4.9 4.8 1.1 6.7-5.9-3.1-5.9 3.1 1.1-6.7-4.9-4.8 6.7-1L12 2.4Z" />
-    </svg>
-  );
-}
+import { StarIcon as SolidStar } from "@heroicons/react/24/solid";
+import { StarIcon as OutlineStar } from "@heroicons/react/24/outline";
 
 function Rating({ value }: { value: number }) {
   return (
     <div className="flex items-center gap-1.5">
       <span className="text-sm font-semibold text-slate-900">{value.toFixed(1)}</span>
       <div className="flex items-center gap-0.5" aria-label={`${value.toFixed(1)} out of 5 stars`}>
-        {Array.from({ length: 5 }, (_, index) => (
-          <StarIcon key={index} filled={index < Math.floor(value)} />
-        ))}
+        {Array.from({ length: 5 }, (_, index) =>
+          index < Math.floor(value) ? (
+            <SolidStar key={index} className="h-4 w-4 text-amber-400" />
+          ) : (
+            <OutlineStar key={index} className="h-4 w-4 text-amber-200" />
+          )
+        )}
       </div>
     </div>
   );

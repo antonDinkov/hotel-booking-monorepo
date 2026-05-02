@@ -1,25 +1,9 @@
 import { AppButton } from "./app-button";
 import type { Navigation } from "../types/hotel-panel";
+import { BuildingStorefrontIcon } from "@heroicons/react/24/solid";
 
 function BrandMark() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="h-7 w-7 text-blue-700"
-      fill="none"
-    >
-      <path
-        d="M12 22s6.5-6.2 6.5-12A6.5 6.5 0 0 0 5.5 10c0 5.8 6.5 12 6.5 12Z"
-        fill="currentColor"
-        opacity="0.18"
-      />
-      <path
-        d="M12 14.25a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
+  return <BuildingStorefrontIcon className="h-7 w-7 text-blue-700" />;
 }
 
 interface HeaderNavigationProps {
