@@ -357,10 +357,12 @@ async function seed() {
         });
     });
 
-    const fullyBookedStart = "2026-06-17";
-    const fullyBookedEnd = "2026-07-17";
+    const fullyBookedStart = "2026-06-20";
+    const fullyBookedEnd = "2026-06-25";
 
-    const fullyBookedHotelIds = new Set([1, 2, 3]);
+    const fullyBookedHotelIds = new Set(
+        insertedHotels.slice(0, 5).map(h => h.id)
+    );
 
     const fullyBookedRoomTypes = insertedRoomTypes.filter((roomType) =>
         fullyBookedHotelIds.has(roomType.hotelId)
@@ -371,8 +373,8 @@ async function seed() {
             bookingsSeed.push({
                 roomTypeId: roomType.id,
                 userId: 1000 + i,
-                checkInDate: fullyBookedStart,
-                checkOutDate: fullyBookedEnd,
+                checkInDate: "2026-06-20",
+                checkOutDate: "2026-06-25",
                 guestsCount: 1,
                 status: "confirmed",
             });
