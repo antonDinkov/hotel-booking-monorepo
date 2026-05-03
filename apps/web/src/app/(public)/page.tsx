@@ -1,13 +1,70 @@
-import { getHotelPanelData as getPanelData } from "../../server/services/hotelPanel";
+"use client";
+
+import { useEffect, useState } from "react";
 import { HeroSection } from "../../components/hero-section";
 import { HeaderNavigation } from "../../components/header-navigation";
 import { ListingCard } from "../../components/listing-card";
 import { SearchEngineWrapper } from "../../components/search-engine-wrapper";
 import type { Listing, HotelPanelData } from "../../types/hotel-panel";
 
-export default async function Home() {
-  const panelData: HotelPanelData = await getPanelData();
+export default function Home() {
+  const [panelData, setPanelData] = useState<HotelPanelData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const isLoggedIn = false;
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/hotel-panel");
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(body || `Failed to fetch panel data (${res.status})`);
+        }
+        const data: HotelPanelData = await res.json();
+        if (mounted) setPanelData(data);
+      } catch (err) {
+        if (mounted) setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[radial-gradient(circle_at_top,#f8fbff_0%,#edf3fb_45%,#e6eef9_100%)] text-slate-900">
+        <HeaderNavigation
+          brandName={panelData?.brand?.name ?? "BookYourStay"}
+          navigation={panelData?.navigation ?? { primaryAction: "Sign In", secondaryAction: "For Hosts" }}
+          isLoggedIn={isLoggedIn}
+        />
+
+        <div className="mx-auto max-w-6xl px-4 py-24 text-center">Loading…</div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="min-h-screen bg-[radial-gradient(circle_at_top,#f8fbff_0%,#edf3fb_45%,#e6eef9_100%)] text-slate-900">
+        <HeaderNavigation
+          brandName={panelData?.brand?.name ?? "BookYourStay"}
+          navigation={panelData?.navigation ?? { primaryAction: "Sign In", secondaryAction: "For Hosts" }}
+          isLoggedIn={isLoggedIn}
+        />
+        <div className="mx-auto max-w-6xl px-4 py-24 text-center text-red-600">Error: {error}</div>
+      </main>
+    );
+  }
+
+  if (!panelData) return null;
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#f8fbff_0%,#edf3fb_45%,#e6eef9_100%)] text-slate-900">

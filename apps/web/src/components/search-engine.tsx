@@ -58,7 +58,7 @@ export function SearchEngine({
         guests: "",
     });
 
-    const handleSearch = (e: React.FormEvent) => {
+    const handleSearch = (e: React.SyntheticEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         if (onSearch) {

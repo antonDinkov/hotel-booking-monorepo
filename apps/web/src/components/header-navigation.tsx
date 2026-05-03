@@ -1,3 +1,5 @@
+"use client";
+
 import { AppButton } from "./app-button";
 import type { Navigation } from "../types/hotel-panel";
 import { BuildingStorefrontIcon } from "@heroicons/react/24/solid";

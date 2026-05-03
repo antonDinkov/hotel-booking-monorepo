@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import type { Listing } from "../types/hotel-panel";
 import HotelImage from "./Hotelimage";

@@ -37,6 +37,12 @@ export function ListingDetailsCard({ listing }: { listing: ListingDetails }) {
               src={img.src}
               alt={img.alt}
               fill
+              sizes={
+                index === 0
+                  ? "(max-width: 768px) 100vw, (max-width: 1280px) 66vw, 50vw"
+                  : "(max-width: 768px) 100vw, 33vw"
+              }
+              loading={index === 0 ? "eager" : "lazy"}
               className="object-cover hover:scale-105 transition duration-300"
             />
           </div>
