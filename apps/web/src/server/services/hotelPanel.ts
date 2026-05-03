@@ -186,99 +186,115 @@ export async function searchHotels(destination?: string): Promise<Listing[]> {
 }
 
 export async function searchAvailableHotels(
-  destination: string,
-  checkInDate: string,
-  checkOutDate: string,
-  guestsCount: number
+    destination: string,
+    checkInDate: string,
+    checkOutDate: string,
+    guestsCount: number
 ): Promise<Listing[]> {
-  const hotelsData = await db
-    .select()
-    .from(hotels)
-    .where(ilike(hotels.location, `%${destination}%`));
-
-  const results: Listing[] = [];
-
-  for (const hotel of hotelsData) {
-    const roomTypesData = await db
-      .select()
-      .from(roomTypes)
-      .where(
-        and(
-          eq(roomTypes.hotelId, hotel.id),
-          gte(roomTypes.capacity, guestsCount)
-        )
-      );
-
-    let hasAvailability = false;
-
-    for (const roomType of roomTypesData) {
-      const bookingsData = await db
+    const hotelsData = await db
         .select()
-        .from(bookings)
-        .where(
-          and(
-            eq(bookings.roomTypeId, roomType.id),
-            eq(bookings.status, "confirmed")
-          )
-        );
+        .from(hotels)
+        .where(ilike(hotels.location, `%${destination}%`));
 
-      const dailyMap = new Map<string, number>();
+    // 👉 взимаме всички images
+    const images = await db
+        .select({
+            hotelId: hotelImages.hotelId,
+            url: hotelImages.url,
+        })
+        .from(hotelImages);
 
-      for (const booking of bookingsData) {
-        const start = new Date(booking.checkInDate);
-        const end = new Date(booking.checkOutDate);
+    // 👉 map: hotelId -> first image
+    const imageMap = new Map<number, string>();
 
-        for (
-          let d = new Date(start);
-          d < end;
-          d.setDate(d.getDate() + 1)
-        ) {
-          const key = d.toISOString().slice(0, 10);
-          dailyMap.set(key, (dailyMap.get(key) || 0) + 1);
+    for (const img of images) {
+        if (!imageMap.has(img.hotelId)) {
+            imageMap.set(img.hotelId, img.url);
         }
-      }
-
-      let isAvailable = true;
-
-      for (
-        let d = new Date(checkInDate);
-        d < new Date(checkOutDate);
-        d.setDate(d.getDate() + 1)
-      ) {
-        const key = d.toISOString().slice(0, 10);
-        const booked = dailyMap.get(key) || 0;
-
-        if (booked >= roomType.totalRooms) {
-          isAvailable = false;
-          break;
-        }
-      }
-
-      if (isAvailable) {
-        hasAvailability = true;
-        break;
-      }
     }
 
-    if (hasAvailability) {
-      results.push({
-        id: String(hotel.id),
-        name: hotel.name,
-        category: hotel.location,
-        rating: 4.7,
-        reviewLabel: "Verified stays",
-        image: {
-          src:
-            "https://images.unsplash.com/photo-1566073771259-6a8506099945",
-          alt: `${hotel.name} cover image`,
-        },
-      });
-    }
-  }
+    const results: Listing[] = [];
 
-  console.log(results);
-  
-  return results;
+    for (const hotel of hotelsData) {
+        const roomTypesData = await db
+            .select()
+            .from(roomTypes)
+            .where(
+                and(
+                    eq(roomTypes.hotelId, hotel.id),
+                    gte(roomTypes.capacity, guestsCount)
+                )
+            );
+
+        let hasAvailability = false;
+
+        for (const roomType of roomTypesData) {
+            const bookingsData = await db
+                .select()
+                .from(bookings)
+                .where(
+                    and(
+                        eq(bookings.roomTypeId, roomType.id),
+                        eq(bookings.status, "confirmed")
+                    )
+                );
+
+            const dailyMap = new Map<string, number>();
+
+            for (const booking of bookingsData) {
+                const start = new Date(booking.checkInDate);
+                const end = new Date(booking.checkOutDate);
+
+                for (
+                    let d = new Date(start);
+                    d < end;
+                    d.setDate(d.getDate() + 1)
+                ) {
+                    const key = d.toISOString().slice(0, 10);
+                    dailyMap.set(key, (dailyMap.get(key) || 0) + 1);
+                }
+            }
+
+            let isAvailable = true;
+
+            for (
+                let d = new Date(checkInDate);
+                d < new Date(checkOutDate);
+                d.setDate(d.getDate() + 1)
+            ) {
+                const key = d.toISOString().slice(0, 10);
+                const booked = dailyMap.get(key) || 0;
+
+                if (booked >= roomType.totalRooms) {
+                    isAvailable = false;
+                    break;
+                }
+            }
+
+            if (isAvailable) {
+                hasAvailability = true;
+                break;
+            }
+        }
+
+        if (hasAvailability) {
+            results.push({
+                id: String(hotel.id),
+                name: hotel.name,
+                category: hotel.location,
+                rating: 4.7,
+                reviewLabel: "Verified stays",
+                image: {
+                    src:
+                        imageMap.get(hotel.id) ??
+                        "https://images.unsplash.com/photo-1566073771259-6a8506099945",
+                    alt: `${hotel.name} cover image`,
+                },
+            });
+        }
+    }
+
+    return results;
 }
 
 export default {
