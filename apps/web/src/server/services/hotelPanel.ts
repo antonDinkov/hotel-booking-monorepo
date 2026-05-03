@@ -144,47 +144,6 @@ export async function getListingById(id: string | number): Promise<ListingDetail
     return listing;
 }
 
-export async function searchHotels(destination?: string): Promise<Listing[]> {
-    let query: any = db
-        .select({
-            id: hotels.id,
-            name: hotels.name,
-            location: hotels.location,
-            imageUrl: hotelImages.url,
-        })
-        .from(hotels)
-        .leftJoin(hotelImages, eq(hotelImages.hotelId, hotels.id));
-
-    if (destination) {
-        query = query.where(
-            ilike(hotels.location, `%${destination}%`)
-        );
-    }
-
-    const rows = await query;
-
-    const resultMap = new Map<number, Listing>();
-
-    for (const row of rows) {
-        if (!resultMap.has(row.id)) {
-            resultMap.set(row.id, {
-                id: String(row.id),
-                name: row.name,
-                category: row.location,
-                rating: 4.7,
-                reviewLabel: "Verified stays",
-                image: {
-                    src: row.imageUrl ??
-                        "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80",
-                    alt: `${row.name} cover image`,
-                },
-            });
-        }
-    }
-
-    return Array.from(resultMap.values());
-}
-
 export async function searchAvailableHotels(
     destination: string,
     checkInDate: string,
@@ -296,10 +255,3 @@ export async function searchAvailableHotels(
 
     return results;
 }
-
-export default {
-    getHotelPanelData,
-    getListingById,
-    searchHotels,
-    searchAvailableHotels,
-};
