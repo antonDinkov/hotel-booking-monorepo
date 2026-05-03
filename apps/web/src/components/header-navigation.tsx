@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { AppButton } from "./app-button";
 import type { Navigation } from "../types/hotel-panel";
 import { BuildingStorefrontIcon } from "@heroicons/react/24/solid";
@@ -24,26 +25,34 @@ export function HeaderNavigation({
   return (
     <header className="sticky top-0 z-30 border-b border-white/60 bg-white/70 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <a href="#top" className="flex items-center gap-2.5 text-[1.15rem] font-extrabold tracking-tight text-blue-950">
+        <Link href={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2.5 text-[1.15rem] font-extrabold tracking-tight text-blue-950">
           <BrandMark />
           {brandName}
-        </a>
+        </Link>
 
         {!isLoggedIn ? (
           <div className="flex items-center gap-2 sm:gap-3">
-            <AppButton
-              variant="secondary"
-              size="md"
-              className="border-blue-700 text-blue-700 hover:border-blue-800 hover:bg-blue-50"
-            >
-              Sign Up
-            </AppButton>
-            <AppButton variant="primary" size="md">
-              {navigation.primaryAction}
-            </AppButton>
-            <AppButton variant="secondary" size="md" className="border-slate-200 hover:border-slate-300">
-              {navigation.secondaryAction}
-            </AppButton>
+            <Link href="/register">
+              <AppButton
+                variant="secondary"
+                size="md"
+                className="border-blue-700 text-blue-700 hover:border-blue-800 hover:bg-blue-50"
+              >
+                Sign Up
+              </AppButton>
+            </Link>
+
+            <Link href="/login">
+              <AppButton variant="primary" size="md">
+                {navigation.primaryAction}
+              </AppButton>
+            </Link>
+
+            <Link href="/partner">
+              <AppButton variant="secondary" size="md" className="border-slate-200 hover:border-slate-300">
+                {navigation.secondaryAction}
+              </AppButton>
+            </Link>
           </div>
         ) : (
           <div className="flex items-center gap-2 sm:gap-3">
