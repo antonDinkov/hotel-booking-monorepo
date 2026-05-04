@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { HeaderNavigation } from "../../../components/header-navigation";
 import { AppButton } from "../../../components/app-button";
+import { FaGithub } from "react-icons/fa";
 
 export default function LoginPage() {
   return (
@@ -63,9 +64,13 @@ export default function LoginPage() {
             <div className="flex items-center justify-center">
               <div className="w-full max-w-xs text-center">
                 <p className="text-sm font-medium text-slate-700 mb-4">Or sign in with</p>
-                <AppButton variant="ghost" size="lg" className="w-full border-slate-200">
-                  <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-sm bg-white text-sm">G</span>
-                  Sign in with Google
+                <AppButton
+                  variant="ghost"
+                  size="lg"
+                  className="w-full border-slate-200"
+                  leftIcon={<FaGithub className="h-5 w-5" />}
+                >
+                  GitHub
                 </AppButton>
               </div>
             </div>
