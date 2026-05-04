@@ -1,5 +1,15 @@
 import { relations } from "drizzle-orm";
-import { boolean, date, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import {
+	boolean,
+	date,
+	integer,
+	pgTable,
+	serial,
+	text,
+	timestamp,
+	uuid,
+	primaryKey,
+} from "drizzle-orm/pg-core";
 
 export const hotels = pgTable("hotels", {
 	id: serial("id").primaryKey(),
@@ -31,12 +41,40 @@ export const roomTypes = pgTable("room_types", {
 	createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const users = pgTable("users", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	email: text("email").notNull().unique(),
+	passwordHash: text("password_hash").notNull(),
+	isActive: boolean("is_active").notNull().default(true),
+	createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const roles = pgTable("roles", {
+	id: serial("id").primaryKey(),
+	name: text("name").notNull().unique(),
+});
+
+export const userRoles = pgTable(
+	"user_roles",
+	{
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		roleId: integer("role_id")
+			.notNull()
+			.references(() => roles.id, { onDelete: "cascade" }),
+	},
+	(table) => ({
+		pk: primaryKey(table.userId, table.roleId),
+	})
+);
+
 export const bookings = pgTable("bookings", {
 	id: serial("id").primaryKey(),
 	roomTypeId: integer("room_type_id")
 		.notNull()
 		.references(() => roomTypes.id),
-	userId: integer("user_id").notNull(),
+	userId: uuid("user_id").notNull().references(() => users.id),
 	checkInDate: date("check_in_date").notNull(),
 	checkOutDate: date("check_out_date").notNull(),
 	guestsCount: integer("guests_count").notNull(),
@@ -68,5 +106,29 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
 	roomType: one(roomTypes, {
 		fields: [bookings.roomTypeId],
 		references: [roomTypes.id],
+	}),
+	user: one(users, {
+		fields: [bookings.userId],
+		references: [users.id],
+	}),
+}));
+
+export const usersRelations = relations(users, ({ many }) => ({
+	userRoles: many(userRoles),
+	bookings: many(bookings),
+}));
+
+export const rolesRelations = relations(roles, ({ many }) => ({
+	userRoles: many(userRoles),
+}));
+
+export const userRolesRelations = relations(userRoles, ({ one }) => ({
+	user: one(users, {
+		fields: [userRoles.userId],
+		references: [users.id],
+	}),
+	role: one(roles, {
+		fields: [userRoles.roleId],
+		references: [roles.id],
 	}),
 }));
