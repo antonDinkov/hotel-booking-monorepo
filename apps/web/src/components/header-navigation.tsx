@@ -1,6 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { signOut } from "next-auth/react";
+
+import type { Session } from "next-auth";
+
 import { AppButton } from "./app-button";
 import type { Navigation } from "../types/hotel-panel";
 import { BuildingStorefrontIcon } from "@heroicons/react/24/solid";
@@ -13,12 +17,11 @@ interface HeaderNavigationProps {
   brandName: string;
   navigation: Navigation;
   // Session is a UI-only prop. It may be null for guests.
-  session: { user?: { email?: string | null; name?: string | null } } | null;
+  session: Session | null;
 }
 
 export function HeaderNavigation({
   brandName,
-  navigation,
   session = null,
 }: HeaderNavigationProps) {
   const isLoggedIn = Boolean(session);
@@ -80,7 +83,7 @@ export function HeaderNavigation({
               </AppButton>
             </Link>
 
-            <AppButton variant="primary" size="md">
+            <AppButton variant="primary" size="md" onClick={() => void signOut({ callbackUrl: "/" })}>
               Logout
             </AppButton>
           </div>

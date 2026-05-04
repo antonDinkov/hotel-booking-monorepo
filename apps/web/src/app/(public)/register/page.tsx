@@ -2,18 +2,11 @@
 
 import React from "react";
 import Link from "next/link";
-import { HeaderNavigation } from "../../../components/header-navigation";
 import { AppButton } from "../../../components/app-button";
 
 export default function RegisterPage() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#f8fbff_0%,#edf3fb_45%,#e6eef9_100%)] text-slate-900">
-      <HeaderNavigation
-        brandName="BookYourStay"
-        navigation={{ primaryAction: "Sign In", secondaryAction: "For Hosts" }}
-        isLoggedIn={false}
-      />
-
       <div className="mx-auto max-w-md px-4 py-16">
         <div className="rounded-2xl bg-white p-8 shadow-lg">
           <div className="mb-4">

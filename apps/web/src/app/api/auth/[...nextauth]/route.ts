@@ -1,13 +1,11 @@
-import NextAuth from "next-auth"
-import GitHubProvider from "next-auth/providers/github"
+import NextAuth, { type NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import GitHubProvider from "next-auth/providers/github"
 
-const handler = NextAuth({
+import { ensureOAuthUser, validateCredentials } from "@/server/services/auth"
+
+export const authOptions: NextAuthOptions = {
   providers: [
-    GitHubProvider({
-      clientId: process.env.GITHUB_ID!,
-      clientSecret: process.env.GITHUB_SECRET!,
-    }),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -15,16 +13,65 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // Тук пишеш логиката за проверка на имейл/парола
-        // Например: проверка в база данни
-        if (credentials?.email === "test@example.com" && credentials?.password === "1234") {
-          return { id: "1", name: "Test User", email: "test@example.com" };
-        }
-        // Ако не е валидно → връща null
-        return null;
+        const email = credentials?.email?.toString().trim();
+        const password = credentials?.password?.toString();
+
+        if (!email || !password) return null;
+
+        return validateCredentials(email, password);
       }
-    })
+    }),
+    GitHubProvider({
+      clientId: process.env.GITHUB_ID!,
+      clientSecret: process.env.GITHUB_SECRET!,
+    }),
   ],
-})
+  session: {
+    strategy: "jwt",
+  },
+  callbacks: {
+    async signIn({ user, account, profile }) {
+      if (account?.provider !== "github") return true;
+
+      console.info("[auth] GitHub profile", profile);
+
+      const email = user.email?.toString().trim() ?? profile?.email?.toString().trim();
+      if (!email) return false;
+
+      console.info("[auth] GitHub lookup", { email });
+
+      const { user: oauthUser, created } = await ensureOAuthUser(email);
+
+      if (created) {
+        console.info("[auth] GitHub user created", oauthUser);
+      } else {
+        console.info("[auth] GitHub user found", oauthUser);
+      }
+
+      user.id = oauthUser.id;
+      user.email = oauthUser.email;
+
+      return true;
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        if (user.email) token.email = user.email;
+      }
+
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string;
+        if (token.email) session.user.email = token.email as string;
+      }
+
+      return session;
+    },
+  },
+}
+
+const handler = NextAuth(authOptions)
 
 export { handler as GET, handler as POST }

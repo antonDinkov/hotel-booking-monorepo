@@ -15,6 +15,13 @@
       "when": 1777892350314,
       "tag": "0001_volatile_psynapse",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777899239470,
+      "tag": "0002_puzzling_silverclaw",
+      "breakpoints": true
     }
   ]
 }

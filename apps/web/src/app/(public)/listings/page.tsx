@@ -3,7 +3,6 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { ListingCard } from "../../../components/listing-card";
-import { HeaderNavigation } from "../../../components/header-navigation";
 import type { Listing } from "../../../types/hotel-panel";
 
 function ListingsContent() {
@@ -45,16 +44,6 @@ function ListingsContent() {
 
   return (
     <main className="min-h-screen bg-slate-50">
-      <HeaderNavigation
-        brandName="BookYourStay"
-        navigation={{
-          primaryAction: "Sign In",
-          secondaryAction: "For Hosts",
-        }}
-        isLoggedIn={false}
-        userName="Alex"
-      />
-
       <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900">

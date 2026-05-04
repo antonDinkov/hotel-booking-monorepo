@@ -1,3 +1,1 @@
-export default function Page() {
-  return <div>TODO</div>;
-}
+export { default } from "../../(public)/page";
