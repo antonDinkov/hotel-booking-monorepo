@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { AppButton } from "./app-button";
+import { AppButton } from "./AppButton";
 import { ArrowLeftIcon } from "@heroicons/react/24/solid";
 import type { ListingDetails } from "../types/hotel-panel";
 

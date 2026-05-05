@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { ListingCard } from "../../../components/listing-card";
+import { ListingCard } from "../../../components/ListingCard";
 import type { Listing } from "../../../types/hotel-panel";
 
 function ListingsContent() {

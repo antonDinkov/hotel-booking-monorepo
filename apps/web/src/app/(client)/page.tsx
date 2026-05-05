@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { HeroSection } from "../../components/hero-section";
-import { ListingCard } from "../../components/listing-card";
-import { SearchEngineWrapper } from "../../components/search-engine-wrapper";
+import { HeroSection } from "../../components/HeroSection";
+import { ListingCard } from "../../components/ListingCard";
+import { SearchEngineWrapper } from "../../components/SearchEngineWrapper";
 import type { Listing, HotelPanelData } from "../../types/hotel-panel";
 
 export default function Home() {

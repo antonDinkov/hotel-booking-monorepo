@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { AppButton } from "../../../components/app-button";
+import { AppButton } from "../../../components/AppButton";
 
 export default function PartnerWelcomePage() {
   return (

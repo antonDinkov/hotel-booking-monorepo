@@ -1,4 +1,4 @@
-import { ListingDetailsCard } from "../../../../components/listing-details-card";
+import { ListingDetailsCard } from "../../../../components/ListingDetailsCard";
 import { getListingById } from "../../../../server/services/hotelPanel";
 import type { ListingDetails } from "../../../../types/hotel-panel";
 

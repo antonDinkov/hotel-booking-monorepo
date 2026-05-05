@@ -2,9 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
-import { AppButton } from "../../../components/app-button";
+import { AppButton } from "./AppButton";
 
-export default function RegisterPage() {
+export default function RegisterForm() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#f8fbff_0%,#edf3fb_45%,#e6eef9_100%)] text-slate-900">
       <div className="mx-auto max-w-md px-4 py-16">

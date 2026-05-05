@@ -24,6 +24,12 @@ The project follows a **monorepo architecture**.
 
 ---
 
+## Component File Naming Convention**
+
+All React/Next.js component files must use **PascalCase** and match the name of the default exported component. For example, a component exported as `UserProfile` must be defined in a file named `UserProfile.tsx`. This improves readability, consistency, and developer experience across the codebase. While Next.js does not strictly enforce file naming, React requires component names to be capitalized, and aligning file names with component names is considered best practice. Exceptions apply only to framework-reserved files such as `page.tsx`, `layout.tsx`, and `loading.tsx`, which must follow Next.js conventions.
+
+---
+
 ## ⚙️ Tech Stack
 ### Web & Backend
 * Next.js (App Router)
@@ -71,7 +77,7 @@ The project follows a **monorepo architecture**.
 - Route groups `(…)` are for organization ONLY and DO NOT affect URLs.
 
 ### Public Routes
-- Location: /app/(public)/*
+- Location: /app/(client)/*
 - Accessible without authentication
 - Includes:
   - landing page (/)

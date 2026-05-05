@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { MapPinIcon, CalendarDaysIcon, UserGroupIcon, MagnifyingGlassIcon } from "@heroicons/react/24/solid";
 import type { SearchField } from "../types/hotel-panel";
-import { AppButton } from "./app-button";
+import { AppButton } from "./AppButton";
 
 // Using heroicons from @heroicons/react
 

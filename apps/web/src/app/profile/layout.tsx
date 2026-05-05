@@ -4,12 +4,15 @@ import { redirect } from "next/navigation";
 import { getUserRoles } from "@/server/services/auth";
 import type { ReactNode } from "react";
 
-export default async function Layout({ children }: { children: ReactNode }) {
+export default async function ProfileLayout({ children }: { children: ReactNode }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return redirect("/login");
 
   const roles = await getUserRoles(session.user.id as string);
-  if (!roles.includes("admin")) return redirect("/");
+  if (!(roles.includes("client") || roles.includes("admin"))) {
+    if (roles.includes("partner")) return redirect("/partner/dashboard");
+    return redirect("/");
+  }
 
   return <>{children}</>;
 }

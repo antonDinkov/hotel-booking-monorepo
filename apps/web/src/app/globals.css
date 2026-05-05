@@ -27,3 +27,20 @@ body {
   background: rgba(37, 99, 235, 0.18);
   color: #0f172a;
 }
+
+/* Ensure header nav link with aria-current renders as primary button */
+header [aria-current="page"] > button,
+header a[aria-current="page"] > button {
+  @apply bg-blue-700 text-white shadow-lg shadow-blue-700/20 hover:bg-blue-800 border-transparent;
+}
+
+/* Strong override for active buttons to handle CSS ordering/hydration edge-cases */
+.btn-active {
+  background-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 15px -6px rgba(29, 78, 216, 0.2) !important;
+  border-color: transparent !important;
+}
+.btn-active:hover {
+  background-color: #1e40af !important;
+}

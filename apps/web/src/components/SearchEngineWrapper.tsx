@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { SearchEngine } from "./search-engine";
-import { ListingCard } from "./listing-card";
+import { SearchEngine } from "./SearchEngine";
+import { ListingCard } from "./ListingCard";
 import type { SearchField, Listing } from "../types/hotel-panel";
 
 export function SearchEngineWrapper({
