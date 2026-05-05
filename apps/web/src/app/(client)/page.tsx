@@ -1,56 +1,13 @@
-"use client";
-
-import { useEffect, useState } from "react";
+// Home page is guest-facing; redirect to `/dashboard` is handled by middleware.
+import { getHotelPanelData } from "@/server/services/hotelPanel";
 import { HeroSection } from "../../components/HeroSection";
 import { ListingCard } from "../../components/ListingCard";
 import { SearchEngineWrapper } from "../../components/SearchEngineWrapper";
 import type { Listing, HotelPanelData } from "../../types/hotel-panel";
 
-export default function Home() {
-  const [panelData, setPanelData] = useState<HotelPanelData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default async function Home() {
 
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      try {
-        const res = await fetch("/api/hotel-panel");
-        if (!res.ok) {
-          const body = await res.text();
-          throw new Error(body || `Failed to fetch panel data (${res.status})`);
-        }
-        const data: HotelPanelData = await res.json();
-        if (mounted) setPanelData(data);
-      } catch (err) {
-        if (mounted) setError(err instanceof Error ? err.message : String(err));
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-[radial-gradient(circle_at_top,#f8fbff_0%,#edf3fb_45%,#e6eef9_100%)] text-slate-900">
-        <div className="mx-auto max-w-6xl px-4 py-24 text-center">Loading…</div>
-      </main>
-    );
-  }
-
-  if (error) {
-    return (
-      <main className="min-h-screen bg-[radial-gradient(circle_at_top,#f8fbff_0%,#edf3fb_45%,#e6eef9_100%)] text-slate-900">
-        <div className="mx-auto max-w-6xl px-4 py-24 text-center text-red-600">Error: {error}</div>
-      </main>
-    );
-  }
-
+  const panelData: HotelPanelData | null = await getHotelPanelData();
   if (!panelData) return null;
 
   return (

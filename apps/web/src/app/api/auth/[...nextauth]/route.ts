@@ -120,7 +120,9 @@ export const authOptions: NextAuthOptions = {
             return session;
         },
         async redirect({ baseUrl }) {
-            return `${baseUrl}/dashboard`;
+            // Keep default behavior (baseUrl) — avoid forcing /dashboard here to prevent
+            // having multiple redirect strategies. Middleware handles redirecting to /dashboard.
+            return baseUrl;
         },
     },
 }

@@ -29,24 +29,26 @@ export function HeaderNavigation({
     const router = useRouter();
     const [isSigningOut, setIsSigningOut] = useState(false);
 
-    const [currentPath, setCurrentPath] = useState("");
-
     // normalize pathnames to avoid mismatches with trailing slashes
     const normalizedPath = pathname.replace(/\/+$/, "") || "/";
     const normalize = (p: string) => (p === "/" ? "/" : p.replace(/\/+$/, ""));
 
-    
+    // Use the router-provided `pathname` (via usePathname) to determine active state.
+    // We also track a short-lived `clickedPath` state so the UI reflects the
+    // intended target immediately on the first click (before the router updates).
+    const [clickedPath, setClickedPath] = useState<string | null>(null);
+    useEffect(() => {
+        // Clear the transient clicked path once the real pathname changes
+        setClickedPath(null);
+    }, [normalizedPath]);
 
     const isActive = (href: string) => {
-        if (typeof window !== "undefined") {
-            const current = window.location.pathname.replace(/\/+$/, "") || "/";
-            const target = normalize(href);
+        const current = normalizedPath;
+        const target = normalize(href);
 
-            if (target === "/") return current === "/";
-            return current === target || current.startsWith(target + "/");
-        }
-
-        return false;
+        if (clickedPath === target) return true;
+        if (target === "/") return current === "/";
+        return current === target || current.startsWith(target + "/");
     };
 
     const activeButtonClasses = "bg-blue-700 text-white shadow-lg shadow-blue-700/20 hover:bg-blue-800 border-transparent btn-active";
@@ -66,7 +68,7 @@ export function HeaderNavigation({
     return (
         <header className="sticky top-0 z-30 border-b border-white/60 bg-white/70 backdrop-blur-xl">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-                <Link href={homeHref} className="flex items-center gap-2.5 text-[1.15rem] font-extrabold tracking-tight text-blue-950">
+                <Link href={homeHref} prefetch={false} className="flex items-center gap-2.5 text-[1.15rem] font-extrabold tracking-tight text-blue-950">
                     <BrandMark />
                     {brandName}
                 </Link>
@@ -80,6 +82,7 @@ export function HeaderNavigation({
                     <div className="flex items-center gap-2 sm:gap-3">
                         <Link href="/login" aria-current={isActive("/login") ? "page" : undefined}>
                             <AppButton
+                                onClick={() => setClickedPath("/login")}
                                 variant={isActive("/login") ? "primary" : "secondary"}
                                 size="md"
                                 className={isActive("/login") ? activeButtonClasses : inactiveButtonClasses}
@@ -90,6 +93,7 @@ export function HeaderNavigation({
 
                         <Link href="/register" aria-current={isActive("/register") ? "page" : undefined}>
                             <AppButton
+                                onClick={() => setClickedPath("/register")}
                                 variant={isActive("/register") ? "primary" : "secondary"}
                                 size="md"
                                 className={isActive("/register") ? activeButtonClasses : inactiveButtonClasses}
@@ -100,6 +104,7 @@ export function HeaderNavigation({
 
                         <Link href="/partner" aria-current={isActive("/partner") ? "page" : undefined}>
                             <AppButton
+                                onClick={() => setClickedPath("/partner")}
                                 variant={isActive("/partner") ? "primary" : "secondary"}
                                 size="md"
                                 className={isActive("/partner") ? activeButtonClasses : inactiveButtonClasses}
@@ -116,8 +121,9 @@ export function HeaderNavigation({
                             </p>
                         ) : null}
 
-                        <Link href="/dashboard" aria-current={isActive("/dashboard") ? "page" : undefined} className="relative inline-flex">
+                        <Link href="/dashboard" prefetch={false} aria-current={isActive("/dashboard") ? "page" : undefined} className="relative inline-flex">
                             <AppButton
+                                onClick={() => setClickedPath("/dashboard")}
                                 variant={isActive("/dashboard") ? "primary" : "secondary"}
                                 size="md"
                                 className={isActive("/dashboard") ? activeButtonClasses : inactiveButtonClasses}
@@ -126,8 +132,9 @@ export function HeaderNavigation({
                             </AppButton>
                         </Link>
 
-                        <Link href="/bookings" aria-current={isActive("/bookings") ? "page" : undefined} className="relative inline-flex">
+                        <Link href="/bookings" prefetch={false} aria-current={isActive("/bookings") ? "page" : undefined} className="relative inline-flex">
                             <AppButton
+                                onClick={() => setClickedPath("/bookings")}
                                 variant={isActive("/bookings") ? "primary" : "secondary"}
                                 size="md"
                                 className={isActive("/bookings") ? activeButtonClasses : inactiveButtonClasses}
@@ -136,8 +143,9 @@ export function HeaderNavigation({
                             </AppButton>
                         </Link>
 
-                        <Link href="/profile" aria-current={isActive("/profile") ? "page" : undefined} className="relative inline-flex">
+                        <Link href="/profile" prefetch={false} aria-current={isActive("/profile") ? "page" : undefined} className="relative inline-flex">
                             <AppButton
+                                onClick={() => setClickedPath("/profile")}
                                 variant={isActive("/profile") ? "primary" : "secondary"}
                                 size="md"
                                 className={isActive("/profile") ? activeButtonClasses : inactiveButtonClasses}

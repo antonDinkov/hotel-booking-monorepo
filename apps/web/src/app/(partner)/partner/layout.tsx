@@ -11,7 +11,9 @@ export default async function Layout({ children }: { children: ReactNode }) {
     const roles = await getUserRoles(session.user.id as string);
     if (roles.includes("admin")) return redirect("/admin/dashboard");
     if (roles.includes("partner")) return redirect("/partner/dashboard");
-    return redirect("/dashboard");
+    // If user is authenticated but has no partner/admin role yet,
+    // send them to profile/onboarding instead of forcing /dashboard.
+    return redirect("/profile");
   }
 
   return <>{children}</>;
