@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
 import { AppButton } from "./AppButton";
-import type { Navigation } from "../types/hotel-panel";
 import { BuildingStorefrontIcon } from "@heroicons/react/24/solid";
 
 function BrandMark() {
@@ -15,14 +14,14 @@ function BrandMark() {
 
 interface HeaderNavigationProps {
     brandName: string;
-    navigation: Navigation;
+    session: any;
 }
 
 export function HeaderNavigation({
     brandName,
+    session,
 }: HeaderNavigationProps) {
-    const { data: session, status } = useSession();
-    const isLoading = status === "loading";
+    const isLoading = false;
     const isLoggedIn = Boolean(session);
     const userEmail = session?.user?.email ?? session?.user?.name ?? null;
     const pathname = usePathname() ?? "/";
@@ -60,7 +59,6 @@ export function HeaderNavigation({
         try {
             await signOut({ redirect: false });
             router.push("/");
-            router.refresh();
         } finally {
             setIsSigningOut(false);
         }

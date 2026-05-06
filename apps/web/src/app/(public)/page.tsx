@@ -1,11 +1,17 @@
-// Home page is guest-facing; redirect to `/dashboard` is handled by middleware.
+// Home page is guest-facing; authenticated users are redirected to `/dashboard`.
 import { getHotelPanelData } from "@/server/services/hotelPanel";
+import { authorize } from "@/app/api/auth/[...nextauth]/route";
+import { redirect } from "next/navigation";
 import { HeroSection } from "../../components/HeroSection";
 import { ListingCard } from "../../components/ListingCard";
 import { SearchEngineWrapper } from "../../components/SearchEngineWrapper";
 import type { Listing, HotelPanelData } from "../../types/hotel-panel";
 
 export default async function Home() {
+  const auth = await authorize(["client", "admin"]);
+  if (auth.ok) {
+    redirect("/dashboard");
+  }
 
   const panelData: HotelPanelData | null = await getHotelPanelData();
   if (!panelData) return null;

@@ -1,8 +1,9 @@
 import NextAuth, { type NextAuthOptions } from "next-auth"
+import { getServerSession } from "next-auth/next"
 import CredentialsProvider from "next-auth/providers/credentials"
 import GitHubProvider from "next-auth/providers/github"
 
-import { ensureOAuthUser, validateCredentials } from "@/server/services/auth"
+import { ensureOAuthUser, getUserRoles, validateCredentials } from "@/server/services/auth"
 
 export const authOptions: NextAuthOptions = {
     providers: [
@@ -107,6 +108,7 @@ export const authOptions: NextAuthOptions = {
             if (user) {
                 token.id = user.id;
                 if (user.email) token.email = user.email;
+                token.roles = await getUserRoles(user.id as string);
             }
 
             return token;
@@ -125,6 +127,46 @@ export const authOptions: NextAuthOptions = {
             return baseUrl;
         },
     },
+}
+
+export async function authorize(allowedRoles: string[]) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+        return { ok: false, error: "unauthenticated" as const, session: null, roles: [] as string[], userId: null as string | null };
+    }
+
+    const roles = await getUserRoles(session.user.id as string);
+    const hasRole = isRoleAllowed(roles, allowedRoles);
+
+    if (!hasRole) {
+        return { ok: false, error: "forbidden" as const, session, roles, userId: session.user.id };
+    }
+
+    return { ok: true, session, roles, userId: session.user.id };
+}
+
+function isRoleAllowed(userRoles: string[], allowedRoles: string[]) {
+    return userRoles.some((role) => allowedRoles.includes(role));
+}
+
+export async function authorizeApi(allowedRoles: string[]) {
+    const result = await authorize(allowedRoles);
+
+    if (!result.ok) {
+        if (result.error === "unauthenticated") {
+            return { ok: false, status: 401, response: { error: "Unauthorized" } };
+        }
+
+        return { ok: false, status: 403, response: { error: "Forbidden" } };
+    }
+
+    return { ok: true, session: result.session, roles: result.roles, userId: result.userId };
+}
+
+export function redirectToRoleDashboard(roles: string[]) {
+    if (roles.includes("admin")) return "/admin/dashboard";
+    if (roles.includes("partner")) return "/partner/dashboard";
+    return "/dashboard";
 }
 
 const handler = NextAuth(authOptions)

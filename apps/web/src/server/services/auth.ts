@@ -23,10 +23,6 @@ export async function validateCredentials(email: string, password: string) {
     return { id: user.id, email: user.email };
 }
 
-/* import { eq } from "drizzle-orm";
-import { db } from "@/server/db";
-import { users } from "@/server/db/schema"; */
-
 export async function ensureOAuthUser(email: string) {
     const normalizedEmail = email.trim().toLowerCase();
 
@@ -90,35 +86,6 @@ export async function ensureOAuthUser(email: string) {
         created: !existing,
     };
 }
-
-/* export async function ensureOAuthUser(email: string) {
-    const normalizedEmail = email.trim().toLowerCase();
-
-    const existing = await db
-        .select({
-            id: users.id,
-            email: users.email,
-        })
-        .from(users)
-        .where(eq(users.email, normalizedEmail))
-        .then((rows) => rows[0]);
-
-    if (existing) {
-        return { user: existing, created: false };
-    }
-
-    const created = await db
-        .insert(users)
-        .values({
-            email: normalizedEmail,
-            passwordHash: null,
-        })
-        .returning({ id: users.id, email: users.email });
-
-    const createdUser = Array.isArray(created) ? created[0] : created;
-
-    return { user: createdUser, created: true };
-} */
 
 export async function getUserRoles(userId: string) {
     const rows = await db
