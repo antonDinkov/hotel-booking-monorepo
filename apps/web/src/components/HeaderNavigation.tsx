@@ -55,14 +55,15 @@ export function HeaderNavigation({
     // homeHref redirect logged in users to /dashboard or / when clicking the brand link 
     const homeHref = isLoggedIn ? "/dashboard" : "/";
     const handleSignOut = async () => {
-        setIsSigningOut(true);
         try {
-            await signOut({ redirect: false });
-            setTimeout(() => {
-                router.push("/");
-            }, 2000);
+            setIsSigningOut(true);
+            await signOut({ redirect: true, callbackUrl: "/" });
+        } catch (error) {
+            console.error("Error signing out:", error);
         } finally {
-            setIsSigningOut(false);
+            setTimeout(() => {
+                setIsSigningOut(false);
+            }, 1500); // Reset signing out state after a short delay to allow for sign-out process to complete  
         }
     };
     return (
