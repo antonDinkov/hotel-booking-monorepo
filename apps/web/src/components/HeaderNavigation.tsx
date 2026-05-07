@@ -58,7 +58,9 @@ export function HeaderNavigation({
         setIsSigningOut(true);
         try {
             await signOut({ redirect: false });
-            router.push("/");
+            setTimeout(() => {
+                router.push("/");
+            }, 2000);
         } finally {
             setIsSigningOut(false);
         }

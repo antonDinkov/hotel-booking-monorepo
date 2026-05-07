@@ -5,8 +5,7 @@ import { getUserRoles } from "@/server/services/auth";
 import type { ReactNode } from "react";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return redirect("/partner/login");
+  const session: any = await getServerSession(authOptions);
 
   const roles = await getUserRoles(session.user.id as string);
   if (!(roles.includes("partner") || roles.includes("admin"))) {

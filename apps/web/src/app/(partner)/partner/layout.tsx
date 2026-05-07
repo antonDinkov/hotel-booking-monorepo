@@ -5,16 +5,15 @@ import { getUserRoles } from "@/server/services/auth";
 import type { ReactNode } from "react";
 
 export default async function Layout({ children }: { children: ReactNode }) {
-  // Partner root layout: only guests should see the partner landing/login/register pages.
-  const session = await getServerSession(authOptions);
-  if (session?.user?.id) {
-    const roles = await getUserRoles(session.user.id as string);
-    if (roles.includes("admin")) return redirect("/admin/dashboard");
-    if (roles.includes("partner")) return redirect("/partner/dashboard");
-    // If user is authenticated but has no partner/admin role yet,
-    // send them to profile/onboarding instead of forcing /dashboard.
-    return redirect("/profile");
-  }
+    // Partner root layout: only guests should see the partner landing/login/register pages.
+    const session = await getServerSession(authOptions);
+    if (session?.user?.id) {
+        const roles = await getUserRoles(session.user.id as string);
+        if (roles.includes("admin")) return redirect("/admin/dashboard");
+        if (roles.includes("partner")) return redirect("/partner/dashboard");
 
-  return <>{children}</>;
+        return redirect("/profile");
+    }
+
+    return <>{children}</>;
 }
