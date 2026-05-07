@@ -73,7 +73,7 @@ export function SearchEngine({
 
     return (
         <form onSubmit={handleSearch}>
-            <div className="relative z-20 mt-12 rounded-[1.35rem] border border-white/80 bg-white p-3 shadow-[0_24px_60px_rgba(15,23,42,0.22)] backdrop-blur-xl lg:absolute lg:left-1/2 lg:bottom-0 lg:mt-0 lg:w-[calc(100%-2rem)] lg:max-w-6xl lg:-translate-x-1/2 lg:translate-y-1/2">
+            <div className="w-full rounded-[1.35rem] border border-white/80 bg-white p-3 shadow-[0_24px_60px_rgba(15,23,42,0.22)]">
                 <div className="grid gap-2 lg:grid-cols-[1fr_0.8fr_0.8fr_0.8fr_auto]">
                     <SearchFieldCard
                         field={searchFields[0]}

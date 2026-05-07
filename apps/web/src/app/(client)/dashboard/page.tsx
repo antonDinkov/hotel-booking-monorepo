@@ -7,22 +7,21 @@ export default async function DashboardPage() {
 
 	return (
 		<main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+			{/* Search placed directly under header/navigation */}
+			{panelData ? (
+				<SearchEngineWrapper
+					searchFields={panelData.searchFields}
+					ctaLabel={panelData.search.cta}
+					featuredListings={panelData.featuredListings}
+				/>
+			) : null}
+
 			<header className="mb-8">
 				<h1 className="text-3xl font-semibold tracking-tight text-slate-900">Dashboard</h1>
 				<p className="mt-2 text-sm text-slate-600">
 					Track your upcoming stays, manage bookings, and review your preferences.
 				</p>
 			</header>
-
-			{panelData ? (
-				<section className="mb-10">
-					<SearchEngineWrapper
-						searchFields={panelData.searchFields}
-						ctaLabel={panelData.search.cta}
-						featuredListings={panelData.featuredListings}
-					/>
-				</section>
-			) : null}
 
 			<section className="grid gap-6 md:grid-cols-3">
 				<div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

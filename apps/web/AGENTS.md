@@ -30,6 +30,96 @@ All React/Next.js component files must use **PascalCase** and match the name of 
 
 ---
 
+## 🧪 Testing Rules (Jest) – MANDATORY
+
+### 📌 General Principle
+The agent MUST use **Jest** for all unit tests.
+
+- Unit tests are required **whenever there is an objective need to verify business logic**
+- The agent MUST NOT assume tests are optional for critical logic (e.g. booking, availability, pricing, authentication, validation)
+
+---
+
+### ⚙️ Test Confirmation Workflow (STRICT)
+
+Before writing any unit test, the agent MUST:
+
+1. Identify the need for a test (e.g. business logic, utility function, service layer)
+2. Propose:
+   - what will be tested
+   - why it is needed
+   - what cases will be covered
+3. WAIT for explicit user confirmation before writing the test
+
+❌ The agent MUST NOT write unit tests without confirmation.
+
+---
+
+### 🧪 Unit Test Rules (Jest)
+
+- Use **Jest**
+- Tests MUST be:
+  - simple
+  - readable
+  - minimal
+  - focused on one behavior per test
+
+- Prefer:
+  - `describe` blocks per feature/function
+  - clear `it()` statements in plain English
+
+### Example style:
+- “should return available rooms for given date range”
+- “should reject booking when no availability”
+
+---
+
+### 🧠 What MUST be unit tested
+
+The agent SHOULD suggest unit tests for:
+
+- booking logic (availability, date overlap)
+- pricing calculations
+- authentication utilities
+- validation logic (Zod schemas, helpers)
+- service layer functions (`/server/services/*`)
+- payment status handling logic
+
+---
+
+### 🔗 Integration Test Suggestions (IMPORTANT)
+
+The agent MUST also suggest **integration test scenarios** when:
+
+- multiple services interact (e.g. booking + payment + availability)
+- API routes depend on service + DB
+- authentication flows are involved
+- critical user flows exist (search → booking → payment)
+
+⚠️ The agent MUST ONLY suggest integration tests unless explicitly asked to implement them.
+
+---
+
+### 🚫 Forbidden
+
+- ❌ No automatic test creation without confirmation
+- ❌ No complex testing frameworks beyond Jest unless requested
+- ❌ No over-engineered test setups
+- ❌ No testing UI unless explicitly required (focus backend logic first)
+
+---
+
+### 🧠 Agent Behavior Rule (Testing)
+
+When generating or modifying code:
+
+- The agent MUST actively check if the logic introduced requires a test
+- If yes → propose unit test + wait for approval
+- If system-level → suggest integration test scenarios
+- The agent MUST treat testing as part of the development workflow, not optional
+
+---
+
 ## ⚙️ Tech Stack
 ### Web & Backend
 * Next.js (App Router)

@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage --coverageProvider=v8",
     "seed": "tsx src/db/seed.ts",
     "seed:auth": "tsx src/db/seed-auth.ts",
     "db:generate": "drizzle-kit generate",
@@ -16,8 +19,8 @@
   "dependencies": {
     "@heroicons/react": "2.0.18",
     "@neondatabase/serverless": "^1.1.0",
-    "drizzle-orm": "^0.45.2",
     "bcryptjs": "^2.4.3",
+    "drizzle-orm": "^0.45.2",
     "next": "16.2.3",
     "next-auth": "^4.24.14",
     "pg": "^8.20.0",
@@ -27,6 +30,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -35,8 +39,11 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
+    "jest": "^30.3.0",
+    "jest-environment-jsdom": "^30.3.0",
     "postcss": "^8.5.10",
     "tailwindcss": "^4.2.2",
+    "ts-jest": "^29.4.9",
     "tsx": "^4.21.0",
     "typescript": "^5"
   }

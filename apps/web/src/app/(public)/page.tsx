@@ -18,13 +18,14 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#f8fbff_0%,#edf3fb_45%,#e6eef9_100%)] text-slate-900">
-      <HeroSection hero={panelData.hero}>
-        <SearchEngineWrapper
-          searchFields={panelData.searchFields}
-          ctaLabel={panelData.search.cta}
-          featuredListings={panelData.featuredListings}
-        />
-      </HeroSection>
+      {/* Search placed directly under header/navigation */}
+      <SearchEngineWrapper
+        searchFields={panelData.searchFields}
+        ctaLabel={panelData.search.cta}
+        featuredListings={panelData.featuredListings}
+      />
+
+      <HeroSection hero={panelData.hero} />
 
       <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8 lg:pt-24">
         <div className="text-center">

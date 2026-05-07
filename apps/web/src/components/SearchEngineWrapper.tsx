@@ -91,11 +91,14 @@ export function SearchEngineWrapper({
 
     return (
         <>
-            <SearchEngine
-                searchFields={searchFields}
-                ctaLabel={ctaLabel}
-                onSearch={handleSearch}
-            />
+            {/* Placement container: pages should render this component immediately under header/navigation */}
+            <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+                <SearchEngine
+                    searchFields={searchFields}
+                    ctaLabel={ctaLabel}
+                    onSearch={handleSearch}
+                />
+            </div>
 
             {/* Search Results Section */}
             {searchQuery && (
