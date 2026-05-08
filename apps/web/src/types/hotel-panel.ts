@@ -78,5 +78,4 @@ export interface HotelPanelData {
   searchFields: SearchField[];
   featuredHeading: FeaturedHeading;
   featuredListings: Listing[];
-  footer: Footer;
 }

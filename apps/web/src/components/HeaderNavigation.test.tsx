@@ -1,7 +1,6 @@
 /**
  * @jest-environment jsdom
  */
-import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { act } from "react";
 import { HeaderNavigation, isActiveForPaths, normalizePath } from "./HeaderNavigation";

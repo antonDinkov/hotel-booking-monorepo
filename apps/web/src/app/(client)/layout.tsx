@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { authOptions, authorize } from "@/app/api/auth/[...nextauth]/route";
 import { HeaderNavigation } from "@/components/HeaderNavigation";
+import { Footer } from "@/components/Footer";
 
 export default async function Layout({
     children,
@@ -20,9 +21,10 @@ export default async function Layout({
     const session = await getServerSession(authOptions);
 
     return (
-        <>
+        <div className="min-h-screen flex flex-col">
             <HeaderNavigation brandName="BookYourStay" session={session} />
-            <div>{children}</div>
-        </>
+            <div className="flex-1">{children}</div>
+            <Footer />
+        </div>
     );
 }

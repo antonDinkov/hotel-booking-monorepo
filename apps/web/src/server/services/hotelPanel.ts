@@ -75,9 +75,6 @@ export async function getHotelPanelData(): Promise<HotelPanelData> {
             subtitle: "Data served from Neon PostgreSQL",
         },
         featuredListings: Array.from(featuredMap.values()),
-        footer: {
-            text: "Copyright 2026 BookYourStay MVP | All Rights Reserved.",
-        },
     };
 
     return panelData;
