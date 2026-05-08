@@ -12,16 +12,28 @@ function BrandMark() {
     return <BuildingStorefrontIcon className="h-7 w-7 text-blue-700" />;
 }
 
+// exported helpers to make logic testable
+export const normalizePath = (p: string) => (p === "/" ? "/" : p.replace(/\/+$/, ""));
+
+export function isActiveForPaths(href: string, current: string, clickedPath: string | null) {
+    const target = href === "/" ? "/" : href.replace(/\/+$/, "");
+    if (clickedPath === target) return true;
+    if (target === "/") return current === "/";
+    return current === target || current.startsWith(target + "/");
+}
+
 interface HeaderNavigationProps {
     brandName: string;
     session: any;
+    /** optional testing helper to force loading UI */
+    isLoading?: boolean;
 }
 
 export function HeaderNavigation({
     brandName,
     session,
+    isLoading = false,
 }: HeaderNavigationProps) {
-    const isLoading = false;
     const isLoggedIn = Boolean(session);
     const userEmail = session?.user?.email ?? session?.user?.name ?? null;
     const pathname = usePathname() ?? "/";
@@ -69,7 +81,7 @@ export function HeaderNavigation({
     return (
         <header className="sticky top-0 z-30 border-b border-white/60 bg-white/70 backdrop-blur-xl">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-                <Link href={homeHref} prefetch={false} className="flex items-center gap-2.5 text-[1.15rem] font-extrabold tracking-tight text-blue-950">
+                <Link href={homeHref} prefetch={false} aria-current={isActive(homeHref) ? "page" : undefined} className="flex items-center gap-2.5 text-[1.15rem] font-extrabold tracking-tight text-blue-950">
                     <BrandMark />
                     {brandName}
                 </Link>
