@@ -6,14 +6,18 @@ import { getUserRoles } from "@/server/services/auth";
 import type { ReactNode } from "react";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  const session: any = await getServerSession(authOptions);
+    const session: any = await getServerSession(authOptions);
 
-  const roles = await getUserRoles(session.user.id as string);
-  if (!(roles.includes("client") || roles.includes("admin"))) {
-    if (roles.includes("partner")) return redirect("/partner/dashboard");
-    // user doesn't have client/admin role — send to profile to resolve roles
-    return redirect("/profile");
-  }
+    if (!session?.user?.id) {
+        redirect("/login");
+    }
 
-  return <>{children}</>;
+    const roles = await getUserRoles(session.user.id as string);
+    if (!(roles.includes("client") || roles.includes("admin"))) {
+        if (roles.includes("partner")) return redirect("/partner/dashboard");
+        // user doesn't have client/admin role — send to profile to resolve roles
+        return redirect("/profile");
+    }
+
+    return <>{children}</>;
 }

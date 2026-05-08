@@ -90,6 +90,28 @@ Before writing any unit test, the agent MUST:
   - `describe` blocks per feature/function
   - clear `it()` statements in plain English
 
+### Testing file organization rule:
+
+- Use EXACTLY ONE test file per component/module.
+- NEVER create additional files like:
+  - additions.test.tsx
+  - extra.test.tsx
+  - coverage.test.tsx
+  - new.test.tsx
+duplicate test suites for the same component.
+
+### Required structure:
+
+- All tests for a component must live in a single file:
+  Component.tsx
+  Component.test.tsx
+
+- When adding new tests:
+  extend the existing test file
+  refactor/merge setup if needed
+  reuse existing mocks and helpers
+  organize tests with nested describe() blocks instead of creating new files
+
 ### Example style:
 - “should return available rooms for given date range”
 - “should reject booking when no availability”

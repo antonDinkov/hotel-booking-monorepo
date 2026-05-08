@@ -3,7 +3,7 @@ import { getHotelPanelData } from "@/server/services/hotelPanel";
 import { authorize } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { HeroSection } from "../../components/HeroSection";
-import { ListingCard } from "../../components/ListingCard";
+import { FeaturedListings } from "../../components/FeaturedListings";
 import { SearchEngineWrapper } from "../../components/SearchEngineWrapper";
 import type { Listing, HotelPanelData } from "../../types/hotel-panel";
 
@@ -37,11 +37,7 @@ export default async function Home() {
           </p>
         </div>
 
-        <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {panelData.featuredListings.map((listing: Listing) => (
-            <ListingCard key={listing.id} listing={listing} />
-          ))}
-        </div>
+        <FeaturedListings listings={panelData.featuredListings} itemsPerPage={6} />
       </section>
 
     </main>

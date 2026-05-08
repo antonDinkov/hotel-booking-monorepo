@@ -3,10 +3,12 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { FaGithub } from "react-icons/fa";
 import { AppButton } from "./AppButton";
 
 export default function LoginForm() {
+    const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
@@ -30,7 +32,8 @@ export default function LoginForm() {
             return;
         }
 
-        window.location.assign(result?.url ?? "/dashboard");
+        // Use Next.js router for navigation (easier to test than window.location)
+        router.push(result?.url ?? "/dashboard");
     };
 
     return (

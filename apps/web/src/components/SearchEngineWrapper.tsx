@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { SearchEngine } from "./SearchEngine";
 import { ListingCard } from "./ListingCard";
+import { Pagination } from "./Pagination";
 import type { SearchField, Listing } from "../types/hotel-panel";
 
 export function SearchEngineWrapper({
@@ -19,6 +20,23 @@ export function SearchEngineWrapper({
     const [searchQuery, setSearchQuery] = useState("");
     const [error, setError] = useState<string | null>(null);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 9;
+    const resultsRef = useRef<HTMLElement | null>(null);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchResults]);
+
+    const handlePageChange = useCallback((p: number) => {
+        setCurrentPage(p);
+        const el = resultsRef.current;
+        if (el && typeof el.scrollIntoView === "function") {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+    }, [setCurrentPage]);
 
     const performSearch = useCallback(
         async (destination: string, checkInDate: string, checkOutDate: string, guestsCount: string) => {
@@ -102,7 +120,7 @@ export function SearchEngineWrapper({
 
             {/* Search Results Section */}
             {searchQuery && (
-                <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
+                <section ref={resultsRef} className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
                     <div className="mb-8">
                         <h2 className="text-2xl font-bold text-slate-900">
                             Search results for "{searchQuery}"
@@ -124,11 +142,21 @@ export function SearchEngineWrapper({
                             <div className="text-slate-600">Loading results...</div>
                         </div>
                     ) : searchResults.length > 0 ? (
-                        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                            {searchResults.map((listing) => (
-                                <ListingCard key={listing.id} listing={listing} />
-                            ))}
-                        </div>
+                        <>
+                            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                                {searchResults
+                                    .slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage)
+                                    .map((listing) => (
+                                        <ListingCard key={listing.id} listing={listing} />
+                                    ))}
+                            </div>
+
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={Math.max(1, Math.ceil(searchResults.length / itemsPerPage))}
+                                onPageChange={handlePageChange}
+                            />
+                        </>
                     ) : !error ? (
                         <div className="flex flex-col items-center justify-center py-12">
                             <p className="text-lg text-slate-600">No properties found</p>
