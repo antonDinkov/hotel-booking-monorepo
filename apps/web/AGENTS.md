@@ -1,5 +1,27 @@
 # AGENTS.md – Booking Platform MVP
 
+## ⚠️ IMPORTANT: Next.js Version Compatibility
+
+This project uses a **new / recent version of Next.js**.  
+Before making any changes, you MUST first read and follow the official documentation for the exact installed version from:
+
+- `node_modules/next/`
+- `package.json`
+- lockfile (`package-lock.json` / `pnpm-lock.yaml` / `yarn.lock`)
+
+Do NOT assume compatibility with older Next.js patterns or APIs.
+
+Mandatory before starting:
+1. Detect the exact installed Next.js version.
+2. Read the relevant docs/changelog/migration notes for that version.
+3. Verify App Router, Server Actions, caching, routing, middleware, and config behavior against the installed version.
+4. Avoid deprecated patterns unless already intentionally used in the codebase.
+5. Follow the existing project architecture and conventions.
+
+If uncertain about framework behavior, inspect the installed package source/types in `node_modules` first instead of guessing.
+
+---
+
 ## 🧠 Project Overview
 This is a full-stack **Hotel Booking Platform MVP** consisting of:
 
