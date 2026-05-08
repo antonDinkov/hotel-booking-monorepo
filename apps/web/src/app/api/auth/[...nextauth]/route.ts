@@ -59,51 +59,7 @@ export const authOptions: NextAuthOptions = {
 
             return true;
         },
-        /* async signIn({ user, account, profile }) {
-            if (account?.provider !== "github") return true;
 
-            console.info("[auth] GitHub profile", profile);
-
-            const email =
-                user.email?.toString().trim() ??
-                profile?.email?.toString().trim();
-
-            if (!email) return false;
-
-            console.info("[auth] GitHub lookup", { email });
-
-            const { user: oauthUser, created } = await ensureOAuthUser(email);
-
-            // ✅ ВАРИАНТ 1: нов user → слагаме default роля
-            if (created) {
-                console.info("[auth] GitHub user created", oauthUser);
-
-                if (!oauthUser.role) {
-                    await db.user.update({
-                        where: { id: oauthUser.id },
-                        data: { role: "client" },
-                    });
-                }
-            }
-
-            // ✅ ВАРИАНТ 2: съществуващ user → ако няма роля, добавяме
-            if (!created) {
-                console.info("[auth] GitHub user found", oauthUser);
-
-                if (!oauthUser.role) {
-                    await db.user.update({
-                        where: { id: oauthUser.id },
-                        data: { role: "client" },
-                    });
-                }
-            }
-
-            // 🔥 супер важно
-            user.id = oauthUser.id;
-            user.email = oauthUser.email;
-
-            return true;
-        }, */
         async jwt({ token, user }) {
             if (user) {
                 token.id = user.id;
