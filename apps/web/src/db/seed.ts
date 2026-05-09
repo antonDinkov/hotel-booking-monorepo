@@ -470,7 +470,17 @@ async function seed() {
 		};
 	});
 
-	bookingsSeed.push(...peterBookings);
+	// Add one active booking for peter@abv.bg (today is 2026-05-09)
+	const peterActiveBooking = {
+		roomTypeId: insertedRoomTypes[0].id,
+		userId: peterUser.id,
+		checkInDate: "2026-05-05",
+		checkOutDate: "2026-05-15",
+		guestsCount: 2,
+		status: "confirmed" as const,
+	};
+
+	bookingsSeed.push(...peterBookings, peterActiveBooking);
 
 	const insertedBookings = await db.insert(bookings).values(bookingsSeed).returning({ id: bookings.id });
 

@@ -206,6 +206,49 @@ When generating or modifying code:
 
 ---
 
+## ⚛️ Next.js Rendering Architecture Rule (CRITICAL)
+
+All pages in the App Router MUST follow a strict Server → Client separation pattern.
+
+### Server Components (default for pages)
+- MUST be used for all page.tsx files by default
+- Responsible ONLY for:
+  - data fetching (server/services layer)
+  - authentication checks (if needed)
+  - passing data to client components
+
+- MUST NOT contain:
+  - useState
+  - useEffect
+  - event handlers
+  - UI interactivity logic
+
+### Client Components
+- MUST be explicitly marked with "use client"
+- Responsible ONLY for:
+  - UI state management
+  - event handling (clicks, modals, forms)
+  - local interactions
+
+### Data Flow Rule
+Server Component → passes data → Client Component
+
+### Forbidden Patterns
+- ❌ Using "use client" in page.tsx by default
+- ❌ Fetching data inside client components for initial page load
+- ❌ Mixing UI state and data fetching in the same component
+- ❌ Creating pages that are fully client-side without necessity
+
+### Required Pattern
+- page.tsx (Server Component)
+  → fetch data from service layer
+  → pass props to Client Component
+
+- PageClient.tsx (Client Component)
+  → handles UI + interactions only
+
+---
+
 ## 🧭 Routing & Route Groups (STRICT)
 
 - Route groups `(…)` are for organization ONLY and DO NOT affect URLs.
