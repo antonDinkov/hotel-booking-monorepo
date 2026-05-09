@@ -11,9 +11,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --coverageProvider=v8",
     "seed": "tsx src/db/seed.ts",
-    "seed:auth": "tsx src/db/seed-auth.ts",
     "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {

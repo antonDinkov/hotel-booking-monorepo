@@ -67,8 +67,6 @@ describe("LoginForm", () => {
     const signInMock = signIn as jest.Mock;
     signInMock.mockResolvedValue({ url: "/dashboard" });
 
-    // assignMock installed in beforeEach
-
     render(<LoginForm />);
 
     fireEvent.change(screen.getByPlaceholderText("you@company.com"), {
@@ -81,8 +79,25 @@ describe("LoginForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Login" }));
 
     await waitFor(() => expect(signInMock).toHaveBeenCalled());
-    // navigation handled via next/navigation router push; assert router was asked to navigate
     expect(routerPushMock).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("redirects to default dashboard when signIn returns no url", async () => {
+    const signInMock = signIn as jest.Mock;
+    signInMock.mockResolvedValue({});
+
+    render(<LoginForm />);
+
+    fireEvent.change(screen.getByPlaceholderText("you@company.com"), {
+      target: { value: "guest@example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Enter password"), {
+      target: { value: "good-pass" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Login" }));
+
+    await waitFor(() => expect(routerPushMock).toHaveBeenCalledWith("/dashboard"));
   });
 
   it("shows Logging in... and disables submit while signIn is pending", async () => {

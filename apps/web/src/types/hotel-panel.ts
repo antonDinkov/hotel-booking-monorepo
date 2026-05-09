@@ -24,7 +24,7 @@ export interface Hero {
 export interface SearchField {
   label: string;
   placeholder: string;
-  icon: SearchFieldIcon;
+  icon: SearchFieldIcon | "map-pin";
 }
 
 export interface ListingImage {

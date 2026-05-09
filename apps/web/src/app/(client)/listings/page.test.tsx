@@ -65,4 +65,19 @@ describe("ListingsPage", () => {
       await screen.findByText("Error: Failed to fetch listings")
     ).toBeInTheDocument();
   });
+
+  it("shows generic error message when thrown error is not an Error instance", async () => {
+    useSearchParamsMock.mockReturnValue(new URLSearchParams());
+
+    const fetchMock = jest.fn().mockImplementation(() => {
+      throw "Network error string";
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<ListingsPage />);
+
+    expect(
+      await screen.findByText("Error: An error occurred")
+    ).toBeInTheDocument();
+  });
 });

@@ -11,36 +11,6 @@ import {
 	primaryKey,
 } from "drizzle-orm/pg-core";
 
-export const hotels = pgTable("hotels", {
-	id: serial("id").primaryKey(),
-	name: text("name").notNull(),
-	location: text("location").notNull(),
-	description: text("description"),
-	pricePerNight: integer("price_per_night").notNull(),
-	ownerId: integer("owner_id").notNull(),
-	isFeatured: boolean("is_featured").notNull().default(false),
-});
-
-export const hotelImages = pgTable("hotel_images", {
-	id: serial("id").primaryKey(),
-	url: text("url").notNull(),
-	hotelId: integer("hotel_id")
-		.notNull()
-		.references(() => hotels.id),
-});
-
-export const roomTypes = pgTable("room_types", {
-	id: serial("id").primaryKey(),
-	hotelId: integer("hotel_id")
-		.notNull()
-		.references(() => hotels.id),
-	name: text("name").notNull(),
-	capacity: integer("capacity").notNull(),
-	pricePerNight: integer("price_per_night").notNull(),
-	totalRooms: integer("total_rooms").notNull(),
-	createdAt: timestamp("created_at").defaultNow(),
-});
-
 export const users = pgTable("users", {
 	id: uuid("id").defaultRandom().primaryKey(),
 	email: text("email").notNull().unique(),
@@ -69,6 +39,38 @@ export const userRoles = pgTable(
 	})
 );
 
+export const hotels = pgTable("hotels", {
+	id: serial("id").primaryKey(),
+	name: text("name").notNull(),
+	location: text("location").notNull(),
+	description: text("description"),
+	pricePerNight: integer("price_per_night").notNull(),
+	ownerId: uuid("owner_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	isFeatured: boolean("is_featured").notNull().default(false),
+});
+
+export const hotelImages = pgTable("hotel_images", {
+	id: serial("id").primaryKey(),
+	url: text("url").notNull(),
+	hotelId: integer("hotel_id")
+		.notNull()
+		.references(() => hotels.id),
+});
+
+export const roomTypes = pgTable("room_types", {
+	id: serial("id").primaryKey(),
+	hotelId: integer("hotel_id")
+		.notNull()
+		.references(() => hotels.id),
+	name: text("name").notNull(),
+	capacity: integer("capacity").notNull(),
+	pricePerNight: integer("price_per_night").notNull(),
+	totalRooms: integer("total_rooms").notNull(),
+	createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const bookings = pgTable("bookings", {
 	id: serial("id").primaryKey(),
 	roomTypeId: integer("room_type_id")
@@ -82,9 +84,13 @@ export const bookings = pgTable("bookings", {
 	createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const hotelsRelations = relations(hotels, ({ many }) => ({
+export const hotelsRelations = relations(hotels, ({ many, one }) => ({
 	images: many(hotelImages),
 	roomTypes: many(roomTypes),
+	owner: one(users, {
+		fields: [hotels.ownerId],
+		references: [users.id],
+	}),
 }));
 
 export const hotelImagesRelations = relations(hotelImages, ({ one }) => ({
@@ -116,6 +122,7 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
 export const usersRelations = relations(users, ({ many }) => ({
 	userRoles: many(userRoles),
 	bookings: many(bookings),
+	ownedHotels: many(hotels),
 }));
 
 export const rolesRelations = relations(roles, ({ many }) => ({

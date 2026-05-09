@@ -1,4 +1,5 @@
 import { SearchEngineWrapper } from "@/components/SearchEngineWrapper";
+import { FeaturedListings } from "@/components/FeaturedListings";
 import { getHotelPanelData } from "@/server/services/hotelPanel";
 import type { HotelPanelData } from "@/types/hotel-panel";
 
@@ -19,8 +20,8 @@ export default async function DashboardPage() {
                 />
             ) : null}
 
-            
-            <section className="mb-8">
+
+            <section className="mt-10 mb-8">
                 <p className="mt-2 text-sm text-slate-600 font-semibold">
                     Track your upcoming stays, manage bookings, and review your preferences.
                 </p>
@@ -46,10 +47,7 @@ export default async function DashboardPage() {
 
             <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 className="text-lg font-semibold text-slate-900">Quick actions</h2>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <button className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100">
-                        Find a new stay
-                    </button>
+                <div className="mt-4 grid gap-3 grid-cols-2">
                     <button className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100">
                         Review a recent booking
                     </button>
@@ -57,6 +55,19 @@ export default async function DashboardPage() {
                         Update profile preferences
                     </button>
                 </div>
+            </section>
+
+            <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8 lg:pt-24">
+                <div className="text-center">
+                    <h2 className="text-2xl font-semibold tracking-tight text-blue-950 sm:text-3xl">
+                        {panelData.featuredHeading.title}
+                    </h2>
+                    <p className="mt-2 text-sm text-slate-500 sm:text-base">
+                        {panelData.featuredHeading.subtitle}
+                    </p>
+                </div>
+
+                <FeaturedListings listings={panelData.featuredListings} itemsPerPage={6} />
             </section>
         </main>
     );

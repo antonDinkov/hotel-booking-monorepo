@@ -47,6 +47,16 @@ describe("HeaderNavigation", () => {
       expect(brandLink).toHaveAttribute("href", "/");
     });
 
+    it("falls back to root path when usePathname returns null", () => {
+      usePathnameMock.mockReturnValue(null);
+
+      render(<HeaderNavigation brandName="BookYourStay" session={null} />);
+
+      const brandLink = screen.getByRole("link", { name: "BookYourStay" });
+      expect(brandLink).toHaveAttribute("href", "/");
+      expect(brandLink).toHaveAttribute("aria-current", "page");
+    });
+
     it("marks Login button active immediately after click using transient clickedPath", () => {
       usePathnameMock.mockReturnValue("/");
 
@@ -115,6 +125,19 @@ describe("HeaderNavigation", () => {
 
       const brandLink = screen.getByRole("link", { name: "BookYourStay" });
       expect(brandLink).toHaveAttribute("href", "/dashboard");
+    });
+
+    it("renders the user name when email is missing", () => {
+      usePathnameMock.mockReturnValue("/dashboard");
+
+      render(
+        <HeaderNavigation
+          brandName="BookYourStay"
+          session={{ user: { name: "Guest User" } }}
+        />
+      );
+
+      expect(screen.getByText("Guest User")).toBeInTheDocument();
     });
 
     it("does not render user email when session has no email or name", () => {
