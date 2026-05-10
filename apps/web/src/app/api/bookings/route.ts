@@ -9,7 +9,9 @@ export async function GET() {
     return NextResponse.json(auth.response, { status: auth.status });
   }
 
-  const bookings = await getBookings(auth.userId);
+  const userId = auth.userId as string;
+  const bookings = await getBookings(userId);
 
   return NextResponse.json({ data: bookings });
 }
+

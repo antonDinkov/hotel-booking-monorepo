@@ -13,6 +13,9 @@ const customJestConfig = {
     },
     testEnvironment: 'jsdom',
     testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
+    transformIgnorePatterns: [
+        'node_modules/(?!(jose|openid-client)/)',
+    ],
     collectCoverageFrom: [
         "src/**/*.{ts,tsx}",
     ],
@@ -20,11 +23,16 @@ const customJestConfig = {
     coveragePathIgnorePatterns: [
         "/node_modules/",
 
+        "src/index.ts",
+        "src/proxy.ts",
+
         "src/db/schema.ts",
         "src/db/seed.ts",
+        "src/db/index.ts",
 
         "src/types/",
 
+        "src/app/.*/layout.tsx",
         "src/app/admin/",
         "src/app/\\(partner\\)/",
 
