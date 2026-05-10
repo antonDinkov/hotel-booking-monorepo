@@ -13,6 +13,27 @@ const customJestConfig = {
     },
     testEnvironment: 'jsdom',
     testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
+    collectCoverageFrom: [
+        "src/**/*.{ts,tsx}",
+    ],
+
+    coveragePathIgnorePatterns: [
+        "/node_modules/",
+
+        "src/db/schema.ts",
+        "src/db/seed.ts",
+
+        "src/types/",
+
+        "src/app/admin/",
+        "src/app/\\(partner\\)/",
+
+        "src/components/Partner",
+
+        "src/app/layout.tsx",
+        "src/app/providers.tsx",
+        "src/app/not-found.tsx",
+    ],
 };
 
 module.exports = createJestConfig(customJestConfig);
