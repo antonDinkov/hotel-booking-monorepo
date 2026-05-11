@@ -19,6 +19,31 @@ export const users = pgTable("users", {
 	createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const userProfiles = pgTable("user_profiles", {
+    userId: uuid("user_id")
+        .primaryKey()
+        .references(() => users.id, { onDelete: "cascade" }),
+
+    fullName: text("full_name"),
+    phone: text("phone"),
+
+    nationality: text("nationality"),
+    dateOfBirth: date("date_of_birth"),
+    gender: text("gender"),
+
+    passportNumber: text("passport_number"),
+
+	avatarUrl: text("avatar_url"),
+
+    street: text("street"),
+    city: text("city"),
+    country: text("country"),
+    zip: text("zip"),
+
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+	updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const roles = pgTable("roles", {
 	id: serial("id").primaryKey(),
 	name: text("name").notNull().unique(),
@@ -119,10 +144,21 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
 	}),
 }));
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
+	user: one(users, {
+		fields: [userProfiles.userId],
+		references: [users.id],
+	}),
+}));
+
+export const usersRelations = relations(users, ({ many, one }) => ({
 	userRoles: many(userRoles),
 	bookings: many(bookings),
 	ownedHotels: many(hotels),
+	profile: one(userProfiles, {
+		fields: [users.id],
+		references: [userProfiles.userId],
+	}),
 }));
 
 export const rolesRelations = relations(roles, ({ many }) => ({

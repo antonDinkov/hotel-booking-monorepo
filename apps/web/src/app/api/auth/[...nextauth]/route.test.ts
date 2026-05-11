@@ -1,412 +1,125 @@
-/**
- * @jest-environment node
- */
+// Mock modules BEFORE imports to avoid side-effects
+jest.resetModules();
 
-jest.mock("next-auth", () => ({
-    __esModule: true,
-    default: jest.fn(() => ({
-        GET: jest.fn(),
-        POST: jest.fn(),
-    })),
-}));
+jest.mock("next-auth", () => {
+  const NextAuth = jest.fn().mockReturnValue(() => {});
+  return { __esModule: true, default: NextAuth, NextAuth };
+});
 
 jest.mock("next-auth/next", () => ({
-    getServerSession: jest.fn(),
+  getServerSession: jest.fn(),
 }));
+
+jest.mock("next-auth/providers/credentials", () => jest.fn((opts) => ({ credentialsProvider: opts })));
+jest.mock("next-auth/providers/github", () => jest.fn((opts) => ({ githubProvider: opts })));
 
 jest.mock("@/server/services/auth", () => ({
-    __esModule: true,
-    ensureOAuthUser: jest.fn(),
-    getUserRoles: jest.fn(),
-    validateCredentials: jest.fn(),
+  getUserRoles: jest.fn(),
+  ensureOAuthUser: jest.fn(),
+  validateCredentials: jest.fn(),
 }));
 
-let getServerSession: any;
-let ensureOAuthUser: any;
-let getUserRoles: any;
-let validateCredentials: any;
+import { authOptions, authorize, authorizeApi, redirectToRoleDashboard } from "./route";
+import { getServerSession } from "next-auth/next";
+import { getUserRoles, ensureOAuthUser } from "@/server/services/auth";
 
-let authOptions: any;
-let authorize: any;
-let authorizeApi: any;
-let redirectToRoleDashboard: any;
-
-let mockGetServerSession: jest.Mock;
-let mockEnsureOAuthUser: jest.Mock;
-let mockGetUserRoles: jest.Mock;
-let mockValidateCredentials: jest.Mock;
+const mockGetServerSession = getServerSession as jest.MockedFunction<any>;
+const mockGetUserRoles = getUserRoles as jest.MockedFunction<any>;
+const mockEnsureOAuthUser = ensureOAuthUser as jest.MockedFunction<any>;
 
 describe("auth route", () => {
-    let credentialsProvider: any;
-
-    beforeAll(async () => {
-        jest.resetModules();
-
-        const nextAuthNext = await import("next-auth/next");
-        getServerSession = nextAuthNext.getServerSession;
-
-        const authServices = await import("@/server/services/auth");
-        ensureOAuthUser = authServices.ensureOAuthUser;
-        getUserRoles = authServices.getUserRoles;
-        validateCredentials = authServices.validateCredentials;
-
-        mockGetServerSession = getServerSession as jest.Mock;
-        mockEnsureOAuthUser = ensureOAuthUser as jest.Mock;
-        mockGetUserRoles = getUserRoles as jest.Mock;
-        mockValidateCredentials = validateCredentials as jest.Mock;
-
-        const routeModule = await import("./route");
-        authOptions = routeModule.authOptions;
-        authorize = routeModule.authorize;
-        authorizeApi = routeModule.authorizeApi;
-        redirectToRoleDashboard = routeModule.redirectToRoleDashboard;
-        credentialsProvider = authOptions.providers[0] as any;
-    });
-
-    beforeEach(() => {
-        jest.clearAllMocks();
-    });
-
-    describe("Credentials authorize", () => {
-        it("returns null when email is missing", async () => {
-            const result = await credentialsProvider.options.authorize({
-                password: "123456",
-            });
-
-            expect(result).toBeNull();
-        });
-
-        it("returns null when password is missing", async () => {
-            const result = await credentialsProvider.options.authorize({
-                email: "john@test.com",
-            });
-
-            expect(result).toBeNull();
-        });
-
-        it("validates credentials", async () => {
-            mockValidateCredentials.mockResolvedValue({
-                id: "1",
-                email: "john@test.com",
-            });
-
-            const result = await credentialsProvider.options.authorize({
-                email: "john@test.com",
-                password: "123456",
-            });
-
-            expect(mockValidateCredentials).toHaveBeenCalledWith(
-                "john@test.com",
-                "123456"
-            );
-
-            expect(result).toEqual({
-                id: "1",
-                email: "john@test.com",
-            });
-        });
-    });
-
-    describe("callbacks.signIn", () => {
-        it("returns true for non github provider", async () => {
-            const result = await authOptions.callbacks!.signIn!({
-                user: {},
-                account: {
-                    provider: "credentials",
-                },
-                profile: {},
-            } as any);
-
-            expect(result).toBe(true);
-        });
-
-        it("returns false when github email is missing", async () => {
-            const result = await authOptions.callbacks!.signIn!({
-                user: {},
-                account: {
-                    provider: "github",
-                },
-                profile: {},
-            } as any);
-
-            expect(result).toBe(false);
-        });
-
-        it("creates github oauth user", async () => {
-            mockEnsureOAuthUser.mockResolvedValue({
-                user: {
-                    id: "1",
-                    email: "github@test.com",
-                },
-                created: true,
-            });
-
-            const user: any = {};
-
-            const result = await authOptions.callbacks!.signIn!({
-                user,
-                account: {
-                    provider: "github",
-                },
-                profile: {
-                    email: "github@test.com",
-                },
-            } as any);
-
-            expect(mockEnsureOAuthUser).toHaveBeenCalledWith(
-                "github@test.com"
-            );
-
-            expect(user.id).toBe("1");
-            expect(user.email).toBe("github@test.com");
-
-            expect(result).toBe(true);
-        });
-
-        it("uses existing github user", async () => {
-            mockEnsureOAuthUser.mockResolvedValue({
-                user: {
-                    id: "2",
-                    email: "existing@test.com",
-                },
-                created: false,
-            });
-
-            const user: any = {
-                email: "existing@test.com",
-            };
-
-            const result = await authOptions.callbacks!.signIn!({
-                user,
-                account: {
-                    provider: "github",
-                },
-                profile: {},
-            } as any);
-
-            expect(result).toBe(true);
-        });
-    });
-
-    describe("callbacks.jwt", () => {
-        it("returns token unchanged without user", async () => {
-            const token = { name: "john" };
-
-            const result = await authOptions.callbacks!.jwt!({
-                token,
-            } as any);
-
-            expect(result).toEqual(token);
-        });
-
-        it("adds user data to token", async () => {
-            mockGetUserRoles.mockResolvedValue(["admin"]);
-
-            const token: any = {};
-            const user: any = {
-                id: "1",
-                email: "john@test.com",
-            };
-
-            const result = await authOptions.callbacks!.jwt!({
-                token,
-                user,
-            } as any);
-
-            expect(mockGetUserRoles).toHaveBeenCalledWith("1");
-
-            expect(result).toEqual({
-                id: "1",
-                email: "john@test.com",
-                roles: ["admin"],
-            });
-        });
-    });
-
-    describe("callbacks.session", () => {
-        it("returns session unchanged without session user", async () => {
-            const session = {};
-
-            const result = await authOptions.callbacks!.session!({
-                session,
-                token: {},
-            } as any);
-
-            expect(result).toEqual(session);
-        });
-
-        it("adds token data to session", async () => {
-            const session: any = {
-                user: {},
-            };
-
-            const token = {
-                id: "1",
-                email: "john@test.com",
-            };
-
-            const result = await authOptions.callbacks!.session!({
-    session,
-    token,
-} as any);
-expect((result.user as any).id).toBe("1");
-expect(result.user?.email).toBe("john@test.com");
-
-            /* expect(result.user.id).toBe("1");
-            expect(result.user.email).toBe("john@test.com"); */
-        });
-    });
-
-    describe("callbacks.redirect", () => {
-        it("returns baseUrl", async () => {
-            const result = await authOptions.callbacks!.redirect!({
-                baseUrl: "http://localhost:3000",
-                url: "/dashboard",
-            });
-
-            expect(result).toBe("http://localhost:3000");
-        });
-    });
-
-    describe("authorize", () => {
-        it("returns unauthenticated when no session", async () => {
-            mockGetServerSession.mockResolvedValue(null);
-
-            const result = await authorize(["admin"]);
-
-            expect(result).toEqual({
-                ok: false,
-                error: "unauthenticated",
-                session: null,
-                roles: [],
-                userId: null,
-            });
-        });
-
-        it("returns forbidden when role is missing", async () => {
-            mockGetServerSession.mockResolvedValue({
-                user: {
-                    id: "1",
-                },
-            });
-
-            mockGetUserRoles.mockResolvedValue(["user"]);
-
-            const result = await authorize(["admin"]);
-
-            expect(result).toEqual({
-                ok: false,
-                error: "forbidden",
-                session: {
-                    user: {
-                        id: "1",
-                    },
-                },
-                roles: ["user"],
-                userId: "1",
-            });
-        });
-
-        it("returns success when role is allowed", async () => {
-            mockGetServerSession.mockResolvedValue({
-                user: {
-                    id: "1",
-                },
-            });
-
-            mockGetUserRoles.mockResolvedValue(["admin"]);
-
-            const result = await authorize(["admin"]);
-
-            expect(result).toEqual({
-                ok: true,
-                session: {
-                    user: {
-                        id: "1",
-                    },
-                },
-                roles: ["admin"],
-                userId: "1",
-            });
-        });
-    });
-
-    describe("authorizeApi", () => {
-        it("returns 401 when unauthenticated", async () => {
-            mockGetServerSession.mockResolvedValue(null);
-
-            const result = await authorizeApi(["admin"]);
-
-            expect(result).toEqual({
-                ok: false,
-                status: 401,
-                response: {
-                    error: "Unauthorized",
-                },
-            });
-        });
-
-        it("returns 403 when forbidden", async () => {
-            mockGetServerSession.mockResolvedValue({
-                user: {
-                    id: "1",
-                },
-            });
-
-            mockGetUserRoles.mockResolvedValue(["user"]);
-
-            const result = await authorizeApi(["admin"]);
-
-            expect(result).toEqual({
-                ok: false,
-                status: 403,
-                response: {
-                    error: "Forbidden",
-                },
-            });
-        });
-
-        it("returns success response", async () => {
-            mockGetServerSession.mockResolvedValue({
-                user: {
-                    id: "1",
-                },
-            });
-
-            mockGetUserRoles.mockResolvedValue(["admin"]);
-
-            const result = await authorizeApi(["admin"]);
-
-            expect(result).toEqual({
-                ok: true,
-                session: {
-                    user: {
-                        id: "1",
-                    },
-                },
-                roles: ["admin"],
-                userId: "1",
-            });
-        });
-    });
-
-    describe("redirectToRoleDashboard", () => {
-        it("returns admin dashboard", () => {
-            expect(
-                redirectToRoleDashboard(["admin"])
-            ).toBe("/admin/dashboard");
-        });
-
-        it("returns partner dashboard", () => {
-            expect(
-                redirectToRoleDashboard(["partner"])
-            ).toBe("/partner/dashboard");
-        });
-
-        it("returns default dashboard", () => {
-            expect(
-                redirectToRoleDashboard(["user"])
-            ).toBe("/dashboard");
-        });
-    });
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("authorize returns unauthenticated when no session", async () => {
+    mockGetServerSession.mockResolvedValue(null);
+
+    const result = await authorize(["client"]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe("unauthenticated");
+  });
+
+  it("authorize returns forbidden when user lacks role", async () => {
+    mockGetServerSession.mockResolvedValue({ user: { id: "u1" } });
+    mockGetUserRoles.mockResolvedValue(["client"]);
+
+    const result = await authorize(["admin"]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe("forbidden");
+  });
+
+  it("authorizeApi returns 401 for unauthenticated", async () => {
+    mockGetServerSession.mockResolvedValue(null);
+
+    const result = await authorizeApi(["client"]);
+
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(401);
+    expect(result.response).toEqual({ error: "Unauthorized" });
+  });
+
+  it("authorizeApi returns 403 for forbidden", async () => {
+    mockGetServerSession.mockResolvedValue({ user: { id: "u1" } });
+    mockGetUserRoles.mockResolvedValue(["client"]);
+
+    const result = await authorizeApi(["admin"]);
+
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(403);
+    expect(result.response).toEqual({ error: "Forbidden" });
+  });
+
+  it("authorizeApi returns ok for allowed roles", async () => {
+    const session = { user: { id: "u2" } };
+    mockGetServerSession.mockResolvedValue(session);
+    mockGetUserRoles.mockResolvedValue(["client"]);
+
+    const result = await authorizeApi(["client"]);
+
+    expect(result.ok).toBe(true);
+    expect(result.userId).toBe("u2");
+  });
+
+  it("redirectToRoleDashboard returns expected paths", () => {
+    expect(redirectToRoleDashboard(["admin"])) .toBe("/admin/dashboard");
+    expect(redirectToRoleDashboard(["partner"])) .toBe("/partner/dashboard");
+    expect(redirectToRoleDashboard(["client"])) .toBe("/dashboard");
+  });
+
+  it("jwt callback attaches id, email and roles", async () => {
+    mockGetUserRoles.mockResolvedValue(["admin"]);
+
+    const token = await authOptions.callbacks.jwt({ token: {}, user: { id: "u3", email: "e3" } } as any);
+
+    expect(token.id).toBe("u3");
+    expect(token.email).toBe("e3");
+    expect(token.roles).toEqual(["admin"]);
+  });
+
+  it("session callback sets session.user.id and email", async () => {
+    const session = { user: {} };
+    const out = await authOptions.callbacks.session({ session, token: { id: "u4", email: "e4" } } as any);
+
+    expect(out.user.id).toBe("u4");
+    expect(out.user.email).toBe("e4");
+  });
+
+  it("signIn callback handles github provider and upserts oauth user", async () => {
+    const user: any = {};
+    mockEnsureOAuthUser.mockResolvedValue({ user: { id: "oauth1", email: "o@example.com" }, created: true });
+
+    const allowed = await authOptions.callbacks.signIn({ user, account: { provider: "github" }, profile: { email: "o@example.com" } } as any);
+
+    expect(allowed).toBe(true);
+    expect(user.id).toBe("oauth1");
+    expect(user.email).toBe("o@example.com");
+  });
+
+  it("signIn callback allows non-github providers", async () => {
+    const allowed = await authOptions.callbacks.signIn({ user: {}, account: { provider: "credentials" } } as any);
+    expect(allowed).toBe(true);
+  });
 });

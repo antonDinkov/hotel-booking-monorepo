@@ -30,6 +30,7 @@ export interface ProfileData {
     dateOfBirth: string;
     gender: string;
     passportNumber: string;
+    avatarUrl: string | null;
     preferences: ProfilePreferences;
     address: ProfileAddress;
 }

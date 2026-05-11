@@ -12,6 +12,7 @@ interface ProfileFieldProps {
     onSave: (value: string) => void;
     onCancel?: () => void;
     saved?: boolean;
+    isEditable?: boolean;
 }
 
 export default function ProfileField({
@@ -22,16 +23,19 @@ export default function ProfileField({
     placeholder,
     onSave,
     onCancel,
-    saved
+    saved,
+    isEditable
 }: ProfileFieldProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [tempValue, setTempValue] = useState(value ?? "");
+    const canEdit = isEditable ?? true;
 
     useEffect(() => {
         setTempValue(value ?? "");
     }, [value]);
 
     const startEditing = () => {
+        if (!canEdit) return;
         setTempValue(value ?? "");
         setIsEditing(true);
     };
@@ -57,8 +61,13 @@ export default function ProfileField({
                 {!isEditing && (
                     <button
                         type="button"
-                        onClick={startEditing}
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                        onClick={canEdit ? startEditing : undefined}
+                        disabled={!canEdit}
+                        aria-disabled={!canEdit}
+                        className={canEdit
+                            ? "text-xs font-semibold text-blue-600 hover:text-blue-700"
+                            : "text-xs font-semibold text-slate-400 cursor-not-allowed"
+                        }
                     >
                         Change
                     </button>

@@ -1,0 +1,156 @@
+import { eq } from "drizzle-orm";
+import { getServerSession } from "next-auth";
+
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { db } from "@/db";
+import { users, userProfiles } from "@/db/schema";
+import type { ProfileData, ProfilePreferences } from "@/types/profile";
+
+const DEFAULT_PREFERENCES: ProfilePreferences = {
+    smoking: false,
+    pets: true,
+    notifications: true,
+};
+
+type ProfileRow = {
+    email: string;
+    fullName: string | null;
+    phone: string | null;
+    nationality: string | null;
+    dateOfBirth: string | Date | null;
+    gender: string | null;
+    passportNumber: string | null;
+    avatarUrl: string | null;
+    street: string | null;
+    city: string | null;
+    country: string | null;
+    zip: string | null;
+};
+
+function normalizeOptionalString(value: string | null | undefined): string {
+    return value?.trim() ?? "";
+}
+
+function normalizeOptionalDbString(value: string | null | undefined): string | null {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : null;
+}
+
+function normalizeDateValue(value: ProfileRow["dateOfBirth"]): string {
+    if (!value) return "";
+    if (value instanceof Date) return value.toISOString().slice(0, 10);
+    return String(value);
+}
+
+function normalizeGender(value: string | null | undefined): string {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : "Prefer not to say";
+}
+
+function mapProfileRow(row: ProfileRow): ProfileData {
+    return {
+        name: normalizeOptionalString(row.fullName),
+        email: row.email,
+        phone: normalizeOptionalString(row.phone),
+        nationality: normalizeOptionalString(row.nationality),
+        dateOfBirth: normalizeDateValue(row.dateOfBirth),
+        gender: normalizeGender(row.gender),
+        passportNumber: normalizeOptionalString(row.passportNumber),
+        avatarUrl: row.avatarUrl ?? null,
+        preferences: DEFAULT_PREFERENCES,
+        address: {
+            street: normalizeOptionalString(row.street),
+            city: normalizeOptionalString(row.city),
+            country: normalizeOptionalString(row.country),
+            zip: normalizeOptionalString(row.zip),
+        },
+    };
+}
+
+async function getProfileRow(userId: string): Promise<ProfileRow | null> {
+    const row = await db
+        .select({
+            email: users.email,
+            fullName: userProfiles.fullName,
+            phone: userProfiles.phone,
+            nationality: userProfiles.nationality,
+            dateOfBirth: userProfiles.dateOfBirth,
+            gender: userProfiles.gender,
+            passportNumber: userProfiles.passportNumber,
+            avatarUrl: userProfiles.avatarUrl,
+            street: userProfiles.street,
+            city: userProfiles.city,
+            country: userProfiles.country,
+            zip: userProfiles.zip,
+        })
+        .from(users)
+        .leftJoin(userProfiles, eq(users.id, userProfiles.userId))
+        .where(eq(users.id, userId))
+        .then((rows) => rows[0]);
+
+    return row ?? null;
+}
+
+async function getCurrentUserId(): Promise<string | null> {
+    const session = await getServerSession(authOptions);
+    return session?.user?.id ? String(session.user.id) : null;
+}
+
+function buildProfileInsertValues(userId: string, profile: ProfileData) {
+    return {
+        userId,
+        fullName: normalizeOptionalDbString(profile.name),
+        phone: normalizeOptionalDbString(profile.phone),
+        nationality: normalizeOptionalDbString(profile.nationality),
+        dateOfBirth: profile.dateOfBirth ? profile.dateOfBirth : null,
+        gender: normalizeOptionalDbString(profile.gender),
+        passportNumber: normalizeOptionalDbString(profile.passportNumber),
+        avatarUrl: normalizeOptionalDbString(profile.avatarUrl ?? undefined),
+        street: normalizeOptionalDbString(profile.address.street),
+        city: normalizeOptionalDbString(profile.address.city),
+        country: normalizeOptionalDbString(profile.address.country),
+        zip: normalizeOptionalDbString(profile.address.zip),
+    };
+}
+
+function buildProfileUpdateValues(profile: ProfileData) {
+    return {
+        fullName: normalizeOptionalDbString(profile.name),
+        phone: normalizeOptionalDbString(profile.phone),
+        nationality: normalizeOptionalDbString(profile.nationality),
+        dateOfBirth: profile.dateOfBirth ? profile.dateOfBirth : null,
+        gender: normalizeOptionalDbString(profile.gender),
+        passportNumber: normalizeOptionalDbString(profile.passportNumber),
+        avatarUrl: normalizeOptionalDbString(profile.avatarUrl ?? undefined),
+        street: normalizeOptionalDbString(profile.address.street),
+        city: normalizeOptionalDbString(profile.address.city),
+        country: normalizeOptionalDbString(profile.address.country),
+        zip: normalizeOptionalDbString(profile.address.zip),
+    };
+}
+
+export async function getCurrentUserProfile(): Promise<ProfileData | null> {
+    const userId = await getCurrentUserId();
+    if (!userId) return null;
+
+    const row = await getProfileRow(userId);
+    return row ? mapProfileRow(row) : null;
+}
+
+export async function updateCurrentUserProfile(profile: ProfileData): Promise<ProfileData | null> {
+    const userId = await getCurrentUserId();
+    if (!userId) return null;
+
+    await db.update(users).set({ email: profile.email }).where(eq(users.id, userId));
+
+    const insertValues = buildProfileInsertValues(userId, profile);
+    const updateValues = buildProfileUpdateValues(profile);
+
+    await db.insert(userProfiles).values(insertValues).onConflictDoUpdate({
+        target: userProfiles.userId,
+        set: updateValues,
+    });
+
+    const row = await getProfileRow(userId);
+    return row ? mapProfileRow(row) : null;
+}
