@@ -142,6 +142,25 @@ describe("BookingsClient", () => {
     expect(screen.getAllByTestId("booking-card")).toHaveLength(1);
   });
 
+  it("allows previous page navigation after next page", () => {
+    render(<BookingsClient activeBooking={null} inactiveBookings={mockInactiveBookings} />);
+
+    fireEvent.click(screen.getByText("Next"));
+    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Previous"));
+    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+  });
+
+  it("opens modal when active booking card is clicked", () => {
+    render(<BookingsClient activeBooking={mockActiveBooking} inactiveBookings={mockInactiveBookings} />);
+
+    const activeBookingCard = screen.getByText("Active Hotel");
+    fireEvent.click(activeBookingCard);
+
+    expect(screen.getByTestId("booking-modal")).toBeInTheDocument();
+  });
+
   it("disables previous button on first page", () => {
     render(<BookingsClient activeBooking={null} inactiveBookings={mockInactiveBookings} />);
 

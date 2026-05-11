@@ -57,18 +57,20 @@ export default async function DashboardPage() {
                 </div>
             </section>
 
-            <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8 lg:pt-24">
-                <div className="text-center">
-                    <h2 className="text-2xl font-semibold tracking-tight text-blue-950 sm:text-3xl">
-                        {panelData.featuredHeading.title}
-                    </h2>
-                    <p className="mt-2 text-sm text-slate-500 sm:text-base">
-                        {panelData.featuredHeading.subtitle}
-                    </p>
-                </div>
+            {panelData ? (
+                <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8 lg:pt-24">
+                    <div className="text-center">
+                        <h2 className="text-2xl font-semibold tracking-tight text-blue-950 sm:text-3xl">
+                            {panelData.featuredHeading.title}
+                        </h2>
+                        <p className="mt-2 text-sm text-slate-500 sm:text-base">
+                            {panelData.featuredHeading.subtitle}
+                        </p>
+                    </div>
 
-                <FeaturedListings listings={panelData.featuredListings} itemsPerPage={6} />
-            </section>
+                    <FeaturedListings listings={panelData.featuredListings} itemsPerPage={6} />
+                </section>
+            ) : null}
         </main>
     );
 }

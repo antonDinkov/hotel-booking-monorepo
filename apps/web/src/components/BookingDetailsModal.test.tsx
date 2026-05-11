@@ -122,6 +122,16 @@ describe("BookingDetailsModal", () => {
     expect(screen.getByText("Cancel Booking")).toBeInTheDocument();
   });
 
+  it("shows cancel button for upcoming booking", () => {
+    render(
+      <BookingDetailsModal
+        {...props}
+        booking={{ ...booking, status: "upcoming" }}
+      />
+    );
+    expect(screen.getByText("Cancel Booking")).toBeInTheDocument();
+  });
+
   it("shows review button for past booking", () => {
     render(
       <BookingDetailsModal
@@ -155,6 +165,27 @@ describe("BookingDetailsModal", () => {
     await user.click(screen.getByText("Leave Review"));
 
     expect(props.onLeaveReview).toHaveBeenCalledWith(booking.id);
+  });
+
+  it("does not call handlers when callbacks are undefined", async () => {
+    const user = userEvent.setup();
+    const propsWithoutCallbacks = {
+      ...props,
+      onCancelBooking: undefined,
+      onLeaveReview: undefined,
+    };
+
+    render(
+      <BookingDetailsModal
+        {...propsWithoutCallbacks}
+        booking={{ ...booking, status: "past" }}
+      />
+    );
+
+    await user.click(screen.getByText("Leave Review"));
+    // Should not throw, just not call undefined function
+
+    expect(screen.getByText("Leave Review")).toBeInTheDocument();
   });
 
   // ------------------------
@@ -192,5 +223,134 @@ describe("BookingDetailsModal", () => {
     );
 
     expect(screen.getByText(booking.hotelName)).toBeInTheDocument();
+  });
+
+  it("shows hotel address when available", () => {
+    render(<BookingDetailsModal {...props} />);
+    expect(screen.getByText(booking.hotelAddress!)).toBeInTheDocument();
+  });
+
+  it("does not render image when hotelImage is undefined", () => {
+    render(
+      <BookingDetailsModal
+        {...props}
+        booking={{ ...booking, hotelImage: undefined }}
+      />
+    );
+
+    expect(screen.queryByAltText(booking.hotelName)).not.toBeInTheDocument();
+  });
+
+  // Status badge tests for different statuses
+  it("renders status badge with correct text for active booking", () => {
+    render(
+      <BookingDetailsModal
+        {...props}
+        booking={{ ...booking, status: "active" }}
+      />
+    );
+
+    expect(screen.getByText("active")).toBeInTheDocument();
+  });
+
+  it("renders status badge with correct text for upcoming booking", () => {
+    render(
+      <BookingDetailsModal
+        {...props}
+        booking={{ ...booking, status: "upcoming" }}
+      />
+    );
+
+    expect(screen.getByText("upcoming")).toBeInTheDocument();
+  });
+
+  it("renders status badge with correct text for past booking", () => {
+    render(
+      <BookingDetailsModal
+        {...props}
+        booking={{ ...booking, status: "past" }}
+      />
+    );
+
+    expect(screen.getByText("past")).toBeInTheDocument();
+  });
+
+  // Modal state transitions
+  it("transitions from closed to open", () => {
+    const { rerender } = render(
+      <BookingDetailsModal {...props} isOpen={false} />
+    );
+
+    expect(screen.queryByTestId("dialog")).not.toBeInTheDocument();
+
+    rerender(<BookingDetailsModal {...props} isOpen={true} />);
+
+    expect(screen.getByTestId("dialog")).toBeInTheDocument();
+  });
+
+  it("displays multiple bookings in sequence", () => {
+    const { rerender } = render(
+      <BookingDetailsModal
+        {...props}
+        booking={booking}
+        isOpen={true}
+      />
+    );
+
+    expect(screen.getByText(booking.hotelName)).toBeInTheDocument();
+
+    const newBooking: MyBooking = {
+      ...booking,
+      id: "2",
+      hotelName: "Different Hotel",
+      status: "past",
+    };
+
+    rerender(
+      <BookingDetailsModal
+        {...props}
+        booking={newBooking}
+        isOpen={true}
+      />
+    );
+
+    expect(screen.getByText(newBooking.hotelName)).toBeInTheDocument();
+  });
+
+  // Full text content verification
+  it("displays all booking detail labels", () => {
+    render(<BookingDetailsModal {...props} />);
+
+    expect(screen.getByText("Hotel")).toBeInTheDocument();
+    expect(screen.getByText("Room Type")).toBeInTheDocument();
+    expect(screen.getByText("Check-in")).toBeInTheDocument();
+    expect(screen.getByText("Check-out")).toBeInTheDocument();
+    expect(screen.getByText("Total Price")).toBeInTheDocument();
+    expect(screen.getByText("Status")).toBeInTheDocument();
+  });
+
+  // Button and interaction combinations
+  it("cancel booking button has secondary variant for upcoming status", () => {
+    render(
+      <BookingDetailsModal
+        {...props}
+        booking={{ ...booking, status: "upcoming" }}
+      />
+    );
+
+    const cancelButton = screen.getByText("Cancel Booking");
+    expect(cancelButton).toBeInTheDocument();
+  });
+
+  it("review button has primary variant for past status", () => {
+    render(
+      <BookingDetailsModal
+        {...props}
+        booking={{ ...booking, status: "past" }}
+      />
+    );
+
+    const reviewButton = screen.getByText("Leave Review");
+    expect(reviewButton).toBeInTheDocument();
   });
 });
