@@ -31,6 +31,7 @@ const s3 = new S3Client({
 
 const ALLOWED_IMAGE_TYPES = [
     "image/jpeg",
+    "image/jpg",
     "image/png",
     "image/webp",
     "image/avif",
@@ -38,6 +39,7 @@ const ALLOWED_IMAGE_TYPES = [
 
 const EXTENSION_MAP: Record<string, string> = {
     "image/jpeg": "jpg",
+    "image/jpg": "jpg",
     "image/png": "png",
     "image/webp": "webp",
     "image/avif": "avif",
