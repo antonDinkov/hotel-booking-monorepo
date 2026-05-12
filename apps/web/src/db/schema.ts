@@ -33,7 +33,7 @@ export const userProfiles = pgTable("user_profiles", {
 
     passportNumber: text("passport_number"),
 
-	avatarUrl: text("avatar_url"),
+	avatarKey: text("avatar_key"),
 
     street: text("street"),
     city: text("city"),
@@ -78,10 +78,13 @@ export const hotels = pgTable("hotels", {
 
 export const hotelImages = pgTable("hotel_images", {
 	id: serial("id").primaryKey(),
-	url: text("url").notNull(),
+	imageKey: text("image_key").notNull(),
 	hotelId: integer("hotel_id")
 		.notNull()
 		.references(() => hotels.id),
+	sortOrder: integer("sort_order").notNull().default(0),
+	isCover: boolean("is_cover").notNull().default(false),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const roomTypes = pgTable("room_types", {

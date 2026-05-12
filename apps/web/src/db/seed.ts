@@ -494,7 +494,7 @@ async function seed() {
 					? validImages
 					: ["https://images.unsplash.com/photo-1505691938895-1758d7feb511"];
 
-				return finalImages.map((url) => ({ hotelId: hotel.id, url }));
+				return finalImages.map((url) => ({ hotelId: hotel.id, imageKey: url }));
 			})
 		)
 	).flat();

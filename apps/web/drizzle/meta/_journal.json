@@ -43,6 +43,13 @@
       "when": 1778493444418,
       "tag": "0005_glorious_captain_america",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778564168863,
+      "tag": "0006_lying_sunspot",
+      "breakpoints": true
     }
   ]
 }

@@ -21,7 +21,19 @@ import { searchAvailableHotels } from "../../../server/services/hotelPanel";
 const mockSearch = searchAvailableHotels as jest.MockedFunction<any>;
 
 describe("Search API GET", () => {
-  beforeEach(() => jest.clearAllMocks());
+  let logSpy: jest.SpyInstance;
+  let errorSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
 
   it("returns 400 when required params are missing", async () => {
     const req = { url: "http://localhost/api/search" } as unknown as Request;
@@ -50,6 +62,18 @@ describe("Search API GET", () => {
     const req = { url: "http://localhost/api/search?destination=Paris&checkInDate=2026-05-20&checkOutDate=2026-05-21&guests=2" } as unknown as Request;
     const res = await GET(req);
     expect((res as any).status).toBe(500);
+  });
+
+  it("returns 400 when date format is invalid", async () => {
+    const req = { url: "http://localhost/api/search?destination=Paris&checkInDate=invalid-date&checkOutDate=2026-05-21&guests=2" } as unknown as Request;
+    const res = await GET(req);
+    expect((res as any).status).toBe(400);
+  });
+
+  it("returns 400 when guests is not a positive number", async () => {
+    const req = { url: "http://localhost/api/search?destination=Paris&checkInDate=2026-05-20&checkOutDate=2026-05-21&guests=0" } as unknown as Request;
+    const res = await GET(req);
+    expect((res as any).status).toBe(400);
   });
 });
 

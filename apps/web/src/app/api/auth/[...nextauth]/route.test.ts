@@ -21,15 +21,22 @@ jest.mock("@/server/services/auth", () => ({
 
 import { authOptions, authorize, authorizeApi, redirectToRoleDashboard } from "./route";
 import { getServerSession } from "next-auth/next";
-import { getUserRoles, ensureOAuthUser } from "@/server/services/auth";
+import { getUserRoles, ensureOAuthUser, validateCredentials } from "@/server/services/auth";
 
 const mockGetServerSession = getServerSession as jest.MockedFunction<any>;
 const mockGetUserRoles = getUserRoles as jest.MockedFunction<any>;
 const mockEnsureOAuthUser = ensureOAuthUser as jest.MockedFunction<any>;
 
 describe("auth route", () => {
+  let infoSpy: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    infoSpy = jest.spyOn(console, "info").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    infoSpy.mockRestore();
   });
 
   it("authorize returns unauthenticated when no session", async () => {
@@ -118,8 +125,46 @@ describe("auth route", () => {
     expect(user.email).toBe("o@example.com");
   });
 
+  it("signIn callback handles github provider when existing oauth user (created=false)", async () => {
+    const user: any = {};
+    mockEnsureOAuthUser.mockResolvedValue({ user: { id: "oauth2", email: "o2@example.com" }, created: false });
+
+    const allowed = await authOptions.callbacks.signIn({ user, account: { provider: "github" }, profile: { email: "o2@example.com" } } as any);
+
+    expect(allowed).toBe(true);
+    expect(user.id).toBe("oauth2");
+    expect(user.email).toBe("o2@example.com");
+  });
+
   it("signIn callback allows non-github providers", async () => {
     const allowed = await authOptions.callbacks.signIn({ user: {}, account: { provider: "credentials" } } as any);
     expect(allowed).toBe(true);
+  });
+
+  it("credentials provider authorize returns null when missing credentials and calls validateCredentials when provided", async () => {
+    const credsProvider = (authOptions.providers?.[0] as any).credentialsProvider;
+
+    // missing credentials -> null
+    const resMissing = await credsProvider.authorize?.({} as any);
+    expect(resMissing).toBeNull();
+
+    // valid credentials -> calls validateCredentials
+    const mockValidate = validateCredentials as jest.MockedFunction<any>;
+    mockValidate.mockResolvedValue({ id: "cred-user", email: "cred@example.com" });
+
+    const resValid = await credsProvider.authorize?.({ email: "cred@example.com", password: "secret" } as any);
+    expect(mockValidate).toHaveBeenCalledWith("cred@example.com", "secret");
+    expect(resValid).toEqual({ id: "cred-user", email: "cred@example.com" });
+  });
+
+  it("signIn callback returns false for github when no email available", async () => {
+    const user: any = {};
+    const allowed = await authOptions.callbacks.signIn({ user, account: { provider: "github" }, profile: {} } as any);
+    expect(allowed).toBe(false);
+  });
+
+  it("redirect callback returns the provided baseUrl", async () => {
+    const out = await authOptions.callbacks.redirect({ baseUrl: "http://example.com" } as any);
+    expect(out).toBe("http://example.com");
   });
 });

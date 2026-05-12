@@ -1,9 +1,8 @@
-"use client";
+1: "use client";
 
 import { useState, useRef, useEffect, useTransition } from "react";
 import ProfileField from "../../../components/ProfileField";
 import ProfileAvatar from "../../../components/ProfileAvatar";
-import { uploadAvatarAction, removeAvatarAction } from "./actions";
 import type {
     ProfileData,
     EditableField,
@@ -12,11 +11,9 @@ import type {
 } from "@/types/profile";
 
 interface ProfilePageClientProps {
-    initialProfile: ProfileData & { avatarUrl?: string | null };
+    initialProfile: ProfileData;
     onSaveProfile?: (profile: ProfileData) => Promise<ProfileData | null>;
 }
-
-type ProfileWithAvatarUrl = ProfileData & { avatarUrl?: string | null };
 
 const PERSONAL_FIELDS: EditableFieldConfig<EditableField>[] = [
     {
@@ -100,12 +97,9 @@ export const setFieldValue = (profile: ProfileData, field: EditableField, value:
 // Address is edited as separate fields (street, city, country, zip)
 
 export default function ProfilePageClient({ initialProfile, onSaveProfile }: ProfilePageClientProps) {
-    const [profileData, setProfileData] = useState<ProfileWithAvatarUrl>(initialProfile);
-    const [uploading, setUploading] = useState(false);
-    const [uploadError, setUploadError] = useState<string | null>(null);
-    const [removing, setRemoving] = useState(false);
+    const [profileData, setProfileData] = useState<ProfileData>(initialProfile);
     const [, startTransition] = useTransition();
-    const profileRef = useRef<ProfileWithAvatarUrl>(profileData);
+    const profileRef = useRef(profileData);
     const [savedAddress, setSavedAddress] = useState<Record<keyof ProfileData["address"], boolean>>({
         street: false,
         city: false,
@@ -126,22 +120,21 @@ export default function ProfilePageClient({ initialProfile, onSaveProfile }: Pro
         profileRef.current = profileData;
     }, [profileData]);
 
-    const persistProfile = async (nextProfile: ProfileWithAvatarUrl) => {
+    const persistProfile = async (nextProfile: ProfileData) => {
         if (!onSaveProfile) return;
 
-        const { avatarUrl, ...profileWithoutAvatarUrl } = nextProfile;
-        const updated = await onSaveProfile(profileWithoutAvatarUrl);
-        if (updated) {
-            setProfileData({ ...updated, avatarUrl: profileRef.current.avatarUrl });
-        }
+        const updated = await onSaveProfile(nextProfile);
+        if (updated) setProfileData(updated);
     };
 
     const saveField = (field: EditableField, value: string) => {
         const nextProfile = setFieldValue(profileRef.current, field, value);
         setProfileData(nextProfile);
-        startTransition(() => {
-            void persistProfile(nextProfile);
-        });
+        if (onSaveProfile) {
+            startTransition(() => {
+                void persistProfile(nextProfile);
+            });
+        }
         setSavedFields((prev) => ({ ...prev, [field]: true }));
         // clear saved state after a short delay
         setTimeout(() => setSavedFields((prev) => ({ ...prev, [field]: false })), 3000);
@@ -153,9 +146,11 @@ export default function ProfilePageClient({ initialProfile, onSaveProfile }: Pro
             address: { ...profileRef.current.address, [field]: value },
         };
         setProfileData(nextProfile);
-        startTransition(() => {
-            void persistProfile(nextProfile);
-        });
+        if (onSaveProfile) {
+            startTransition(() => {
+                void persistProfile(nextProfile);
+            });
+        }
         setSavedAddress((prev) => ({ ...prev, [field]: true }));
         setTimeout(() => setSavedAddress((prev) => ({ ...prev, [field]: false })), 3000);
     };
@@ -187,45 +182,7 @@ export default function ProfilePageClient({ initialProfile, onSaveProfile }: Pro
         <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
             <header className="mb-8 flex items-center justify-between">
                 <h1 ref={headerRef} className="text-3xl font-semibold tracking-tight text-slate-900">My Profile</h1>
-                <ProfileAvatar
-                    targetWidth={avatarWidth}
-                    initialSrc={profileData.avatarUrl ?? undefined}
-                    isRemoving={removing}
-                    onFileChange={async (file) => {
-                        if (!file) return;
-                        setUploadError(null);
-                        setUploading(true);
-                        try {
-                            const formData = new FormData();
-                            formData.append("avatar", file);
-                            const updated = await uploadAvatarAction(formData);
-                            if (updated) setProfileData(updated as ProfileWithAvatarUrl);
-                        } catch (err: any) {
-                            setUploadError(err?.message ?? "Upload failed");
-                        } finally {
-                            setUploading(false);
-                        }
-                    }}
-                    onRemove={async () => {
-                        // instant UI clear
-                        const prev = profileData.avatarUrl;
-                        setProfileData((p) => ({ ...p, avatarUrl: undefined, avatarKey: null }));
-                        setUploadError(null);
-                        setRemoving(true);
-                        try {
-                            const updated = await removeAvatarAction();
-                            if (updated) setProfileData(updated as ProfileWithAvatarUrl);
-                        } catch (err: any) {
-                            // restore on error
-                            setUploadError(err?.message ?? "Remove failed");
-                            setProfileData((p) => ({ ...p, avatarUrl: prev } as ProfileWithAvatarUrl));
-                        } finally {
-                            setRemoving(false);
-                        }
-                    }}
-                />
-                {uploading ? <div className="ml-3 text-sm text-slate-500">Uploading…</div> : null}
-                {uploadError ? <div className="ml-3 text-sm text-rose-600">{uploadError}</div> : null}
+                <ProfileAvatar targetWidth={avatarWidth} initialSrc={profileData.avatarUrl ?? undefined} />
             </header>
 
             <div className="grid gap-8 md:grid-cols-2">

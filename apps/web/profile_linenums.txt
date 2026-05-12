@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+1: import { eq } from "drizzle-orm";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -20,7 +20,7 @@ type ProfileRow = {
     dateOfBirth: string | Date | null;
     gender: string | null;
     passportNumber: string | null;
-    avatarKey: string | null;
+    avatarUrl: string | null;
     street: string | null;
     city: string | null;
     country: string | null;
@@ -56,7 +56,7 @@ function mapProfileRow(row: ProfileRow): ProfileData {
         dateOfBirth: normalizeDateValue(row.dateOfBirth),
         gender: normalizeGender(row.gender),
         passportNumber: normalizeOptionalString(row.passportNumber),
-        avatarKey: row.avatarKey ?? null,
+        avatarUrl: row.avatarUrl ?? null,
         preferences: DEFAULT_PREFERENCES,
         address: {
             street: normalizeOptionalString(row.street),
@@ -77,7 +77,7 @@ async function getProfileRow(userId: string): Promise<ProfileRow | null> {
             dateOfBirth: userProfiles.dateOfBirth,
             gender: userProfiles.gender,
             passportNumber: userProfiles.passportNumber,
-            avatarKey: userProfiles.avatarKey,
+            avatarUrl: userProfiles.avatarUrl,
             street: userProfiles.street,
             city: userProfiles.city,
             country: userProfiles.country,
@@ -105,7 +105,7 @@ function buildProfileInsertValues(userId: string, profile: ProfileData) {
         dateOfBirth: profile.dateOfBirth ? profile.dateOfBirth : null,
         gender: normalizeOptionalDbString(profile.gender),
         passportNumber: normalizeOptionalDbString(profile.passportNumber),
-        avatarKey: normalizeOptionalDbString(profile.avatarKey ?? undefined),
+        avatarUrl: normalizeOptionalDbString(profile.avatarUrl ?? undefined),
         street: normalizeOptionalDbString(profile.address.street),
         city: normalizeOptionalDbString(profile.address.city),
         country: normalizeOptionalDbString(profile.address.country),
@@ -121,23 +121,13 @@ function buildProfileUpdateValues(profile: ProfileData) {
         dateOfBirth: profile.dateOfBirth ? profile.dateOfBirth : null,
         gender: normalizeOptionalDbString(profile.gender),
         passportNumber: normalizeOptionalDbString(profile.passportNumber),
-        avatarKey: normalizeOptionalDbString(profile.avatarKey ?? undefined),
+        avatarUrl: normalizeOptionalDbString(profile.avatarUrl ?? undefined),
         street: normalizeOptionalDbString(profile.address.street),
         city: normalizeOptionalDbString(profile.address.city),
         country: normalizeOptionalDbString(profile.address.country),
         zip: normalizeOptionalDbString(profile.address.zip),
     };
 }
-
-export {
-    normalizeOptionalDbString,
-    normalizeDateValue,
-    normalizeGender,
-    normalizeOptionalString,
-    mapProfileRow,
-    buildProfileInsertValues,
-    buildProfileUpdateValues,
-};
 
 export async function getCurrentUserProfile(): Promise<ProfileData | null> {
     const userId = await getCurrentUserId();

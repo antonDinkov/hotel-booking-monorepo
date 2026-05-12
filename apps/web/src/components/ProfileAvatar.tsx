@@ -1,16 +1,24 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useEffect } from "react";
 
 interface ProfileAvatarProps {
     targetWidth?: number;
     initialSrc?: string;
     onFileChange?: (file: File | null) => void;
+    onRemove?: () => Promise<void> | void;
+    isRemoving?: boolean;
 }
 
-export default function ProfileAvatar({ targetWidth = 40, initialSrc, onFileChange }: ProfileAvatarProps) {
+export default function ProfileAvatar({ targetWidth = 40, initialSrc, onFileChange, onRemove, isRemoving }: ProfileAvatarProps) {
     const inputRef = useRef<HTMLInputElement | null>(null);
     const [preview, setPreview] = useState<string | undefined>(initialSrc);
+    const [isRemovingLocal, setIsRemovingLocal] = useState(false);
+
+    useEffect(() => {
+        setPreview(initialSrc);
+    }, [initialSrc]);
 
     const handleButtonClick = () => inputRef.current?.click();
 
@@ -24,6 +32,23 @@ export default function ProfileAvatar({ targetWidth = 40, initialSrc, onFileChan
         reader.onload = () => setPreview(String(reader.result));
         reader.readAsDataURL(file);
         if (onFileChange) onFileChange(file);
+    };
+
+    const handleRemoveClick = async () => {
+        const old = preview;
+        setPreview(undefined);
+        try {
+            if (onRemove) {
+                if (!isRemoving) setIsRemovingLocal(true);
+                await onRemove();
+            }
+        } catch (err) {
+            // revert preview on failure
+            setPreview(old);
+            throw err;
+        } finally {
+            setIsRemovingLocal(false);
+        }
     };
 
     const sizeStyle = { width: targetWidth, height: targetWidth };
@@ -46,13 +71,25 @@ export default function ProfileAvatar({ targetWidth = 40, initialSrc, onFileChan
             </div>
 
             <div>
-                <button
-                    type="button"
-                    onClick={handleButtonClick}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                    Change
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={handleButtonClick}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                        Change
+                    </button>
+                    {preview ? (
+                        <button
+                            type="button"
+                            onClick={handleRemoveClick}
+                            disabled={isRemovingLocal || isRemoving}
+                            className="rounded-lg border border-rose-200 bg-white px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                        >
+                            {isRemoving || isRemovingLocal ? "Removing..." : "Remove"}
+                        </button>
+                    ) : null}
+                </div>
                 <input ref={inputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
             </div>
         </div>

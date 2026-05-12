@@ -70,6 +70,60 @@ describe("ProfileField", () => {
     expect(screen.getByText(/Your data has been saved/i)).toBeInTheDocument();
   });
 
+  it("shows 'Not set' for empty value and disables change when isEditable is false", () => {
+    const onSave = jest.fn();
+    render(
+      <ProfileField
+        label="Bio"
+        value=""
+        inputType="text"
+        onSave={onSave}
+        isEditable={false}
+      />
+    );
+
+    expect(screen.getByText("Not set")).toBeInTheDocument();
+    const btn = screen.getByRole("button", { name: /Change/i }) as HTMLButtonElement;
+    expect(btn).toBeDisabled();
+  });
+
+  it("treats whitespace-only value as 'Not set' and clicking disabled Change does nothing", () => {
+    const onSave = jest.fn();
+    render(
+      <ProfileField
+        label="Bio"
+        value="   "
+        inputType="text"
+        onSave={onSave}
+        isEditable={false}
+      />
+    );
+
+    expect(screen.getByText("Not set")).toBeInTheDocument();
+    const btn = screen.getByRole("button", { name: /Change/i });
+    expect(btn).toBeDisabled();
+
+    fireEvent.click(btn);
+    // Should not enter edit mode
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("Change button uses enabled class when editable and disabled class when not", () => {
+    const onSave = jest.fn();
+
+    // editable (default)
+    const { rerender } = render(
+      <ProfileField label="City" value="X" inputType="text" onSave={onSave} />
+    );
+    let btn = screen.getByRole("button", { name: /Change/i });
+    expect(btn.className).toEqual(expect.stringContaining("text-blue-600"));
+
+    // not editable
+    rerender(<ProfileField label="City" value="X" inputType="text" onSave={onSave} isEditable={false} />);
+    btn = screen.getByRole("button", { name: /Change/i });
+    expect(btn.className).toEqual(expect.stringContaining("cursor-not-allowed"));
+  });
+
   it("allows selecting and saving a select input", () => {
     const onSave = jest.fn();
 

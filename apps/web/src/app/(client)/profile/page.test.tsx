@@ -13,7 +13,7 @@ const mockProfile = {
     dateOfBirth: "",
     gender: "",
     passportNumber: "",
-    avatarUrl: null,
+    avatarKey: null,
     preferences: { smoking: false, pets: false, notifications: true },
     address: { street: "", city: "", country: "", zip: "" },
 };

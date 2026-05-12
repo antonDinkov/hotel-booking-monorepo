@@ -10,8 +10,25 @@ jest.mock("../../../server/services/profile", () => ({
     updateCurrentUserProfile: jest.fn(),
 }));
 
+jest.mock("next-auth", () => ({
+    getServerSession: jest.fn(),
+    default: { getServerSession: jest.fn() },
+}));
+
+jest.mock("@/app/api/auth/[...nextauth]/route", () => ({
+    authOptions: {},
+}));
+
+jest.mock("@/server/lib/r2", () => ({
+    uploadAvatar: jest.fn(),
+    getPublicImageUrl: jest.fn((k: string) => `https://r2.test/${k}`),
+}));
+
 import { saveCurrentUserProfile } from "./actions";
+import { uploadAvatarAction } from "./actions";
 import { getCurrentUserProfile, updateCurrentUserProfile } from "../../../server/services/profile";
+import { getServerSession } from "next-auth";
+import { uploadAvatar } from "@/server/lib/r2";
 
 const mockGet = getCurrentUserProfile as jest.MockedFunction<any>;
 const mockUpdate = updateCurrentUserProfile as jest.MockedFunction<any>;
@@ -30,7 +47,7 @@ describe("saveCurrentUserProfile server action", () => {
             dateOfBirth: "",
             gender: "",
             passportNumber: "",
-            avatarUrl: null,
+            avatarKey: null,
             preferences: { smoking: false, pets: false, notifications: true },
             address: { street: "", city: "", country: "", zip: "" },
         };
@@ -53,7 +70,7 @@ describe("saveCurrentUserProfile server action", () => {
             dateOfBirth: "",
             gender: "",
             passportNumber: "",
-            avatarUrl: null,
+            avatarKey: null,
             preferences: { smoking: false, pets: false, notifications: true },
             address: { street: "", city: "", country: "", zip: "" },
         };
@@ -65,5 +82,58 @@ describe("saveCurrentUserProfile server action", () => {
 
         expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ email: existing.email }));
         expect(res).toEqual(updated);
+    });
+});
+
+describe("uploadAvatarAction server action", () => {
+    beforeEach(() => jest.clearAllMocks());
+
+    it("uploads file, persists avatarKey and returns profile with avatarUrl", async () => {
+        const FileCtor = (global as any).File ?? class MockFile {};
+        (global as any).File = FileCtor;
+
+        const mockSession = { user: { id: "1" } } as any;
+        (getServerSession as jest.Mock).mockResolvedValue(mockSession);
+        const nextAuth = (await import("next-auth")) as any;
+        if (nextAuth?.getServerSession) {
+            nextAuth.getServerSession.mockResolvedValue(mockSession);
+        }
+        if (nextAuth?.default?.getServerSession) {
+            nextAuth.default.getServerSession.mockResolvedValue(mockSession);
+        }
+
+        const returnedKey = "avatars/user_1/avatar.jpg";
+        (uploadAvatar as jest.Mock).mockResolvedValue(returnedKey);
+
+        const existingProfile = {
+            name: "A",
+            email: "a@b.com",
+            phone: "",
+            nationality: "",
+            dateOfBirth: "",
+            gender: "",
+            passportNumber: "",
+            avatarKey: null,
+            preferences: { smoking: false, pets: false, notifications: true },
+            address: { street: "", city: "", country: "", zip: "" },
+        };
+
+        (getCurrentUserProfile as jest.Mock).mockResolvedValue(existingProfile);
+        (updateCurrentUserProfile as jest.Mock).mockImplementation(async (p) => p);
+
+        // minimal file-like object (server-side) - uploadAvatar is mocked so contents aren't used
+        const fileLike = FileCtor.length >= 2
+            ? new FileCtor([new Uint8Array([1])], "avatar.jpg", { type: "image/jpeg" })
+            : Object.assign(new FileCtor(), {
+                name: "avatar.jpg",
+                type: "image/jpeg",
+                size: 1024,
+            });
+
+        const res = await uploadAvatarAction(fileLike as any);
+
+        expect(uploadAvatar).toHaveBeenCalled();
+        expect(updateCurrentUserProfile).toHaveBeenCalledWith(expect.objectContaining({ avatarKey: returnedKey }));
+        expect(res).toHaveProperty("avatarUrl", `https://r2.test/${returnedKey}`);
     });
 });

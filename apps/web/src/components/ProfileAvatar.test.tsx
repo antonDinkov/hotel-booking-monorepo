@@ -49,4 +49,15 @@ describe("ProfileAvatar", () => {
     const img = screen.getByAltText("Profile") as HTMLImageElement;
     expect(img).toHaveAttribute("src", "https://example.com/avatar.png");
   });
+
+  it("calls onFileChange(null) when no file is selected", async () => {
+    const onFileChange = jest.fn();
+    const { container } = render(<ProfileAvatar onFileChange={onFileChange} />);
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    // simulate no file selected
+    fireEvent.change(input, { target: { files: [] } });
+
+    expect(onFileChange).toHaveBeenCalledWith(null);
+  });
 });

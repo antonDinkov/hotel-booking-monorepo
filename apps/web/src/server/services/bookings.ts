@@ -63,7 +63,7 @@ export async function getBookings(userId: string): Promise<MyBooking[]> {
       roomPrice: roomTypes.pricePerNight,
       hotelName: hotels.name,
       hotelAddress: hotels.location,
-      hotelImageUrl: hotelImages.url,
+      hotelImageUrl: hotelImages.imageKey,
     })
     .from(bookings)
     .leftJoin(roomTypes, eq(roomTypes.id, bookings.roomTypeId))

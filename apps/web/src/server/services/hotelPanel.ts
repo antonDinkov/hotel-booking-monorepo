@@ -24,7 +24,7 @@ export async function getHotelPanelData(): Promise<HotelPanelData> {
             id: hotels.id,
             name: hotels.name,
             location: hotels.location,
-            imageUrl: hotelImages.url,
+            imageUrl: hotelImages.imageKey,
         })
         .from(hotels)
         .leftJoin(hotelImages, eq(hotelImages.hotelId, hotels.id))
@@ -99,7 +99,7 @@ export async function getListingById(id: string | number): Promise<ListingDetail
     if (!hotel) return null;
 
     const images = await db
-        .select({ url: hotelImages.url })
+        .select({ url: hotelImages.imageKey })
         .from(hotelImages)
         .where(eq(hotelImages.hotelId, hotelId));
 
@@ -156,7 +156,7 @@ export async function searchAvailableHotels(
     const images = await db
         .select({
             hotelId: hotelImages.hotelId,
-            url: hotelImages.url,
+            url: hotelImages.imageKey,
         })
         .from(hotelImages);
 
