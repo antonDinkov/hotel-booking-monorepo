@@ -1,13 +1,84 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { AppButton } from "./AppButton";
 import { ArrowLeftIcon } from "@heroicons/react/24/solid";
 import type { ListingDetails } from "../types/hotel-panel";
+import type { RoomAvailability } from "@/types/room-availability";
+import { RoomAvailabilityTable } from "./RoomAvailabilityTable";
 
-export function ListingDetailsCard({ listing }: { listing: ListingDetails }) {
+interface ListingDetailsCardProps {
+  listing: ListingDetails;
+  availability: RoomAvailability[];
+  guestsCount: number;
+  checkInDate: string;
+  checkOutDate: string;
+}
+
+export function ListingDetailsCard({
+  listing,
+  availability,
+  guestsCount,
+  checkInDate,
+  checkOutDate,
+}: ListingDetailsCardProps) {
   const router = useRouter();
+
+  const hasDates = Boolean(checkInDate && checkOutDate);
+  const defaultRoomTypeId = useMemo(() => {
+    if (availability.length === 0) return null;
+    const sorted = [...availability].sort((a, b) => a.capacity - b.capacity);
+    const exact = sorted.find((room) => room.capacity === guestsCount);
+    return (exact ?? sorted[0]).roomTypeId;
+  }, [availability, guestsCount]);
+
+  const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<number | null>(defaultRoomTypeId);
+  const [roomCounts, setRoomCounts] = useState<Record<number, number>>({});
+
+  useEffect(() => {
+    if (!defaultRoomTypeId) {
+      setSelectedRoomTypeId(null);
+      setRoomCounts({});
+      return;
+    }
+
+    setSelectedRoomTypeId(defaultRoomTypeId);
+    setRoomCounts((prev) => {
+      const next: Record<number, number> = {};
+      availability.forEach((room) => {
+        next[room.roomTypeId] = 0;
+      });
+      const current = prev[defaultRoomTypeId] ?? 0;
+      next[defaultRoomTypeId] = Math.max(current, 1);
+      return next;
+    });
+  }, [availability, defaultRoomTypeId]);
+
+  const handleSelectRoomType = (roomTypeId: number) => {
+    setSelectedRoomTypeId(roomTypeId);
+    setRoomCounts((prev) => {
+      const next: Record<number, number> = { ...prev };
+      availability.forEach((room) => {
+        next[room.roomTypeId] = 0;
+      });
+      next[roomTypeId] = 1;
+      return next;
+    });
+  };
+
+  const handleRoomCountChange = (roomTypeId: number, count: number) => {
+    if (roomTypeId !== selectedRoomTypeId) return;
+    setRoomCounts((prev) => ({
+      ...prev,
+      [roomTypeId]: count,
+    }));
+  };
+
+  const selectedRoom = availability.find((room) => room.roomTypeId === selectedRoomTypeId) ?? null;
+  const selectedRooms = selectedRoomTypeId ? roomCounts[selectedRoomTypeId] ?? 0 : 0;
+  const totalPerNight = selectedRoom ? selectedRoom.pricePerNight * selectedRooms : 0;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -93,6 +164,18 @@ export function ListingDetailsCard({ listing }: { listing: ListingDetails }) {
               </p>
             </div>
 
+            <RoomAvailabilityTable
+              listingId={listing.id}
+              availability={availability}
+              guestsCount={guestsCount}
+              checkInDate={checkInDate}
+              checkOutDate={checkOutDate}
+              selectedRoomTypeId={selectedRoomTypeId}
+              roomCounts={roomCounts}
+              onSelectRoomType={handleSelectRoomType}
+              onRoomCountChange={handleRoomCountChange}
+            />
+
             {/* Property Details */}
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-slate-950 mb-4">
@@ -169,13 +252,34 @@ export function ListingDetailsCard({ listing }: { listing: ListingDetails }) {
           <div className="lg:col-span-1">
             <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-lg sticky top-24">
               <div className="mb-6">
-                <p className="text-sm text-slate-600 mb-1">Price per night</p>
+                <p className="text-sm text-slate-600 mb-1">Total per night</p>
                 <p className="text-3xl font-bold text-slate-950">
-                  ${listing.price}
+                  ${totalPerNight}
                 </p>
+                {selectedRoom && selectedRooms > 0 && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    {selectedRooms} room{selectedRooms === 1 ? "" : "s"} · {selectedRoom.name}
+                  </p>
+                )}
               </div>
 
-              <AppButton variant="primary" size="lg" className="mb-3 w-full shadow-blue-700/25">
+              <AppButton
+                variant="primary"
+                size="lg"
+                className="mb-3 w-full shadow-blue-700/25"
+                onClick={() => {
+                  if (!selectedRoomTypeId || selectedRooms < 1 || !hasDates) return;
+                  const params = new URLSearchParams({
+                    roomTypeId: String(selectedRoomTypeId),
+                    rooms: String(selectedRooms),
+                    guests: String(guestsCount),
+                    checkInDate,
+                    checkOutDate,
+                  });
+                  router.push(`/listings/${listing.id}/reserve?${params.toString()}`);
+                }}
+                disabled={!hasDates || !selectedRoomTypeId || selectedRooms < 1}
+              >
                 Reserve
               </AppButton>
 

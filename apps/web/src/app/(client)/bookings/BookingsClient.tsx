@@ -23,7 +23,9 @@ export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClie
     const endIndex = startIndex + BOOKINGS_PER_PAGE;
     const paginatedBookings = inactiveBookings.slice(startIndex, endIndex);
 
-    const handleCardClick = (booking: MyBooking) => {
+    const handleCardClick = (booking: MyBooking) => (e?: React.MouseEvent) => {
+        e?.stopPropagation?.();
+        e?.preventDefault?.();
         setSelectedBooking(booking);
         setIsModalOpen(true);
     };
@@ -64,7 +66,7 @@ export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClie
                     <div className="rounded-3xl border-2 border-blue-200 bg-blue-50 p-1 shadow-md">
                         <MyBookingCard
                             {...activeBooking}
-                            onCardClick={() => handleCardClick(activeBooking)}
+                            onCardClick={handleCardClick(activeBooking)}
                         />
                     </div>
                 </section>
@@ -89,7 +91,7 @@ export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClie
                                 <MyBookingCard
                                     key={booking.id}
                                     {...booking}
-                                    onCardClick={() => handleCardClick(booking)}
+                                    onCardClick={handleCardClick(booking)}
                                 />
                             ))}
                         </div>

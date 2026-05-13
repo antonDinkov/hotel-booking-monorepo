@@ -23,9 +23,24 @@ function Rating({ value }: { value: number }) {
   );
 }
 
-export function ListingCard({ listing }: { listing: Listing }) {
+export function ListingCard({
+  listing,
+  searchParams,
+}: {
+  listing: Listing;
+  searchParams?: { checkInDate?: string; checkOutDate?: string; guests?: string };
+}) {
+  const params = new URLSearchParams();
+  if (searchParams?.checkInDate) params.set("checkInDate", searchParams.checkInDate);
+  if (searchParams?.checkOutDate) params.set("checkOutDate", searchParams.checkOutDate);
+  if (searchParams?.guests) params.set("guests", searchParams.guests);
+
+  const href = params.toString()
+    ? `/listings/${listing.id}?${params.toString()}`
+    : `/listings/${listing.id}`;
+
   return (
-    <Link href={`/listings/${listing.id}`}>
+    <Link href={href}>
       <article className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(15,23,42,0.12)] cursor-pointer">
         <div className="relative h-56 overflow-hidden">
           <HotelImage images={[listing.image.src]} alt={listing.image.alt} />

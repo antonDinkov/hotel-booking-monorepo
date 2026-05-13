@@ -12,11 +12,14 @@
  * - Makes logic reusable for mobile clients by exposing the same
  *   underlying behavior behind an HTTP API.
  */
-import { and, eq, gte, ilike, lt, gt, sql } from "drizzle-orm";
+import { and, eq, gte, ilike, lt, gt, sql, inArray } from "drizzle-orm";
 
 import { db } from "../../db";
 import { hotelImages, hotels, roomTypes, bookings } from "../../db/schema";
 import type { HotelPanelData, Listing, ListingDetails } from "../../types/hotel-panel";
+import type { RoomAvailability } from "../../types/room-availability";
+
+type BookingRange = { checkInDate: string; checkOutDate: string };
 
 export async function getHotelPanelData(): Promise<HotelPanelData> {
     const rows = await db
@@ -139,6 +142,110 @@ export async function getListingById(id: string | number): Promise<ListingDetail
     };
 
     return listing;
+}
+
+function calculateAvailableRooms(
+    totalRooms: number,
+    bookingsData: BookingRange[],
+    checkInDate: string,
+    checkOutDate: string
+): number {
+    const dailyMap = new Map<string, number>();
+
+    for (const booking of bookingsData) {
+        const start = new Date(booking.checkInDate);
+        const end = new Date(booking.checkOutDate);
+
+        for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+            const key = d.toISOString().slice(0, 10);
+            dailyMap.set(key, (dailyMap.get(key) || 0) + 1);
+        }
+    }
+
+    let minAvailable = totalRooms;
+    for (let d = new Date(checkInDate); d < new Date(checkOutDate); d.setDate(d.getDate() + 1)) {
+        const key = d.toISOString().slice(0, 10);
+        const booked = dailyMap.get(key) || 0;
+        minAvailable = Math.min(minAvailable, totalRooms - booked);
+    }
+
+    return Math.max(0, minAvailable);
+}
+
+export async function getRoomAvailabilityForHotel(
+    hotelId: number,
+    checkInDate: string,
+    checkOutDate: string,
+    guestsCount: number
+): Promise<RoomAvailability[]> {
+    if (!checkInDate || !checkOutDate || guestsCount < 1) return [];
+
+    const checkIn = new Date(checkInDate);
+    const checkOut = new Date(checkOutDate);
+    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime()) || checkOut <= checkIn) {
+        return [];
+    }
+
+    const roomTypesData = await db
+        .select({
+            id: roomTypes.id,
+            name: roomTypes.name,
+            capacity: roomTypes.capacity,
+            pricePerNight: roomTypes.pricePerNight,
+            totalRooms: roomTypes.totalRooms,
+        })
+        .from(roomTypes)
+        .where(and(eq(roomTypes.hotelId, hotelId), gte(roomTypes.capacity, guestsCount)));
+
+    if (roomTypesData.length === 0) return [];
+
+    const roomTypeIds = roomTypesData.map((roomType) => roomType.id);
+    const bookingsData = await db
+        .select({
+            roomTypeId: bookings.roomTypeId,
+            checkInDate: bookings.checkInDate,
+            checkOutDate: bookings.checkOutDate,
+        })
+        .from(bookings)
+        .where(
+            and(
+                inArray(bookings.roomTypeId, roomTypeIds),
+                eq(bookings.status, "confirmed"),
+                lt(bookings.checkInDate, checkOutDate),
+                gt(bookings.checkOutDate, checkInDate)
+            )
+        );
+
+    const bookingsByRoomType = new Map<number, BookingRange[]>();
+    for (const booking of bookingsData) {
+        const list = bookingsByRoomType.get(booking.roomTypeId) ?? [];
+        list.push({
+            checkInDate: String(booking.checkInDate),
+            checkOutDate: String(booking.checkOutDate),
+        });
+        bookingsByRoomType.set(booking.roomTypeId, list);
+    }
+
+    return roomTypesData
+        .map((roomType) => {
+            const bookingRanges = bookingsByRoomType.get(roomType.id) ?? [];
+            const availableRooms = calculateAvailableRooms(
+                roomType.totalRooms,
+                bookingRanges,
+                checkInDate,
+                checkOutDate
+            );
+
+            return {
+                roomTypeId: roomType.id,
+                name: roomType.name,
+                capacity: roomType.capacity,
+                pricePerNight: roomType.pricePerNight,
+                totalRooms: roomType.totalRooms,
+                availableRooms,
+            };
+        })
+        .filter((roomType) => roomType.availableRooms > 0);
 }
 
 export async function searchAvailableHotels(

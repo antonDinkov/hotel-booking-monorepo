@@ -8,7 +8,8 @@ interface MyBookingCardProps {
   totalPrice: number;
   status: BookingStatus;
   daysRemaining?: number;
-  onCardClick?: () => void;
+  // Accept the mouse event so the handler can stop propagation/prevent default
+  onCardClick?: (e: React.MouseEvent) => void;
 }
 
 const statusStyles: Record<BookingStatus, { container: string; badge: string; label: string }> = {
@@ -43,8 +44,16 @@ export function MyBookingCard({
 
   return (
     <article
+      tabIndex={0}
       className={`rounded-3xl border p-6 transition duration-200 cursor-pointer hover:shadow-lg ${styles.container}`}
-      onClick={onCardClick}
+      onClick={(e) => onCardClick?.(e)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          // treat Enter/Space as click
+          e.preventDefault();
+          onCardClick?.(e as unknown as React.MouseEvent);
+        }
+      }}
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>

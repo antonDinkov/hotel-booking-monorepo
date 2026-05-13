@@ -18,6 +18,7 @@ export function SearchEngineWrapper({
     const [searchResults, setSearchResults] = useState<Listing[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [activeSearchParams, setActiveSearchParams] = useState<{ checkInDate?: string; checkOutDate?: string; guests?: string }>({});
     const [error, setError] = useState<string | null>(null);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
@@ -44,12 +45,14 @@ export function SearchEngineWrapper({
                 setSearchResults([]);
                 setSearchQuery("");
                 setError(null);
+                setActiveSearchParams({});
                 return;
             }
 
             setIsSearching(true);
             setError(null);
             setSearchQuery(destination);
+            setActiveSearchParams({ checkInDate, checkOutDate, guests: guestsCount });
 
             try {
                 const params = new URLSearchParams({
@@ -147,7 +150,7 @@ export function SearchEngineWrapper({
                                 {searchResults
                                     .slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage)
                                     .map((listing) => (
-                                        <ListingCard key={listing.id} listing={listing} />
+                                        <ListingCard key={listing.id} listing={listing} searchParams={activeSearchParams} />
                                     ))}
                             </div>
 
