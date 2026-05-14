@@ -62,7 +62,7 @@ describe("ListingDetailsCard", () => {
     backMock.mockClear();
   });
 
-  it("renders primary listing details", () => {
+  it("renders primary listing details with dates", () => {
     render(
       <ListingDetailsCard
         listing={listing}
@@ -74,8 +74,8 @@ describe("ListingDetailsCard", () => {
     );
 
     expect(screen.getByText("Ocean View Retreat")).toBeInTheDocument();
-    expect(screen.getByText("Total per night")).toBeInTheDocument();
-    expect(screen.getByText("$240", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("Total Price")).toBeInTheDocument();
+    expect(screen.getByText("Reserve")).toBeInTheDocument();
   });
 
   it("navigates back when the back button is clicked", () => {

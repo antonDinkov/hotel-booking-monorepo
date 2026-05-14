@@ -219,17 +219,22 @@ describe("hotelPanel service", () => {
         name: "Test Hotel",
         location: "Test City",
         description: "A beautiful hotel",
-        pricePerNight: 150,
       };
 
+      const mockRoomTypes = [{ pricePerNight: 150 }];
       const mockImages = [
         { url: "image1.jpg" },
         { url: "image2.jpg" },
       ];
 
-      mockDb.select
-        .mockReturnValueOnce(createMockQuery([mockHotel]))
-        .mockReturnValueOnce(createMockQuery(mockImages));
+      let callCount = 0;
+      mockDb.select = jest.fn().mockImplementation(() => {
+        callCount += 1;
+        if (callCount === 1) return createMockQuery([mockHotel]);
+        if (callCount === 2) return createMockQuery(mockRoomTypes);
+        if (callCount === 3) return createMockQuery(mockImages);
+        return createMockQuery([]);
+      });
 
       const result = await getListingById("1");
 
@@ -238,11 +243,11 @@ describe("hotelPanel service", () => {
       expect(result!.name).toBe("Test Hotel");
       expect(result!.location).toBe("Test City");
       expect(result!.price).toBe(150);
-      expect(result!.pricePerNight).toBe("$150 per night");
+      expect(result!.pricePerNight).toBe("From $150 per night");
       expect(result!.description).toBe("A beautiful hotel");
-      expect(result!.bedrooms).toBe(2);
-      expect(result!.bathrooms).toBe(1);
-      expect(result!.guests).toBe(4);
+      expect(result!.bedrooms).toBe(undefined);
+      expect(result!.bathrooms).toBe(undefined);
+      expect(result!.guests).toBe(undefined);
       expect(result!.amenities).toHaveLength(6);
       expect(result!.highlights).toHaveLength(4);
     });
@@ -253,13 +258,14 @@ describe("hotelPanel service", () => {
         name: "Numeric ID Hotel",
         location: "Test City",
         description: "Hotel with numeric ID",
-        pricePerNight: 200,
       };
 
+      const mockRoomTypes = [{ pricePerNight: 200 }];
       const mockImages = [{ url: "image.jpg" }];
 
       mockDb.select
         .mockReturnValueOnce(createMockQuery([mockHotel]))
+        .mockReturnValueOnce(createMockQuery(mockRoomTypes))
         .mockReturnValueOnce(createMockQuery(mockImages));
 
       const result = await getListingById(42);
@@ -275,12 +281,18 @@ describe("hotelPanel service", () => {
         name: "Hotel No Images",
         location: "Somewhere",
         description: "Hotel without images",
-        pricePerNight: 100,
       };
 
-      mockDb.select
-        .mockReturnValueOnce(createMockQuery([mockHotel]))
-        .mockReturnValueOnce(createMockQuery([]));
+      const mockRoomTypes = [{ pricePerNight: 100 }];
+
+      let callCount = 0;
+      mockDb.select = jest.fn().mockImplementation(() => {
+        callCount += 1;
+        if (callCount === 1) return createMockQuery([mockHotel]);
+        if (callCount === 2) return createMockQuery(mockRoomTypes);
+        if (callCount === 3) return createMockQuery([]);
+        return createMockQuery([]);
+      });
 
       const result = await getListingById("1");
 
@@ -297,80 +309,22 @@ describe("hotelPanel service", () => {
         name: "Hotel No Desc",
         location: "Test City",
         description: null,
-        pricePerNight: 120,
       };
+
+      const mockRoomTypes = [{ pricePerNight: 120 }];
+      const mockImages = [{ url: "image.jpg" }];
 
       mockDb.select
         .mockReturnValueOnce(createMockQuery([mockHotel]))
-        .mockReturnValueOnce(createMockQuery([]));
+        .mockReturnValueOnce(createMockQuery(mockRoomTypes))
+        .mockReturnValueOnce(createMockQuery(mockImages));
 
       const result = await getListingById("1");
 
       expect(result!.description).toBe("Hotel No Desc is located in Test City.");
     });
 
-    it("should handle numeric id parameter", async () => {
-      const mockHotel = {
-        id: 42,
-        name: "Numeric ID Hotel",
-        location: "Test City",
-        description: "Hotel with numeric ID",
-        pricePerNight: 200,
-      };
 
-      const mockImages = [{ url: "image.jpg" }];
-
-      mockDb.select
-        .mockReturnValueOnce(createMockQuery([mockHotel]))
-        .mockReturnValueOnce(createMockQuery(mockImages));
-
-      const result = await getListingById(42);
-
-      expect(result!.id).toBe("42");
-      expect(result!.name).toBe("Numeric ID Hotel");
-    });
-
-    it("should use fallback image when no images exist", async () => {
-      const mockHotel = {
-        id: 1,
-        name: "Hotel No Images",
-        location: "Somewhere",
-        description: "Hotel without images",
-        pricePerNight: 100,
-      };
-
-      mockDb.select
-        .mockReturnValueOnce(createMockQuery([mockHotel]))
-        .mockReturnValueOnce(createMockQuery([]));
-
-      const result = await getListingById("1");
-
-      expect(result!.image.src).toBe(
-        "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80"
-      );
-      expect(result!.image.alt).toBe("Hotel No Images cover image");
-      expect(result!.images).toHaveLength(1);
-    });
-
-    it("should use fallback description when hotel has no description", async () => {
-      const mockHotel = {
-        id: 1,
-        name: "No Description Hotel",
-        location: "Somewhere",
-        description: null,
-        pricePerNight: 100,
-      };
-
-      const mockImages = [{ url: "image.jpg" }];
-
-      mockDb.select
-        .mockReturnValueOnce(createMockQuery([mockHotel]))
-        .mockReturnValueOnce(createMockQuery(mockImages));
-
-      const result = await getListingById("1");
-
-      expect(result!.description).toBe("No Description Hotel is located in Somewhere.");
-    });
   });
 
   describe("searchAvailableHotels", () => {

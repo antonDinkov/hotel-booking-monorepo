@@ -93,13 +93,21 @@ export async function getListingById(id: string | number): Promise<ListingDetail
             name: hotels.name,
             location: hotels.location,
             description: hotels.description,
-            pricePerNight: hotels.pricePerNight,
         })
         .from(hotels)
         .where(eq(hotels.id, hotelId))
         .then((rows) => rows[0]);
 
     if (!hotel) return null;
+
+    const roomTypesData = await db
+        .select({ pricePerNight: roomTypes.pricePerNight })
+        .from(roomTypes)
+        .where(eq(roomTypes.hotelId, hotelId));
+
+    const minPrice = roomTypesData.length
+        ? Math.min(...roomTypesData.map((roomType) => roomType.pricePerNight))
+        : 0;
 
     const images = await db
         .select({ url: hotelImages.imageKey })
@@ -123,12 +131,9 @@ export async function getListingById(id: string | number): Promise<ListingDetail
         reviewLabel: "Verified stays",
         image: gallery[0],
         description: hotel.description ?? `${hotel.name} is located in ${hotel.location}.`,
-        price: hotel.pricePerNight,
-        pricePerNight: `$${hotel.pricePerNight} per night`,
+        price: minPrice,
+        pricePerNight: `From $${minPrice} per night`,
         location: hotel.location,
-        bedrooms: 2,
-        bathrooms: 1,
-        guests: 4,
         amenities: [
             { icon: "📶", name: "Fast Wi-Fi" },
             { icon: "🛏️", name: "Comfort Bedding" },

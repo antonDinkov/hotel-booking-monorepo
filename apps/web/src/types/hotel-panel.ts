@@ -51,9 +51,6 @@ export interface ListingDetails extends Listing {
   price: number;
   pricePerNight: string;
   location: string;
-  bedrooms: number;
-  bathrooms: number;
-  guests: number;
   amenities: Amenity[];
   images: ListingImage[];
   highlights: string[];

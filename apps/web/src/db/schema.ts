@@ -69,7 +69,6 @@ export const hotels = pgTable("hotels", {
 	name: text("name").notNull(),
 	location: text("location").notNull(),
 	description: text("description"),
-	pricePerNight: integer("price_per_night").notNull(),
 	ownerId: uuid("owner_id")
 		.notNull()
 		.references(() => users.id, { onDelete: "cascade" }),

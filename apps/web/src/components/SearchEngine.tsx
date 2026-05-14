@@ -1,46 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { MapPinIcon, CalendarDaysIcon, UserGroupIcon, MagnifyingGlassIcon } from "@heroicons/react/24/solid";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
 import type { SearchField } from "../types/hotel-panel";
 import { AppButton } from "./AppButton";
-
-// Using heroicons from @heroicons/react
-
-function SearchFieldCard({
-    field,
-    value,
-    onChange,
-}: {
-    field: SearchField;
-    value: string;
-    onChange: (value: string) => void;
-}) {
-    const icon =
-        field.icon === "pin" ? (
-            <MapPinIcon className="h-5 w-5 text-slate-500" />
-        ) : field.icon === "calendar" ? (
-            <CalendarDaysIcon className="h-5 w-5 text-slate-500" />
-        ) : (
-            <UserGroupIcon className="h-5 w-5 text-slate-500" />
-        );
-
-    return (
-        <div className="flex min-h-18 items-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-3 shadow-[0_10px_25px_rgba(15,23,42,0.08)] ring-1 ring-white/70">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-50 text-blue-700">{icon}</div>
-            <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">{field.label}</p>
-                <input
-                    type={field.icon === "calendar" ? "date" : "text"}
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    placeholder={field.placeholder}
-                    className="w-full text-sm font-semibold text-slate-950 bg-transparent placeholder-slate-400 focus:outline-none"
-                />
-            </div>
-        </div>
-    );
-}
+import { SearchFieldCard } from "./SearchFieldCard";
 
 export function SearchEngine({
     searchFields,
@@ -57,16 +21,40 @@ export function SearchEngine({
         checkOutDate: "",
         guests: "",
     });
+    const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({
+        destination: false,
+        checkInDate: false,
+        checkOutDate: false,
+        guests: false,
+    });
 
     const handleSearch = (e: React.SyntheticEvent<HTMLFormElement>) => {
         e.preventDefault();
 
+        const destination = searchValues.destination.trim();
+        const checkInDate = searchValues.checkInDate;
+        const checkOutDate = searchValues.checkOutDate;
+        const guests = searchValues.guests;
+
+        const errors = {
+            destination: destination.length === 0,
+            checkInDate: checkInDate.length === 0,
+            checkOutDate: checkOutDate.length === 0,
+            guests: guests.length === 0,
+        };
+
+        setFieldErrors(errors);
+
+        if (errors.destination || errors.checkInDate || errors.checkOutDate || errors.guests) {
+            return;
+        }
+
         if (onSearch) {
             onSearch({
-                destination: searchValues.destination || undefined,
-                checkInDate: searchValues.checkInDate || undefined,
-                checkOutDate: searchValues.checkOutDate || undefined,
-                guests: searchValues.guests || undefined,
+                destination,
+                checkInDate,
+                checkOutDate,
+                guests,
             });
         }
     };
@@ -78,30 +66,38 @@ export function SearchEngine({
                     <SearchFieldCard
                         field={searchFields[0]}
                         value={searchValues.destination}
-                        onChange={(value) =>
-                            setSearchValues((prev) => ({ ...prev, destination: value }))
-                        }
+                        error={fieldErrors.destination}
+                        onChange={(value) => {
+                            setSearchValues((prev) => ({ ...prev, destination: value }));
+                            setFieldErrors((prev) => ({ ...prev, destination: false }));
+                        }}
                     />
                     <SearchFieldCard
                         field={{ label: "Check In", placeholder: "Start date", icon: "calendar" }}
                         value={searchValues.checkInDate}
-                        onChange={(value) =>
-                            setSearchValues((prev) => ({ ...prev, checkInDate: value }))
-                        }
+                        error={fieldErrors.checkInDate}
+                        onChange={(value) => {
+                            setSearchValues((prev) => ({ ...prev, checkInDate: value }));
+                            setFieldErrors((prev) => ({ ...prev, checkInDate: false }));
+                        }}
                     />
                     <SearchFieldCard
                         field={{ label: "Check Out", placeholder: "End date", icon: "calendar" }}
                         value={searchValues.checkOutDate}
-                        onChange={(value) =>
-                            setSearchValues((prev) => ({ ...prev, checkOutDate: value }))
-                        }
+                        error={fieldErrors.checkOutDate}
+                        onChange={(value) => {
+                            setSearchValues((prev) => ({ ...prev, checkOutDate: value }));
+                            setFieldErrors((prev) => ({ ...prev, checkOutDate: false }));
+                        }}
                     />
                     <SearchFieldCard
                         field={searchFields[2]}
                         value={searchValues.guests}
-                        onChange={(value) =>
-                            setSearchValues((prev) => ({ ...prev, guests: value }))
-                        }
+                        error={fieldErrors.guests}
+                        onChange={(value) => {
+                            setSearchValues((prev) => ({ ...prev, guests: value }));
+                            setFieldErrors((prev) => ({ ...prev, guests: false }));
+                        }}
                     />
                     <AppButton
                         type="submit"

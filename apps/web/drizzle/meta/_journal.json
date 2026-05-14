@@ -50,6 +50,13 @@
       "when": 1778564168863,
       "tag": "0006_lying_sunspot",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778735050240,
+      "tag": "0007_sour_thena",
+      "breakpoints": true
     }
   ]
 }

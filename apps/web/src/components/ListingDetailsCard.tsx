@@ -15,6 +15,11 @@ interface ListingDetailsCardProps {
   guestsCount: number;
   checkInDate: string;
   checkOutDate: string;
+  hasSearchDates?: boolean;
+}
+
+function getNights(checkInDate: string, checkOutDate: string) {
+  return Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24));
 }
 
 export function ListingDetailsCard({
@@ -23,10 +28,10 @@ export function ListingDetailsCard({
   guestsCount,
   checkInDate,
   checkOutDate,
+  hasSearchDates = true,
 }: ListingDetailsCardProps) {
   const router = useRouter();
 
-  const hasDates = Boolean(checkInDate && checkOutDate);
   const defaultRoomTypeId = useMemo(() => {
     if (availability.length === 0) return null;
     const sorted = [...availability].sort((a, b) => a.capacity - b.capacity);
@@ -79,6 +84,39 @@ export function ListingDetailsCard({
   const selectedRoom = availability.find((room) => room.roomTypeId === selectedRoomTypeId) ?? null;
   const selectedRooms = selectedRoomTypeId ? roomCounts[selectedRoomTypeId] ?? 0 : 0;
   const totalPerNight = selectedRoom ? selectedRoom.pricePerNight * selectedRooms : 0;
+
+  const nights = getNights(checkInDate, checkOutDate);
+  const totalPrice = totalPerNight * nights;
+
+  const handleReserve = () => {
+    if (!selectedRoomTypeId || selectedRooms < 1 || !hasSearchDates || !selectedRoom) return;
+    const params = new URLSearchParams({
+      checkInDate,
+      checkOutDate,
+      guests: String(guestsCount),
+      roomTypeId: String(selectedRoomTypeId),
+      roomPrice: String(selectedRoom.pricePerNight),
+      rooms: String(selectedRooms),
+    });
+    router.push(`/listings/${listing.id}/summary?${params.toString()}`);
+  };
+
+  const handleChooseDate = () => {
+    if (!selectedRoomTypeId || !selectedRoom) return;
+    const params = new URLSearchParams({
+      roomTypeId: String(selectedRoomTypeId),
+      roomPrice: String(selectedRoom.pricePerNight),
+      rooms: String(selectedRooms || 1),
+      guests: String(guestsCount),
+      roomCapacity: String(selectedRoom.capacity),
+    });
+    router.push(`/listings/${listing.id}/pick-dates?${params.toString()}`);
+  };
+
+  const isImmediateReserve = hasSearchDates;
+  const primaryActionLabel = isImmediateReserve ? "Reserve" : "Choose Dates";
+  const primaryAction = isImmediateReserve ? handleReserve : handleChooseDate;
+  const totalLabel = hasSearchDates ? "Total Price" : "Total Price";
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -177,37 +215,6 @@ export function ListingDetailsCard({
             />
 
             {/* Property Details */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-slate-950 mb-4">
-                Property Details
-              </h2>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <div className="rounded-lg bg-white p-4 border border-slate-200">
-                  <p className="text-sm text-slate-600 mb-1">Bedrooms</p>
-                  <p className="text-2xl font-bold text-slate-950">
-                    {listing.bedrooms}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-white p-4 border border-slate-200">
-                  <p className="text-sm text-slate-600 mb-1">Bathrooms</p>
-                  <p className="text-2xl font-bold text-slate-950">
-                    {listing.bathrooms}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-white p-4 border border-slate-200">
-                  <p className="text-sm text-slate-600 mb-1">Guests</p>
-                  <p className="text-2xl font-bold text-slate-950">
-                    {listing.guests}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-white p-4 border border-slate-200">
-                  <p className="text-sm text-slate-600 mb-1">Rating</p>
-                  <p className="text-2xl font-bold text-slate-950">
-                    {listing.rating}
-                  </p>
-                </div>
-              </div>
-            </div>
 
             {/* Amenities */}
             <div className="mb-8">
@@ -252,35 +259,21 @@ export function ListingDetailsCard({
           <div className="lg:col-span-1">
             <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-lg sticky top-24">
               <div className="mb-6">
-                <p className="text-sm text-slate-600 mb-1">Total per night</p>
-                <p className="text-3xl font-bold text-slate-950">
-                  ${totalPerNight}
+                <p className="text-sm text-slate-600 mb-1">{totalLabel}</p>
+                <p className="text-3xl font-bold text-slate-950">${totalPrice}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {nights} night{nights === 1 ? "" : "s"} × {selectedRooms || 1} room{(selectedRooms || 1) === 1 ? "" : "s"}
                 </p>
-                {selectedRoom && selectedRooms > 0 && (
-                  <p className="mt-2 text-xs text-slate-500">
-                    {selectedRooms} room{selectedRooms === 1 ? "" : "s"} · {selectedRoom.name}
-                  </p>
-                )}
               </div>
 
               <AppButton
                 variant="primary"
                 size="lg"
                 className="mb-3 w-full shadow-blue-700/25"
-                onClick={() => {
-                  if (!selectedRoomTypeId || selectedRooms < 1 || !hasDates) return;
-                  const params = new URLSearchParams({
-                    roomTypeId: String(selectedRoomTypeId),
-                    rooms: String(selectedRooms),
-                    guests: String(guestsCount),
-                    checkInDate,
-                    checkOutDate,
-                  });
-                  router.push(`/listings/${listing.id}/reserve?${params.toString()}`);
-                }}
-                disabled={!hasDates || !selectedRoomTypeId || selectedRooms < 1}
+                onClick={primaryAction}
+                disabled={!selectedRoomTypeId || selectedRooms < 1}
               >
-                Reserve
+                {primaryActionLabel}
               </AppButton>
 
               <AppButton variant="secondary" size="lg" className="w-full">

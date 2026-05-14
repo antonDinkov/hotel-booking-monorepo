@@ -9,12 +9,24 @@ interface Props {
   searchParams?: { checkInDate?: string; checkOutDate?: string; guests?: string } | Promise<{ checkInDate?: string; checkOutDate?: string; guests?: string }>;
 }
 
+function getDefaultStayDates() {
+  const checkIn = new Date();
+  const checkOut = new Date(checkIn);
+  checkOut.setDate(checkOut.getDate() + 1);
+  return {
+    checkInDate: checkIn.toISOString().slice(0, 10),
+    checkOutDate: checkOut.toISOString().slice(0, 10),
+  };
+}
+
 export default async function ListingPage({ params, searchParams }: Props) {
   // In some Next.js runtimes `params` and `searchParams` can be Promises — unwrap them before use
   const resolvedParams = (await params) as { id: string };
   const resolvedSearchParams = (await searchParams) ?? {};
-  const checkInDate = resolvedSearchParams.checkInDate ?? "";
-  const checkOutDate = resolvedSearchParams.checkOutDate ?? "";
+  const hasSearchDates = Boolean(resolvedSearchParams.checkInDate && resolvedSearchParams.checkOutDate);
+  const defaultStayDates = getDefaultStayDates();
+  const checkInDate = resolvedSearchParams.checkInDate ?? defaultStayDates.checkInDate;
+  const checkOutDate = resolvedSearchParams.checkOutDate ?? defaultStayDates.checkOutDate;
   const guestsParam = resolvedSearchParams.guests ?? "";
   const guestsCount = Math.max(1, Number.parseInt(guestsParam, 10) || 0);
 
@@ -23,12 +35,7 @@ export default async function ListingPage({ params, searchParams }: Props) {
   if (!listing) return notFound();
 
   const availability: RoomAvailability[] = checkInDate && checkOutDate
-    ? await getRoomAvailabilityForHotel(
-        Number(resolvedParams.id),
-        checkInDate,
-        checkOutDate,
-        guestsCount
-      )
+    ? await getRoomAvailabilityForHotel(Number(resolvedParams.id), checkInDate, checkOutDate, guestsCount)
     : [];
 
   return (
@@ -39,6 +46,7 @@ export default async function ListingPage({ params, searchParams }: Props) {
         guestsCount={guestsCount}
         checkInDate={checkInDate}
         checkOutDate={checkOutDate}
+        hasSearchDates={hasSearchDates}
       />
     </main>
   );
