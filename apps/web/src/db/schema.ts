@@ -98,6 +98,14 @@ export const roomTypes = pgTable("room_types", {
 	createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const hotelPaymentMethods = pgTable("hotel_payment_methods", {
+	hotelId: integer("hotel_id")
+		.notNull()
+		.references(() => hotels.id, { onDelete: "cascade" }),
+
+	method: text("method").notNull(),
+});
+
 export const bookings = pgTable("bookings", {
 	id: serial("id").primaryKey(),
 	roomTypeId: integer("room_type_id")
@@ -108,12 +116,15 @@ export const bookings = pgTable("bookings", {
 	checkOutDate: date("check_out_date").notNull(),
 	guestsCount: integer("guests_count").notNull(),
 	status: text("status").default("confirmed"),
+	paymentMethod: text("payment_method"),
+	paymentStatus: text("payment_status"),
 	createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const hotelsRelations = relations(hotels, ({ many, one }) => ({
 	images: many(hotelImages),
 	roomTypes: many(roomTypes),
+	paymentMethods: many(hotelPaymentMethods),
 	owner: one(users, {
 		fields: [hotels.ownerId],
 		references: [users.id],
@@ -133,6 +144,13 @@ export const roomTypesRelations = relations(roomTypes, ({ many, one }) => ({
 		references: [hotels.id],
 	}),
 	bookings: many(bookings),
+}));
+
+export const hotelPaymentMethodsRelations = relations(hotelPaymentMethods, ({ one }) => ({
+	hotel: one(hotels, {
+		fields: [hotelPaymentMethods.hotelId],
+		references: [hotels.id],
+	}),
 }));
 
 export const bookingsRelations = relations(bookings, ({ one }) => ({

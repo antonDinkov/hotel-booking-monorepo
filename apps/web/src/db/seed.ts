@@ -6,11 +6,13 @@ import bcrypt from "bcryptjs";
 import {
 	bookings,
 	hotelImages,
+	hotelPaymentMethods,
 	hotels,
 	roles,
 	roomTypes,
 	userRoles,
 	users,
+	userProfiles,
 } from "./schema";
 
 if (!process.env.DATABASE_URL) {
@@ -293,6 +295,7 @@ const defaultPassword = "123456";
 async function seed() {
 	await db.delete(bookings);
 	await db.delete(hotelImages);
+	await db.delete(hotelPaymentMethods);
 	await db.delete(roomTypes);
 	await db.delete(userRoles);
 	await db.delete(hotels);
@@ -364,6 +367,30 @@ async function seed() {
 			}))
 		)
 		.returning({ id: hotels.id, name: hotels.name });
+
+	const hotelPaymentMethodsSeed = insertedHotels.flatMap((hotel) => [
+		{
+			hotelId: hotel.id,
+			method: "stripe",
+		},
+		{
+			hotelId: hotel.id,
+			method: "cash_on_arrival",
+		},
+	]);
+
+	await db.insert(hotelPaymentMethods).values(hotelPaymentMethodsSeed);
+
+	console.log(`Inserted hotel payment methods: ${hotelPaymentMethodsSeed.length}`);
+
+	// Seed user profiles for all users
+	const allUsers = [...partnerUsers, peterUser, adminUser, ...guestUsers];
+	const userProfilesSeed = allUsers.map((user) => ({
+		userId: user.id,
+		fullName: user.email.split("@")[0],
+	}));
+
+	await db.insert(userProfiles).values(userProfilesSeed);
 
 	const roomTypesSeed = insertedHotels.flatMap((hotel) => {
 		const roomTypeConfigs = [
@@ -486,7 +513,9 @@ async function seed() {
 	console.log(`Inserted roles: ${insertedRoles.length}`);
 	console.log(`Inserted partner users: ${partnerUsers.length}`);
 	console.log(`Inserted guest users: ${guestUsers.length}`);
+	console.log(`Inserted user profiles: ${userProfilesSeed.length}`);
 	console.log(`Inserted hotels: ${insertedHotels.length}`);
+	console.log(`Inserted hotel payment methods: ${hotelPaymentMethodsSeed.length}`);
 	console.log(`Inserted room types: ${insertedRoomTypes.length}`);
 	console.log(`Inserted bookings: ${insertedBookings.length}`);
 	console.log(`Inserted hotel images: ${insertedImages.length}`);
