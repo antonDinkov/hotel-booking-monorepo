@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@heroicons/react/24/solid";
 
@@ -40,10 +40,12 @@ function formatPaymentMethod(method: string): string {
 
 export default function BookingSummaryClient({ summary, paymentCancelled }: BookingSummaryClientProps) {
   const router = useRouter();
+  const hasTriggeredTimeoutCancelRef = useRef(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCashLoading, setIsCashLoading] = useState(false);
   const [isStripeLoading, setIsStripeLoading] = useState(false);
+  const [isCancellingFlow, setIsCancellingFlow] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(() => getSecondsRemaining(summary.expiresAt));
 
   useEffect(() => {
@@ -57,9 +59,88 @@ export default function BookingSummaryClient({ summary, paymentCancelled }: Book
   const supportsStripe = summary.supportedPaymentMethods.includes("stripe");
   const supportsCashOnArrival = summary.supportedPaymentMethods.includes("cash_on_arrival");
   const hasNoSupportedMethods = !supportsStripe && !supportsCashOnArrival;
-  const holdExpired = summary.status === "expired" || (summary.status === "pending_payment" && secondsRemaining <= 0);
+  const holdExpired =
+    summary.status === "expired" ||
+    summary.status === "cancelled" ||
+    (summary.status === "pending_payment" && secondsRemaining <= 0);
   const canPay = summary.status === "pending_payment" && !holdExpired;
   const isActionLoading = isCashLoading || isStripeLoading;
+  const isPendingFlow = summary.status === "pending_payment" && !holdExpired;
+
+  useEffect(() => {
+    if (summary.status !== "pending_payment" || secondsRemaining > 0 || hasTriggeredTimeoutCancelRef.current) {
+      return;
+    }
+
+    hasTriggeredTimeoutCancelRef.current = true;
+
+    void (async () => {
+      setIsCancellingFlow(true);
+      setErrorMessage(null);
+
+      try {
+        const response = await fetch(`/api/bookings/${summary.bookingId}/cancel`, { method: "PATCH" });
+        const payload = await response.json().catch(() => null) as (ApiErrorPayload & { error?: { code?: string; message?: string } }) | null;
+
+        if (!response.ok && payload?.error?.code !== "BOOKING_NOT_PENDING") {
+          setErrorMessage(payload?.error?.message ?? "Failed to cancel reservation hold.");
+          hasTriggeredTimeoutCancelRef.current = false;
+          return;
+        }
+
+        router.refresh();
+      } catch {
+        setErrorMessage("Failed to cancel reservation hold.");
+        hasTriggeredTimeoutCancelRef.current = false;
+      } finally {
+        setIsCancellingFlow(false);
+      }
+    })();
+  }, [router, secondsRemaining, summary.bookingId, summary.status]);
+
+  const buildChangeDatesUrl = () => {
+    const params = new URLSearchParams({
+      roomTypeId: String(summary.roomTypeId),
+      roomPrice: String(summary.pricePerNight),
+      rooms: String(summary.roomsCount),
+      guests: String(summary.guestsCount),
+      roomCapacity: String(summary.roomCapacity),
+    });
+
+    return `/listings/${summary.hotelId}/pick-dates?${params.toString()}`;
+  };
+
+  const cancelPendingHoldBeforeNavigation = async (targetUrl: string) => {
+    if (!isPendingFlow) {
+      router.push(targetUrl);
+      return;
+    }
+
+    if (isActionLoading || isCancellingFlow) {
+      return;
+    }
+
+    setIsCancellingFlow(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/bookings/${summary.bookingId}/cancel`, {
+        method: "PATCH",
+      });
+      const payload = await response.json().catch(() => null) as ApiErrorPayload | null;
+
+      if (!response.ok) {
+        setErrorMessage(payload?.error?.message ?? "Failed to cancel reservation hold.");
+        return;
+      }
+
+      router.push(targetUrl);
+    } catch {
+      setErrorMessage("Failed to cancel reservation hold.");
+    } finally {
+      setIsCancellingFlow(false);
+    }
+  };
 
   const handleCashOnArrival = async () => {
     if (!canPay || !supportsCashOnArrival || isActionLoading) {
@@ -119,13 +200,14 @@ export default function BookingSummaryClient({ summary, paymentCancelled }: Book
     <div className="min-h-screen bg-slate-50">
       <div className="mb-6">
         <AppButton
-          onClick={() => router.back()}
+          onClick={() => cancelPendingHoldBeforeNavigation(`/listings/${summary.hotelId}`)}
           variant="ghost"
           size="sm"
           className="justify-start px-0 py-0 hover:-translate-x-0.5 hover:-translate-y-0"
           leftIcon={<ArrowLeftIcon className="h-5 w-5" />}
+          disabled={isCancellingFlow}
         >
-          Back
+          {isCancellingFlow ? "Cancelling hold..." : "Back to hotel"}
         </AppButton>
       </div>
 
@@ -234,9 +316,20 @@ export default function BookingSummaryClient({ summary, paymentCancelled }: Book
               variant="secondary"
               size="lg"
               className="w-full"
-              onClick={() => router.push(`/listings/${summary.hotelId}`)}
+              onClick={() => cancelPendingHoldBeforeNavigation(buildChangeDatesUrl())}
+              disabled={isCancellingFlow}
             >
-              Change Selection
+              {isCancellingFlow ? "Cancelling hold..." : "Change dates"}
+            </AppButton>
+
+            <AppButton
+              variant="ghost"
+              size="md"
+              className="mt-3 w-full"
+              onClick={() => cancelPendingHoldBeforeNavigation("/dashboard")}
+              disabled={isCancellingFlow}
+            >
+              Continue exploring
             </AppButton>
 
             <div className="mt-6 border-t border-slate-200 pt-6 text-sm text-slate-600">

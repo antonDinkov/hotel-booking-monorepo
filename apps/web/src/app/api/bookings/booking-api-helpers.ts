@@ -13,6 +13,10 @@ const createBookingHoldSchema = z
   })
   .transform((data) => ({ ...data, roomsCount: data.roomsCount ?? data.rooms ?? 1 }));
 
+const confirmStripeSessionSchema = z.object({
+  sessionId: z.string().min(1),
+});
+
 export function apiError(message: string, code: string, status: number) {
   return NextResponse.json({ error: { message, code } }, { status });
 }
@@ -30,6 +34,10 @@ export function parseBookingId(id: string) {
 
 export function parseCreateBookingHoldBody(body: unknown) {
   return createBookingHoldSchema.safeParse(body);
+}
+
+export function parseConfirmStripeSessionBody(body: unknown) {
+  return confirmStripeSessionSchema.safeParse(body);
 }
 
 export function mapCreateBookingError(error: unknown) {
@@ -70,4 +78,41 @@ export function mapStripeCheckoutError(error: unknown) {
 
   console.error("Stripe Checkout creation failed:", error);
   return apiError("Failed to start Stripe Checkout", "STRIPE_CHECKOUT_FAILED", 500);
+}
+
+export function mapStripeConfirmationError(error: unknown) {
+  const code = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+
+  if (code === "BOOKING_NOT_FOUND") return apiError("Booking not found", code, 404);
+  if (code === "BOOKING_NOT_PENDING") return apiError("Booking is not awaiting payment", code, 400);
+  if (code === "BOOKING_MISMATCH") return apiError("Stripe session does not match this booking", code, 400);
+  if (code === "FORBIDDEN_BOOKING_ACCESS") return apiError("Forbidden", code, 403);
+  if (code === "PAYMENT_NOT_COMPLETED") return apiError("Payment is not completed yet", code, 409);
+  if (code === "STRIPE_SESSION_NOT_FOUND") return apiError("Stripe session not found", code, 404);
+  if (code === "STRIPE_PAYMENT_INTENT_MISSING") return apiError("Stripe payment reference is missing", code, 500);
+  if (code === "STRIPE_SECRET_KEY_MISSING") return apiError("Stripe is not configured", code, 500);
+
+  console.error("Stripe confirmation failed:", error);
+  return apiError("Failed to confirm Stripe payment", "STRIPE_CONFIRM_FAILED", 500);
+}
+
+export function mapCancelBookingError(error: unknown) {
+  const code = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+
+  if (code === "BOOKING_NOT_FOUND") return apiError("Booking not found", code, 404);
+  if (code === "BOOKING_NOT_CANCELLABLE") return apiError("Booking cannot be cancelled automatically", code, 400);
+  if (code === "BOOKING_ALREADY_STARTED") {
+    return apiError(
+      "This booking has already started and cannot be cancelled automatically. Please contact support or the hotel.",
+      code,
+      400
+    );
+  }
+  if (code === "BOOKING_REFUND_PAYMENT_INTENT_MISSING" || code === "STRIPE_REFUND_FAILED") {
+    return apiError("Refund could not be processed automatically. Please contact support.", code, 502);
+  }
+  if (code === "STRIPE_SECRET_KEY_MISSING") return apiError("Stripe is not configured", code, 500);
+
+  console.error("Booking cancellation failed:", error);
+  return apiError("Failed to cancel booking", "BOOKING_CANCEL_FAILED", 500);
 }

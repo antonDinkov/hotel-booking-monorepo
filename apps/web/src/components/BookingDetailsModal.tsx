@@ -4,14 +4,17 @@ import { Fragment } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { AppButton } from "./AppButton";
-import type { MyBooking } from "@/types/booking";
+import type { BookingCancellationNotice, MyBooking } from "@/types/booking";
 
 interface BookingDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   booking: MyBooking | null;
-  onCancelBooking?: (bookingId: string) => void;
+  onCancelBooking?: (bookingId: string) => void | Promise<void>;
   onLeaveReview?: (bookingId: string) => void;
+  isCancelling?: boolean;
+  notice?: BookingCancellationNotice | null;
+  noticeTone?: "success" | "error";
 }
 
 export function BookingDetailsModal({
@@ -20,18 +23,25 @@ export function BookingDetailsModal({
   booking,
   onCancelBooking,
   onLeaveReview,
+  isCancelling = false,
+  notice = null,
+  noticeTone = "success",
 }: BookingDetailsModalProps) {
   if (!booking) return null;
 
   const handleCancelBooking = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onCancelBooking?.(booking.id);
+    void onCancelBooking?.(booking.id);
   };
 
   const handleLeaveReview = (e: React.MouseEvent) => {
     e.stopPropagation();
     onLeaveReview?.(booking.id);
   };
+
+  const isCancelActionDisabled =
+    isCancelling ||
+    noticeTone === "error";
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -116,18 +126,29 @@ export function BookingDetailsModal({
 
                     <div>
                       <h4 className="text-sm font-semibold text-slate-900">Status</h4>
-                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-wide ${
-                        booking.status === "active"
+                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold tracking-wide ${
+                        booking.status === "cancelled"
+                          ? "bg-red-100 text-red-800"
+                          : booking.status === "active"
                           ? "bg-blue-100 text-blue-800"
                           : booking.status === "upcoming"
                           ? "bg-yellow-100 text-yellow-800"
                           : "bg-gray-100 text-gray-800"
                       }`}>
-                        {booking.status}
+                        {booking.status === "cancelled" ? booking.cancelledBadge ?? "Cancelled" : booking.status}
                       </span>
                     </div>
                   </div>
                 </div>
+
+                {notice && (
+                  <div className={`mt-5 rounded-lg p-3 text-sm ${
+                    noticeTone === "error" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
+                  }`}>
+                    <p className="font-semibold">{notice.title}</p>
+                    <p className="mt-1">{notice.message}</p>
+                  </div>
+                )}
 
                 <div className="mt-6 flex gap-3">
                   {booking.status === "upcoming" || booking.status === "active" ? (
@@ -135,11 +156,12 @@ export function BookingDetailsModal({
                       variant="secondary"
                       size="sm"
                       onClick={handleCancelBooking}
+                      disabled={isCancelActionDisabled}
                       className="flex-1"
                     >
-                      Cancel Booking
+                      {isCancelling ? "Cancelling..." : "Cancel Booking"}
                     </AppButton>
-                  ) : (
+                  ) : booking.status === "cancelled" ? null : (
                     <AppButton
                       variant="primary"
                       size="sm"
@@ -149,9 +171,15 @@ export function BookingDetailsModal({
                       Leave Review
                     </AppButton>
                   )}
-                  <AppButton variant="ghost" size="sm" onClick={onClose}>
-                    Close
-                  </AppButton>
+                  {booking.status === "cancelled" ? (
+                    <AppButton variant="ghost" size="sm" onClick={onClose} className="flex-1">
+                      Close
+                    </AppButton>
+                  ) : (
+                    <AppButton variant="ghost" size="sm" onClick={onClose}>
+                      Close
+                    </AppButton>
+                  )}
                 </div>
               </Dialog.Panel>
             </Transition.Child>

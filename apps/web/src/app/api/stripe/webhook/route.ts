@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
 import { getStripe } from "@/server/lib/stripe";
-import { handleStripeCheckoutCompleted } from "@/server/services/bookings";
+import {
+  handleStripeChargeRefunded,
+  handleStripeCheckoutCompleted,
+  handleStripeRefundFailed,
+  handleStripeRefundSucceeded,
+} from "@/server/services/bookings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +41,21 @@ export async function POST(request: Request) {
   try {
     if (event.type === "checkout.session.completed") {
       await handleStripeCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+    }
+
+    if (event.type === "charge.refunded") {
+      await handleStripeChargeRefunded(event.data.object as Stripe.Charge);
+    }
+
+    if (event.type === "refund.updated") {
+      const refund = event.data.object as Stripe.Refund;
+      if (refund.status === "succeeded") {
+        await handleStripeRefundSucceeded(refund);
+      }
+
+      if (refund.status === "failed" || refund.status === "canceled") {
+        await handleStripeRefundFailed(refund);
+      }
     }
 
     return NextResponse.json({ data: { received: true } });

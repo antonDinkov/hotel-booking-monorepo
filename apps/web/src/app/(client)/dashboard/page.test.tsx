@@ -27,15 +27,31 @@ jest.mock("@/components/FeaturedListings", () => ({
   ),
 }));
 
+jest.mock("@/app/api/auth/[...nextauth]/route", () => ({
+  authOptions: {},
+}));
+
+let mockGetServerSession: jest.Mock;
 let mockGetHotelPanelData: jest.Mock;
+let mockGetBookings: jest.Mock;
+
+jest.mock("next-auth/next", () => ({
+  getServerSession: (...args: unknown[]) => mockGetServerSession(...args),
+}));
 
 jest.mock("@/server/services/hotelPanel", () => ({
   getHotelPanelData: (...args: unknown[]) => mockGetHotelPanelData(...args),
 }));
 
+jest.mock("@/server/services/bookings", () => ({
+  getBookings: (...args: unknown[]) => mockGetBookings(...args),
+}));
+
 describe("DashboardPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
+    mockGetBookings = jest.fn().mockResolvedValue([]);
   });
 
   it("renders dashboard with panel data when available", async () => {

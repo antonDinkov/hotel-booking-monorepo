@@ -12,7 +12,7 @@
  * - Makes logic reusable for mobile clients by exposing the same
  *   underlying behavior behind an HTTP API.
  */
-import { and, eq, gte, ilike, lt, gt, inArray, or } from "drizzle-orm";
+import { and, eq, gte, ilike, lt, lte, gt, inArray, or } from "drizzle-orm";
 
 import { db } from "../../db";
 import { hotelImages, hotels, roomTypes, bookings } from "../../db/schema";
@@ -26,6 +26,22 @@ function formatDateKey(date: Date): string {
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
+}
+
+async function normalizeExpiredPendingBookings(now = new Date()): Promise<void> {
+    await db
+        .update(bookings)
+        .set({
+            status: "cancelled",
+            paymentStatus: "cancelled",
+            expiresAt: null,
+        })
+        .where(
+            and(
+                or(eq(bookings.status, "pending_payment"), eq(bookings.status, "pending")),
+                lte(bookings.expiresAt, now)
+            )
+        );
 }
 
 export async function getHotelPanelData(): Promise<HotelPanelData> {
@@ -190,6 +206,8 @@ export async function getRoomAvailabilityForHotel(
     checkOutDate: string,
     guestsCount: number
 ): Promise<RoomAvailability[]> {
+    await normalizeExpiredPendingBookings();
+
     if (!checkInDate || !checkOutDate || guestsCount < 1) return [];
 
     const checkIn = new Date(checkInDate);
@@ -271,6 +289,8 @@ export async function searchAvailableHotels(
     checkOutDate: string,
     guestsCount: number
 ): Promise<Listing[]> {
+    await normalizeExpiredPendingBookings();
+
     const hotelsData = await db
         .select()
         .from(hotels)

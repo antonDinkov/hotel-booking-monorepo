@@ -1,8 +1,35 @@
 export type BookingStatus = "pending_payment" | "confirmed" | "cancelled" | "expired";
 export type BookingLifecycleStatus = BookingStatus;
-export type BookingDisplayStatus = "upcoming" | "active" | "past";
+export type BookingDisplayStatus = "upcoming" | "active" | "past" | "cancelled";
 export type BookingPaymentMethod = "stripe" | "cash_on_arrival";
-export type BookingPaymentStatus = "pending" | "paid" | "failed" | "cancelled";
+export type BookingPaymentStatus =
+  | "pending"
+  | "paid"
+  | "failed"
+  | "cancelled"
+  | "refund_pending"
+  | "refunded"
+  | "refund_denied";
+
+export type CancelledBookingBadge =
+  | "Cancelled"
+  | "Cancelled · Refunded"
+  | "Cancelled · Without refund"
+  | "Cancelled · Refund pending";
+
+export interface BookingCancellationNotice {
+  title: string;
+  message: string;
+}
+
+export interface CancelBookingResult {
+  bookingId: number;
+  status: BookingLifecycleStatus;
+  paymentMethod: BookingPaymentMethod | null;
+  paymentStatus: BookingPaymentStatus;
+  stripeRefundId?: string | null;
+  notification: BookingCancellationNotice;
+}
 
 export interface MyBooking {
   id: string;
@@ -14,6 +41,11 @@ export interface MyBooking {
   checkOut: string;
   totalPrice: number;
   status: BookingDisplayStatus;
+  lifecycleStatus?: BookingLifecycleStatus;
+  paymentMethod?: BookingPaymentMethod | null;
+  paymentStatus?: BookingPaymentStatus;
+  cancelledBadge?: CancelledBookingBadge;
+  canCancel?: boolean;
   daysRemaining?: number;
 }
 
@@ -41,6 +73,7 @@ export interface BookingSummary {
   hotelName: string;
   hotelLocation: string;
   roomType: string;
+  roomCapacity: number;
   checkInDate: string;
   checkOutDate: string;
   guestsCount: number;
@@ -62,6 +95,7 @@ export interface BookingConfirmation {
   hotelName: string;
   hotelLocation: string;
   roomType: string;
+  roomCapacity: number;
   checkInDate: string;
   checkOutDate: string;
   guestsCount: number;

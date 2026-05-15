@@ -6,7 +6,7 @@ import BookingConfirmationClient from "./BookingConfirmationClient";
 
 interface Props {
   params: { id: string } | Promise<{ id: string }>;
-  searchParams?: { stripe?: string } | Promise<{ stripe?: string }>;
+  searchParams?: { stripe?: string; session_id?: string } | Promise<{ stripe?: string; session_id?: string }>;
 }
 
 export default async function BookingConfirmationPage({ params, searchParams }: Props) {
@@ -32,6 +32,7 @@ export default async function BookingConfirmationPage({ params, searchParams }: 
       <BookingConfirmationClient
         confirmation={confirmation}
         stripeStatus={resolvedSearchParams.stripe}
+        stripeSessionId={resolvedSearchParams.session_id}
       />
     </main>
   );

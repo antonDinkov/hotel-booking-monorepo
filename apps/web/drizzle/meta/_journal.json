@@ -71,6 +71,13 @@
       "when": 1778848262128,
       "tag": "0009_smooth_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778873555203,
+      "tag": "0010_amusing_bucky",
+      "breakpoints": true
     }
   ]
 }

@@ -1,10 +1,24 @@
+import { getServerSession } from "next-auth/next";
+import { redirect } from "next/navigation";
 import { SearchEngineWrapper } from "@/components/SearchEngineWrapper";
 import { FeaturedListings } from "@/components/FeaturedListings";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getHotelPanelData } from "@/server/services/hotelPanel";
+import { getBookings } from "@/server/services/bookings";
 import type { HotelPanelData } from "@/types/hotel-panel";
 
 export default async function DashboardPage() {
-    const panelData: HotelPanelData | null = await getHotelPanelData();
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+        redirect("/login");
+    }
+
+    const [panelData, bookings] = await Promise.all([
+        getHotelPanelData(),
+        getBookings(session.user.id as string),
+    ]);
+    const upcomingTripsCount = bookings.filter((booking) => booking.status === "upcoming").length;
 
     return (
         <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -30,8 +44,12 @@ export default async function DashboardPage() {
             <section className="grid gap-6 md:grid-cols-3">
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                     <p className="text-sm font-semibold text-slate-500">Upcoming Trips</p>
-                    <p className="mt-3 text-3xl font-semibold text-slate-900">0</p>
-                    <p className="mt-2 text-xs text-slate-500">No upcoming stays yet.</p>
+                    <p className="mt-3 text-3xl font-semibold text-slate-900">{upcomingTripsCount}</p>
+                    <p className="mt-2 text-xs text-slate-500">
+                        {upcomingTripsCount > 0
+                            ? `${upcomingTripsCount} upcoming trip${upcomingTripsCount === 1 ? "" : "s"} planned.`
+                            : "No upcoming stays yet."}
+                    </p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                     <p className="text-sm font-semibold text-slate-500">Saved Hotels</p>

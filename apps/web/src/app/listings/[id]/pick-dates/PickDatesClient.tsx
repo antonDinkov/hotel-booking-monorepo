@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { BookingStayFields } from "@/components/BookingStayFields";
 import { AppButton } from "@/components/AppButton";
 import { ArrowLeftIcon } from "@heroicons/react/24/solid";
-import { createPendingBookingHoldRequest } from "@/lib/booking-client";
 import type { ListingDetails } from "@/types/hotel-panel";
 
 interface PickDatesClientProps {
@@ -101,23 +100,14 @@ export default function PickDatesClient({ listing, roomTypeId, roomPrice, rooms,
             return;
         }
 
-        try {
-            const hold = await createPendingBookingHoldRequest({
-                hotelId: Number(listing.id),
-                roomTypeId: Number(roomTypeId),
-                checkInDate: checkIn,
-                checkOutDate: checkOut,
-                guestsCount: Number(currentGuests),
-                roomsCount: rooms,
-            });
+        const params = new URLSearchParams({
+            checkInDate: checkIn,
+            checkOutDate: checkOut,
+            guests: currentGuests,
+        });
 
-            router.push(`/listings/${listing.id}/summary?bookingId=${hold.bookingId}`);
-        } catch (err) {
-            console.error("Reserve hold error:", err);
-            setError(err instanceof Error ? err.message : "Unable to reserve this room. Please try again.");
-        } finally {
-            setIsCheckingAvailability(false);
-        }
+        router.push(`/listings/${listing.id}?${params.toString()}`);
+        setIsCheckingAvailability(false);
     };
 
     const nights = checkIn && checkOut
@@ -202,7 +192,7 @@ export default function PickDatesClient({ listing, roomTypeId, roomPrice, rooms,
                             onClick={handleContinue}
                             disabled={isCheckingAvailability}
                         >
-                            {isCheckingAvailability ? "Reserving..." : "Reserve"}
+                            {isCheckingAvailability ? "Checking..." : "Show availability"}
                         </AppButton>
                         <AppButton
                             variant="ghost"

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { authorizeApi } from "@/app/api/auth/[...nextauth]/route";
 import { cancelBooking } from "@/server/services/bookings";
-import { apiError, authError, parseBookingId } from "../../booking-api-helpers";
+import { apiError, authError, mapCancelBookingError, parseBookingId } from "../../booking-api-helpers";
 
 export async function PATCH(
   _request: Request,
@@ -15,8 +15,10 @@ export async function PATCH(
   const bookingId = parseBookingId(id);
   if (!bookingId) return apiError("Invalid booking ID", "INVALID_BOOKING_ID", 400);
 
-  const cancelled = await cancelBooking(bookingId, auth.userId as string);
-  if (!cancelled) return apiError("Booking not found", "BOOKING_NOT_FOUND", 404);
-
-  return NextResponse.json({ data: { cancelled: true } });
+  try {
+    const result = await cancelBooking(bookingId, auth.userId as string);
+    return NextResponse.json({ data: result });
+  } catch (error) {
+    return mapCancelBookingError(error);
+  }
 }

@@ -1,4 +1,4 @@
-import type { BookingDisplayStatus } from "@/types/booking";
+import type { BookingDisplayStatus, CancelledBookingBadge } from "@/types/booking";
 
 interface MyBookingCardProps {
   hotelName: string;
@@ -7,6 +7,7 @@ interface MyBookingCardProps {
   checkOut: string;
   totalPrice: number;
   status: BookingDisplayStatus;
+  cancelledBadge?: CancelledBookingBadge;
   daysRemaining?: number;
   // Accept the mouse event so the handler can stop propagation/prevent default
   onCardClick?: (e: React.MouseEvent) => void;
@@ -28,7 +29,19 @@ const statusStyles: Record<BookingDisplayStatus, { container: string; badge: str
     badge: "bg-slate-200 text-slate-600",
     label: "Past",
   },
+  cancelled: {
+    container: "border-red-200 bg-red-50 text-slate-900",
+    badge: "bg-red-100 text-red-700",
+    label: "Cancelled",
+  },
 };
+
+function getCancelledDetails(label?: CancelledBookingBadge): string {
+  if (label === "Cancelled · Refunded") return "Your refund has been issued.";
+  if (label === "Cancelled · Refund pending") return "Your refund is being processed.";
+  if (label === "Cancelled · Without refund") return "Cancelled without refund.";
+  return "No payment was collected.";
+}
 
 export function MyBookingCard({
   hotelName,
@@ -37,10 +50,12 @@ export function MyBookingCard({
   checkOut,
   totalPrice,
   status,
+  cancelledBadge,
   daysRemaining,
   onCardClick,
 }: MyBookingCardProps) {
   const styles = statusStyles[status];
+  const badgeLabel = status === "cancelled" ? cancelledBadge ?? styles.label : styles.label;
 
   return (
     <article
@@ -62,8 +77,8 @@ export function MyBookingCard({
         </div>
 
         <div className="flex flex-col items-start gap-3 sm:items-end">
-          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] ${styles.badge}`}>
-            {styles.label}
+          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold tracking-wide ${styles.badge}`}>
+            {badgeLabel}
           </span>
           <p className="text-sm font-semibold">${totalPrice}</p>
         </div>
@@ -85,6 +100,8 @@ export function MyBookingCard({
             </p>
           ) : status === "upcoming" ? (
             <p className="mt-2 text-slate-700">This reservation starts soon.</p>
+          ) : status === "cancelled" ? (
+            <p className="mt-2 text-slate-700">{getCancelledDetails(cancelledBadge)}</p>
           ) : (
             <p className="mt-2 text-slate-700">This stay has completed.</p>
           )}

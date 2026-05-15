@@ -457,36 +457,59 @@ async function seed() {
 		}
 	}
 
-	const peterBookings = Array.from({ length: 5 }, (_, index) => {
-		const checkIn = new Date("2026-01-01");
-		checkIn.setDate(checkIn.getDate() + index * 10);
+	const today = new Date();
+	const toDateOnly = (date: Date): string => date.toISOString().slice(0, 10);
+	const addDays = (date: Date, days: number): Date => {
+		const next = new Date(date);
+		next.setDate(next.getDate() + days);
+		return next;
+	};
 
-		const checkOut = new Date(checkIn);
-		checkOut.setDate(checkOut.getDate() + (2 + (index % 3)));
-
-		const roomTypeId = insertedRoomTypes[index % insertedRoomTypes.length].id;
-
+	const peterPastBookings = Array.from({ length: 3 }, (_, index) => {
+		const checkIn = addDays(today, -30 - index * 12);
+		const checkOut = addDays(checkIn, 3 + (index % 2));
 		return {
-			roomTypeId,
+			roomTypeId: insertedRoomTypes[index % insertedRoomTypes.length].id,
 			userId: peterUser.id,
-			checkInDate: checkIn.toISOString().slice(0, 10),
-			checkOutDate: checkOut.toISOString().slice(0, 10),
+			checkInDate: toDateOnly(checkIn),
+			checkOutDate: toDateOnly(checkOut),
 			guestsCount: 1 + (index % 2),
+			roomsCount: 1,
 			status: "confirmed" as const,
+			paymentMethod: "cash_on_arrival" as const,
+			paymentStatus: "pending" as const,
 		};
 	});
 
-	// Add one active booking for peter@abv.bg (today is 2026-05-09)
-	const peterActiveBooking = {
+	const peterFutureBookings = Array.from({ length: 3 }, (_, index) => {
+		const checkIn = addDays(today, 14 + index * 10);
+		const checkOut = addDays(checkIn, 2 + (index % 3));
+		return {
+			roomTypeId: insertedRoomTypes[(index + 3) % insertedRoomTypes.length].id,
+			userId: peterUser.id,
+			checkInDate: toDateOnly(checkIn),
+			checkOutDate: toDateOnly(checkOut),
+			guestsCount: 1 + (index % 2),
+			roomsCount: 1,
+			status: "confirmed" as const,
+			paymentMethod: "cash_on_arrival" as const,
+			paymentStatus: "pending" as const,
+		};
+	});
+
+	const peterCurrentBooking = {
 		roomTypeId: insertedRoomTypes[0].id,
 		userId: peterUser.id,
-		checkInDate: "2026-05-05",
-		checkOutDate: "2026-05-15",
+		checkInDate: toDateOnly(addDays(today, -2)),
+		checkOutDate: toDateOnly(addDays(today, 7)),
 		guestsCount: 2,
+		roomsCount: 1,
 		status: "confirmed" as const,
+		paymentMethod: "cash_on_arrival" as const,
+		paymentStatus: "pending" as const,
 	};
 
-	bookingsSeed.push(...peterBookings, peterActiveBooking);
+	bookingsSeed.push(...peterPastBookings, ...peterFutureBookings, peterCurrentBooking);
 
 	const insertedBookings = await db.insert(bookings).values(bookingsSeed).returning({ id: bookings.id });
 

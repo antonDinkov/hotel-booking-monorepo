@@ -119,6 +119,9 @@ export const bookings = pgTable("bookings", {
 	status: text("status").default("confirmed"),
 	paymentMethod: text("payment_method"),
 	paymentStatus: text("payment_status"),
+	stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+	stripePaymentIntentId: text("stripe_payment_intent_id"),
+	stripeRefundId: text("stripe_refund_id"),
 	expiresAt: timestamp("expires_at"),
 	createdAt: timestamp("created_at").defaultNow(),
 });
