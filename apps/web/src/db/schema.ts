@@ -115,9 +115,11 @@ export const bookings = pgTable("bookings", {
 	checkInDate: date("check_in_date").notNull(),
 	checkOutDate: date("check_out_date").notNull(),
 	guestsCount: integer("guests_count").notNull(),
+	roomsCount: integer("rooms_count").notNull().default(1),
 	status: text("status").default("confirmed"),
 	paymentMethod: text("payment_method"),
 	paymentStatus: text("payment_status"),
+	expiresAt: timestamp("expires_at"),
 	createdAt: timestamp("created_at").defaultNow(),
 });
 

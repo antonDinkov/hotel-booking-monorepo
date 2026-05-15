@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MyBookingCard } from "./MyBookingCard";
-import type { BookingStatus } from "@/types/booking";
+import type { BookingDisplayStatus } from "@/types/booking";
 
 describe("MyBookingCard", () => {
   const defaultProps = {
@@ -11,7 +11,7 @@ describe("MyBookingCard", () => {
     checkIn: "2026-05-20",
     checkOut: "2026-05-25",
     totalPrice: 750,
-    status: "active" as BookingStatus,
+    status: "active" as BookingDisplayStatus,
     daysRemaining: 6,
     onCardClick: jest.fn(),
   };

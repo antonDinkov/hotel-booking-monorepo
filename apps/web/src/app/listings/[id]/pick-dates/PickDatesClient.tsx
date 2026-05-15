@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BookingStayFields } from "@/components/BookingStayFields";
 import { AppButton } from "@/components/AppButton";
 import { ArrowLeftIcon } from "@heroicons/react/24/solid";
+import { createPendingBookingHoldRequest } from "@/lib/booking-client";
 import type { ListingDetails } from "@/types/hotel-panel";
 
 interface PickDatesClientProps {
@@ -54,6 +55,11 @@ export default function PickDatesClient({ listing, roomTypeId, roomPrice, rooms,
             return;
         }
 
+        if (!roomTypeId) {
+            setError("Please select a room before reserving.");
+            return;
+        }
+
         const checkInDate = new Date(checkIn);
         const checkOutDate = new Date(checkOut);
 
@@ -95,18 +101,23 @@ export default function PickDatesClient({ listing, roomTypeId, roomPrice, rooms,
             return;
         }
 
-        // If availability check passed, navigate to summary
-        const params = new URLSearchParams({
-            checkInDate: checkIn,
-            checkOutDate: checkOut,
-            guests: currentGuests,
-            roomTypeId,
-            roomPrice: String(roomPrice),
-            rooms: String(rooms),
-        });
+        try {
+            const hold = await createPendingBookingHoldRequest({
+                hotelId: Number(listing.id),
+                roomTypeId: Number(roomTypeId),
+                checkInDate: checkIn,
+                checkOutDate: checkOut,
+                guestsCount: Number(currentGuests),
+                roomsCount: rooms,
+            });
 
-        router.push(`/listings/${listing.id}/summary?${params.toString()}`);
-        setIsCheckingAvailability(false);
+            router.push(`/listings/${listing.id}/summary?bookingId=${hold.bookingId}`);
+        } catch (err) {
+            console.error("Reserve hold error:", err);
+            setError(err instanceof Error ? err.message : "Unable to reserve this room. Please try again.");
+        } finally {
+            setIsCheckingAvailability(false);
+        }
     };
 
     const nights = checkIn && checkOut
@@ -191,7 +202,7 @@ export default function PickDatesClient({ listing, roomTypeId, roomPrice, rooms,
                             onClick={handleContinue}
                             disabled={isCheckingAvailability}
                         >
-                            Reserve
+                            {isCheckingAvailability ? "Reserving..." : "Reserve"}
                         </AppButton>
                         <AppButton
                             variant="ghost"

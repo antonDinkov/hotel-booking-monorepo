@@ -12,14 +12,21 @@
  * - Makes logic reusable for mobile clients by exposing the same
  *   underlying behavior behind an HTTP API.
  */
-import { and, eq, gte, ilike, lt, gt, sql, inArray } from "drizzle-orm";
+import { and, eq, gte, ilike, lt, gt, inArray, or } from "drizzle-orm";
 
 import { db } from "../../db";
 import { hotelImages, hotels, roomTypes, bookings } from "../../db/schema";
 import type { HotelPanelData, Listing, ListingDetails } from "../../types/hotel-panel";
 import type { RoomAvailability } from "../../types/room-availability";
 
-type BookingRange = { checkInDate: string; checkOutDate: string };
+type BookingRange = { checkInDate: string; checkOutDate: string; roomsCount: number | null };
+
+function formatDateKey(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
 
 export async function getHotelPanelData(): Promise<HotelPanelData> {
     const rows = await db
@@ -162,14 +169,14 @@ function calculateAvailableRooms(
         const end = new Date(booking.checkOutDate);
 
         for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
-            const key = d.toISOString().slice(0, 10);
-            dailyMap.set(key, (dailyMap.get(key) || 0) + 1);
+            const key = formatDateKey(d);
+            dailyMap.set(key, (dailyMap.get(key) || 0) + Math.max(1, booking.roomsCount ?? 1));
         }
     }
 
     let minAvailable = totalRooms;
     for (let d = new Date(checkInDate); d < new Date(checkOutDate); d.setDate(d.getDate() + 1)) {
-        const key = d.toISOString().slice(0, 10);
+        const key = formatDateKey(d);
         const booked = dailyMap.get(key) || 0;
         minAvailable = Math.min(minAvailable, totalRooms - booked);
     }
@@ -207,15 +214,19 @@ export async function getRoomAvailabilityForHotel(
     const roomTypeIds = roomTypesData.map((roomType) => roomType.id);
     const bookingsData = await db
         .select({
-            roomTypeId: bookings.roomTypeId,
             checkInDate: bookings.checkInDate,
             checkOutDate: bookings.checkOutDate,
+            roomTypeId: bookings.roomTypeId,
+            roomsCount: bookings.roomsCount,
         })
         .from(bookings)
         .where(
             and(
                 inArray(bookings.roomTypeId, roomTypeIds),
-                eq(bookings.status, "confirmed"),
+                or(
+                    eq(bookings.status, "confirmed"),
+                    and(or(eq(bookings.status, "pending_payment"), eq(bookings.status, "pending")), gt(bookings.expiresAt, new Date()))
+                ),
                 lt(bookings.checkInDate, checkOutDate),
                 gt(bookings.checkOutDate, checkInDate)
             )
@@ -227,6 +238,7 @@ export async function getRoomAvailabilityForHotel(
         list.push({
             checkInDate: String(booking.checkInDate),
             checkOutDate: String(booking.checkOutDate),
+            roomsCount: booking.roomsCount,
         });
         bookingsByRoomType.set(booking.roomTypeId, list);
     }
@@ -298,12 +310,21 @@ export async function searchAvailableHotels(
 
         for (const roomType of roomTypesData) {
             const bookingsData = await db
-                .select()
+                .select({
+                    checkInDate: bookings.checkInDate,
+                    checkOutDate: bookings.checkOutDate,
+                    roomsCount: bookings.roomsCount,
+                })
                 .from(bookings)
                 .where(
                     and(
                         eq(bookings.roomTypeId, roomType.id),
-                        eq(bookings.status, "confirmed")
+                        or(
+                            eq(bookings.status, "confirmed"),
+                            and(or(eq(bookings.status, "pending_payment"), eq(bookings.status, "pending")), gt(bookings.expiresAt, new Date()))
+                        ),
+                        lt(bookings.checkInDate, checkOutDate),
+                        gt(bookings.checkOutDate, checkInDate)
                     )
                 );
 
@@ -318,8 +339,8 @@ export async function searchAvailableHotels(
                     d < end;
                     d.setDate(d.getDate() + 1)
                 ) {
-                    const key = d.toISOString().slice(0, 10);
-                    dailyMap.set(key, (dailyMap.get(key) || 0) + 1);
+                    const key = formatDateKey(d);
+                    dailyMap.set(key, (dailyMap.get(key) || 0) + Math.max(1, booking.roomsCount ?? 1));
                 }
             }
 
@@ -330,7 +351,7 @@ export async function searchAvailableHotels(
                 d < new Date(checkOutDate);
                 d.setDate(d.getDate() + 1)
             ) {
-                const key = d.toISOString().slice(0, 10);
+                const key = formatDateKey(d);
                 const booked = dailyMap.get(key) || 0;
 
                 if (booked >= roomType.totalRooms) {

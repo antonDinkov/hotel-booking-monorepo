@@ -1,50 +1,122 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { AppButton } from "@/components/AppButton";
 import { ArrowLeftIcon } from "@heroicons/react/24/solid";
-import type { ListingDetails } from "@/types/hotel-panel";
+
+import { AppButton } from "@/components/AppButton";
+import type { BookingSummary } from "@/types/booking";
 
 interface BookingSummaryClientProps {
-  listing: ListingDetails;
-  checkInDate: string;
-  checkOutDate: string;
-  guests: string;
-  roomTypeId: string;
-  rooms: string;
-  roomPrice: number;
+  summary: BookingSummary;
+  paymentCancelled: boolean;
 }
 
-export default function BookingSummaryClient({
-  listing,
-  checkInDate,
-  checkOutDate,
-  guests,
-  roomTypeId,
-  rooms,
-  roomPrice,
-}: BookingSummaryClientProps) {
+type ApiErrorPayload = {
+  error?: {
+    message?: string;
+  };
+};
+
+function getSecondsRemaining(expiresAt: string | null): number {
+  if (!expiresAt) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000));
+}
+
+function formatCountdown(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
+function formatPaymentMethod(method: string): string {
+  if (method === "stripe") return "Card";
+  if (method === "cash_on_arrival") return "Pay on arrival";
+  return "Not selected";
+}
+
+export default function BookingSummaryClient({ summary, paymentCancelled }: BookingSummaryClientProps) {
   const router = useRouter();
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isCashLoading, setIsCashLoading] = useState(false);
+  const [isStripeLoading, setIsStripeLoading] = useState(false);
+  const [secondsRemaining, setSecondsRemaining] = useState(() => getSecondsRemaining(summary.expiresAt));
 
-  // Calculate number of nights
-  const checkIn = new Date(checkInDate);
-  const checkOut = new Date(checkOutDate);
-  const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setSecondsRemaining(getSecondsRemaining(summary.expiresAt));
+    }, 1000);
 
-  // Calculate total price
-  const roomsCount = Number.parseInt(rooms, 10) || 1;
-  const pricePerNight = roomPrice;
-  const totalPrice = pricePerNight * nights * roomsCount;
+    return () => window.clearInterval(timer);
+  }, [summary.expiresAt]);
 
-  const handleConfirm = () => {
-    // For now, redirect to dashboard; in production, create booking here
-    router.push("/dashboard");
+  const supportsStripe = summary.supportedPaymentMethods.includes("stripe");
+  const supportsCashOnArrival = summary.supportedPaymentMethods.includes("cash_on_arrival");
+  const hasNoSupportedMethods = !supportsStripe && !supportsCashOnArrival;
+  const holdExpired = summary.status === "expired" || (summary.status === "pending_payment" && secondsRemaining <= 0);
+  const canPay = summary.status === "pending_payment" && !holdExpired;
+  const isActionLoading = isCashLoading || isStripeLoading;
+
+  const handleCashOnArrival = async () => {
+    if (!canPay || !supportsCashOnArrival || isActionLoading) {
+      return;
+    }
+
+    setIsCashLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/bookings/${summary.bookingId}/cash-on-arrival`, {
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => null) as ApiErrorPayload | null;
+
+      if (!response.ok) {
+        setErrorMessage(payload?.error?.message ?? "Failed to confirm booking.");
+        return;
+      }
+
+      router.push(`/bookings/${summary.bookingId}/confirmation`);
+    } catch {
+      setErrorMessage("Failed to confirm booking.");
+    } finally {
+      setIsCashLoading(false);
+    }
+  };
+
+  const handleStripeCheckout = async () => {
+    if (!canPay || !supportsStripe || isActionLoading) {
+      return;
+    }
+
+    setIsStripeLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/bookings/${summary.bookingId}/stripe-checkout`, {
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => null) as ({ data?: { url?: string } } & ApiErrorPayload) | null;
+
+      if (!response.ok || !payload?.data?.url) {
+        setErrorMessage(payload?.error?.message ?? "Failed to start card payment.");
+        return;
+      }
+
+      window.location.assign(payload.data.url);
+    } catch {
+      setErrorMessage("Failed to start card payment.");
+    } finally {
+      setIsStripeLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Back Button */}
       <div className="mb-6">
         <AppButton
           onClick={() => router.back()}
@@ -57,146 +129,177 @@ export default function BookingSummaryClient({
         </AppButton>
       </div>
 
-      {/* Summary Content */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Left Column - Booking Details */}
-        <div className="lg:col-span-2">
+        <section className="lg:col-span-2">
           <div className="rounded-xl border border-slate-200 bg-white p-8">
-            <h1 className="mb-8 text-3xl font-bold text-slate-950">Booking Summary</h1>
+            <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">
+              Booking #{summary.bookingId}
+            </p>
+            <h1 className="mt-2 text-3xl font-bold text-slate-950">Booking Summary</h1>
 
-            {/* Property Details */}
-            <div className="mb-8 border-b border-slate-200 pb-8">
-              <h2 className="mb-4 text-xl font-semibold text-slate-900">Property</h2>
-              <div className="flex gap-4">
-                {listing.images?.[0] && (
-                  <div className="relative h-32 w-32 overflow-hidden rounded-lg">
-                    <Image
-                      src={listing.images[0].src}
-                      alt={listing.images[0].alt}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                )}
-                <div className="flex-1">
-                  <p className="text-2xl font-bold text-slate-950">{listing.name}</p>
-                  <p className="mt-1 text-slate-600">{listing.location}</p>
-                  <p className="mt-2 text-sm text-slate-500">{listing.category}</p>
-                </div>
+            {paymentCancelled && !holdExpired && (
+              <p className="mt-5 rounded-lg bg-amber-50 p-4 text-sm text-amber-800">
+                Payment was cancelled. Your reservation hold is still active.
+              </p>
+            )}
+
+            {holdExpired && (
+              <p className="mt-5 rounded-lg bg-rose-50 p-4 text-sm text-rose-700">
+                This reservation hold has expired. Payment actions are disabled.
+              </p>
+            )}
+
+            <div className="mt-8 grid gap-6 border-t border-slate-200 pt-8 sm:grid-cols-2">
+              <div>
+                <p className="text-sm text-slate-500">Hotel</p>
+                <p className="mt-1 text-lg font-semibold text-slate-950">{summary.hotelName}</p>
+                <p className="mt-1 text-sm text-slate-600">{summary.hotelLocation}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Room type</p>
+                <p className="mt-1 text-lg font-semibold text-slate-950">{summary.roomType}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Check-in</p>
+                <p className="mt-1 font-semibold text-slate-950">{summary.checkInDate}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Check-out</p>
+                <p className="mt-1 font-semibold text-slate-950">{summary.checkOutDate}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Guests</p>
+                <p className="mt-1 font-semibold text-slate-950">{summary.guestsCount}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Rooms</p>
+                <p className="mt-1 font-semibold text-slate-950">{summary.roomsCount}</p>
               </div>
             </div>
 
-            {/* Stay Details */}
-            <div className="mb-8 border-b border-slate-200 pb-8">
-              <h2 className="mb-4 text-xl font-semibold text-slate-900">Your Stay</h2>
-              <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
-                <div>
-                  <p className="text-sm text-slate-600">Check-in</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-950">
-                    {new Date(checkInDate).toLocaleDateString("en-US", {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-600">Check-out</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-950">
-                    {new Date(checkOutDate).toLocaleDateString("en-US", {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-600">Duration</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-950">
-                    {nights} night{nights === 1 ? "" : "s"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Guests and Rooms */}
-            <div className="mb-8 border-b border-slate-200 pb-8">
-              <h2 className="mb-4 text-xl font-semibold text-slate-900">Guests & Rooms</h2>
-              <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
-                <div>
-                  <p className="text-sm text-slate-600">Guests</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-950">{guests}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-600">Room Type ID</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-950">{roomTypeId}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-600">Number of Rooms</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-950">{roomsCount}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Pricing Breakdown */}
-            <div>
-              <h2 className="mb-4 text-xl font-semibold text-slate-900">Price Breakdown</h2>
-              <div className="space-y-3">
-                <div className="flex justify-between">
+            <div className="mt-8 border-t border-slate-200 pt-8">
+              <h2 className="text-xl font-semibold text-slate-900">Price Breakdown</h2>
+              <div className="mt-4 space-y-3">
+                <div className="flex justify-between gap-4">
                   <span className="text-slate-600">
-                    ${pricePerNight} × {nights} night{nights === 1 ? "" : "s"}
+                    ${summary.pricePerNight} x {summary.nights} night{summary.nights === 1 ? "" : "s"}
                   </span>
-                  <span className="font-semibold text-slate-900">
-                    ${pricePerNight * nights}
-                  </span>
+                  <span className="font-semibold text-slate-900">${summary.pricePerNight * summary.nights}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">× {roomsCount} room{roomsCount === 1 ? "" : "s"}</span>
-                  <span className="font-semibold text-slate-900">{roomsCount}×</span>
+                <div className="flex justify-between gap-4">
+                  <span className="text-slate-600">
+                    x {summary.roomsCount} room{summary.roomsCount === 1 ? "" : "s"}
+                  </span>
+                  <span className="font-semibold text-slate-900">{summary.roomsCount}x</span>
                 </div>
                 <div className="border-t border-slate-200 pt-3">
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-4">
                     <span className="text-lg font-semibold text-slate-900">Total Price</span>
-                    <span className="text-2xl font-bold text-blue-600">${totalPrice}</span>
+                    <span className="text-2xl font-bold text-blue-600">${summary.totalPrice}</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Right Column - Confirmation Card */}
-        <div className="lg:col-span-1">
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-lg sticky top-24">
+        <aside className="lg:col-span-1">
+          <div className="sticky top-24 rounded-xl border border-slate-200 bg-white p-6 shadow-lg">
             <div className="mb-6">
               <p className="text-sm text-slate-600">Total Price</p>
-              <p className="mt-2 text-4xl font-bold text-slate-950">${totalPrice}</p>
+              <p className="mt-2 text-4xl font-bold text-slate-950">${summary.totalPrice}</p>
               <p className="mt-1 text-xs text-slate-500">
-                for {nights} night{nights === 1 ? "" : "s"}
+                {summary.nights} night{summary.nights === 1 ? "" : "s"}
               </p>
             </div>
+
+            {summary.status === "pending_payment" && (
+              <div className="mb-5 rounded-lg bg-blue-50 p-4 text-blue-950">
+                <p className="text-sm text-blue-800">Your reservation is held for</p>
+                <p className="mt-1 text-3xl font-bold tabular-nums">{formatCountdown(secondsRemaining)}</p>
+              </div>
+            )}
 
             <AppButton
               variant="primary"
               size="lg"
               className="mb-3 w-full shadow-blue-700/25"
-              onClick={handleConfirm}
+              onClick={() => setShowPaymentModal(true)}
+              disabled={!canPay || hasNoSupportedMethods}
             >
-              Confirm Booking
+              Go to payment
             </AppButton>
 
-            <AppButton variant="secondary" size="lg" className="w-full" onClick={() => router.back()}>
+            <AppButton
+              variant="secondary"
+              size="lg"
+              className="w-full"
+              onClick={() => router.push(`/listings/${summary.hotelId}`)}
+            >
               Change Selection
             </AppButton>
 
-            <div className="mt-6 pt-6 border-t border-slate-200">
-              <p className="text-sm text-slate-600 mb-3">✓ Free cancellation before check-in</p>
-              <p className="text-sm text-slate-600 mb-3">✓ 24/7 customer support</p>
-              <p className="text-sm text-slate-600">✓ Secure payment guaranteed</p>
+            <div className="mt-6 border-t border-slate-200 pt-6 text-sm text-slate-600">
+              <p>Payment method: {formatPaymentMethod(summary.paymentMethod ?? "")}</p>
+              <p className="mt-2">Payment status: {summary.paymentStatus}</p>
             </div>
           </div>
-        </div>
+        </aside>
       </div>
+
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h2 className="text-xl font-semibold text-slate-900">Choose payment method</h2>
+
+            {hasNoSupportedMethods && (
+              <p className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
+                This hotel has no available payment methods right now.
+              </p>
+            )}
+
+            {holdExpired && (
+              <p className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
+                This reservation hold has expired.
+              </p>
+            )}
+
+            {errorMessage && <p className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{errorMessage}</p>}
+
+            <div className="mt-5 space-y-3">
+              <AppButton
+                variant="primary"
+                size="lg"
+                className="w-full"
+                disabled={!supportsStripe || !canPay || isActionLoading}
+                onClick={handleStripeCheckout}
+              >
+                {isStripeLoading ? "Opening checkout..." : "Pay now with card"}
+              </AppButton>
+
+              <AppButton
+                variant="secondary"
+                size="lg"
+                className="w-full"
+                disabled={!supportsCashOnArrival || !canPay || isActionLoading}
+                onClick={handleCashOnArrival}
+              >
+                {isCashLoading ? "Confirming..." : "Pay on arrival"}
+              </AppButton>
+            </div>
+
+            <AppButton
+              variant="ghost"
+              size="sm"
+              className="mt-4"
+              onClick={() => setShowPaymentModal(false)}
+              disabled={isActionLoading}
+            >
+              Close
+            </AppButton>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

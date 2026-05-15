@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { AppButton } from "./AppButton";
 import { ArrowLeftIcon } from "@heroicons/react/24/solid";
+import { createPendingBookingHoldRequest } from "@/lib/booking-client";
 import type { ListingDetails } from "../types/hotel-panel";
 import type { RoomAvailability } from "@/types/room-availability";
 import { RoomAvailabilityTable } from "./RoomAvailabilityTable";
@@ -41,6 +42,8 @@ export function ListingDetailsCard({
 
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<number | null>(defaultRoomTypeId);
   const [roomCounts, setRoomCounts] = useState<Record<number, number>>({});
+  const [reserveError, setReserveError] = useState<string | null>(null);
+  const [isReserving, setIsReserving] = useState(false);
 
   useEffect(() => {
     if (!defaultRoomTypeId) {
@@ -88,17 +91,28 @@ export function ListingDetailsCard({
   const nights = getNights(checkInDate, checkOutDate);
   const totalPrice = totalPerNight * nights;
 
-  const handleReserve = () => {
+  const handleReserve = async () => {
     if (!selectedRoomTypeId || selectedRooms < 1 || !hasSearchDates || !selectedRoom) return;
-    const params = new URLSearchParams({
-      checkInDate,
-      checkOutDate,
-      guests: String(guestsCount),
-      roomTypeId: String(selectedRoomTypeId),
-      roomPrice: String(selectedRoom.pricePerNight),
-      rooms: String(selectedRooms),
-    });
-    router.push(`/listings/${listing.id}/summary?${params.toString()}`);
+
+    setIsReserving(true);
+    setReserveError(null);
+
+    try {
+      const hold = await createPendingBookingHoldRequest({
+        hotelId: Number(listing.id),
+        roomTypeId: selectedRoomTypeId,
+        checkInDate,
+        checkOutDate,
+        guestsCount,
+        roomsCount: selectedRooms,
+      });
+
+      router.push(`/listings/${listing.id}/summary?bookingId=${hold.bookingId}`);
+    } catch (error) {
+      setReserveError(error instanceof Error ? error.message : "Failed to reserve this room.");
+    } finally {
+      setIsReserving(false);
+    }
   };
 
   const handleChooseDate = () => {
@@ -266,14 +280,20 @@ export function ListingDetailsCard({
                 </p>
               </div>
 
+              {reserveError && (
+                <p className="mb-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
+                  {reserveError}
+                </p>
+              )}
+
               <AppButton
                 variant="primary"
                 size="lg"
                 className="mb-3 w-full shadow-blue-700/25"
                 onClick={primaryAction}
-                disabled={!selectedRoomTypeId || selectedRooms < 1}
+                disabled={!selectedRoomTypeId || selectedRooms < 1 || isReserving}
               >
-                {primaryActionLabel}
+                {isReserving ? "Reserving..." : primaryActionLabel}
               </AppButton>
 
               <AppButton variant="secondary" size="lg" className="w-full">

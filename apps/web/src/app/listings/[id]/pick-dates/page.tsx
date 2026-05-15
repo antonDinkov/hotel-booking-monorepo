@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { getListingById } from "@/server/services/hotelPanel";
 import PickDatesClient from "./PickDatesClient";
 import type { ListingDetails } from "@/types/hotel-panel";
-import { log } from "console";
 
 interface Props {
   params: { id: string } | Promise<{ id: string }>;

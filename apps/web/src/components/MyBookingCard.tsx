@@ -1,4 +1,4 @@
-import type { BookingStatus } from "@/types/booking";
+import type { BookingDisplayStatus } from "@/types/booking";
 
 interface MyBookingCardProps {
   hotelName: string;
@@ -6,13 +6,13 @@ interface MyBookingCardProps {
   checkIn: string;
   checkOut: string;
   totalPrice: number;
-  status: BookingStatus;
+  status: BookingDisplayStatus;
   daysRemaining?: number;
   // Accept the mouse event so the handler can stop propagation/prevent default
   onCardClick?: (e: React.MouseEvent) => void;
 }
 
-const statusStyles: Record<BookingStatus, { container: string; badge: string; label: string }> = {
+const statusStyles: Record<BookingDisplayStatus, { container: string; badge: string; label: string }> = {
   upcoming: {
     container: "border-slate-200 bg-slate-50 text-slate-900",
     badge: "bg-blue-50 text-blue-700",
