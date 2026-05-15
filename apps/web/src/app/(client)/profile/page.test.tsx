@@ -26,12 +26,30 @@ jest.mock("../../../server/services/profile", () => ({
     getCurrentUserProfile: jest.fn(),
 }));
 
+jest.mock("../../../server/services/auth", () => ({
+    getUserRoles: jest.fn(),
+}));
+
+jest.mock("next-auth/next", () => ({
+    getServerSession: jest.fn(),
+}));
+
+jest.mock("@/app/api/auth/[...nextauth]/route", () => ({
+    authOptions: {},
+}));
+
+jest.mock("./actions", () => ({
+    saveCurrentUserProfile: jest.fn(),
+}));
+
 jest.mock("./ProfilePageClient", () => ({
     __esModule: true,
     default: jest.fn(() => null),
 }));
 
 const { getCurrentUserProfile } = require("../../../server/services/profile");
+const { getUserRoles } = require("../../../server/services/auth");
+const { getServerSession } = require("next-auth/next");
 const ProfilePageClient = require("./ProfilePageClient").default as jest.MockedFunction<any>;
 const { redirect } = require("next/navigation");
 
@@ -41,6 +59,8 @@ describe("ProfilePage server component", () => {
     beforeEach(() => jest.clearAllMocks());
 
     it("passes fetched profile to ProfilePageClient", async () => {
+        getServerSession.mockResolvedValue(null);
+        getUserRoles.mockResolvedValue([]);
         getCurrentUserProfile.mockResolvedValue(mockProfile);
 
         const result = await ProfilePage();
@@ -54,6 +74,8 @@ describe("ProfilePage server component", () => {
 
     it("calls redirect when profile is missing", async () => {
         (redirect as jest.Mock).mockImplementation(() => { throw new Error("redirect"); });
+        getServerSession.mockResolvedValue(null);
+        getUserRoles.mockResolvedValue([]);
         getCurrentUserProfile.mockResolvedValue(null);
 
         await expect(ProfilePage()).rejects.toThrow("redirect");
