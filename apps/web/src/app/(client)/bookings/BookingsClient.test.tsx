@@ -5,8 +5,14 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { BookingsClient } from "./BookingsClient";
 import type { MyBooking } from "@/types/booking";
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({
+    refresh: jest.fn(),
+  }),
+}));
+
 jest.mock("@/components/MyBookingCard", () => ({
-  MyBookingCard: ({ onCardClick, hotelName }) => (
+  MyBookingCard: ({ onCardClick, hotelName }: MyBooking & { onCardClick: () => void }) => (
     <div data-testid="booking-card" onClick={onCardClick}>
       {hotelName}
     </div>
@@ -14,12 +20,13 @@ jest.mock("@/components/MyBookingCard", () => ({
 }));
 
 jest.mock("@/components/BookingDetailsModal", () => ({
-  BookingDetailsModal: ({ isOpen, onClose, booking, onCancelBooking, onLeaveReview }: any) => (
+  BookingDetailsModal: ({ isOpen, onClose, booking, onCancelBooking, onSubmitReview, notice }: any) => (
     isOpen ? (
       <div data-testid="booking-modal">
+        {notice ? <p>{notice.title}</p> : null}
         <button onClick={onClose}>Close</button>
         <button onClick={() => onCancelBooking(booking?.id)}>Cancel</button>
-        <button onClick={() => onLeaveReview(booking?.id)}>Review</button>
+        <button onClick={() => onSubmitReview(booking?.id, 5, "Great stay")}>Review</button>
       </div>
     ) : null
   ),
@@ -34,6 +41,11 @@ jest.mock("@/components/AppButton", () => ({
 }));
 
 describe("BookingsClient", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    global.fetch = jest.fn();
+  });
+
   const mockActiveBooking: MyBooking = {
     id: "active-1",
     hotelName: "Active Hotel",
@@ -198,37 +210,66 @@ describe("BookingsClient", () => {
     expect(screen.queryByTestId("booking-modal")).not.toBeInTheDocument();
   });
 
-  it("handles cancel booking action", () => {
-    const consoleSpy = jest.spyOn(console, "log").mockImplementation();
+  it("handles cancel booking action", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          bookingId: 1,
+          status: "cancelled",
+          paymentMethod: "stripe",
+          paymentStatus: "refunded",
+          notification: {
+            title: "Booking cancelled",
+            message: "Your booking was cancelled.",
+          },
+        },
+      }),
+    });
+
     render(<BookingsClient activeBooking={null} inactiveBookings={mockInactiveBookings} />);
 
-    // Open modal
     const firstCard = screen.getAllByTestId("booking-card")[0];
     fireEvent.click(firstCard);
 
-    // Cancel booking
     fireEvent.click(screen.getByText("Cancel"));
 
-    expect(consoleSpy).toHaveBeenCalledWith("Cancel booking:", "inactive-1");
-    expect(screen.queryByTestId("booking-modal")).not.toBeInTheDocument();
-
-    consoleSpy.mockRestore();
+    expect(global.fetch).toHaveBeenCalledWith("/api/bookings/inactive-1/cancel", { method: "PATCH" });
   });
 
-  it("handles leave review action", () => {
-    const consoleSpy = jest.spyOn(console, "log").mockImplementation();
+  it("handles leave review action", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          id: 10,
+          userId: "user-1",
+          hotelId: 1,
+          bookingId: 1,
+          rating: 5,
+          comment: "Great stay",
+          moderationStatus: "published",
+          partnerReply: null,
+          createdAt: "2026-05-09T00:00:00.000Z",
+        },
+      }),
+    });
+
     render(<BookingsClient activeBooking={null} inactiveBookings={mockInactiveBookings} />);
 
-    // Open modal
     const firstCard = screen.getAllByTestId("booking-card")[0];
     fireEvent.click(firstCard);
 
-    // Leave review
     fireEvent.click(screen.getByText("Review"));
 
-    expect(consoleSpy).toHaveBeenCalledWith("Leave review for:", "inactive-1");
-    expect(screen.queryByTestId("booking-modal")).not.toBeInTheDocument();
-
-    consoleSpy.mockRestore();
+    expect(global.fetch).toHaveBeenCalledWith("/api/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bookingId: Number("inactive-1"),
+        rating: 5,
+        comment: "Great stay",
+      }),
+    });
   });
 });

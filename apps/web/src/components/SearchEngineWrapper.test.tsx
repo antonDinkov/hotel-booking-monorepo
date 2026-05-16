@@ -6,6 +6,13 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { act } from "react";
 import { SearchEngineWrapper } from "./SearchEngineWrapper";
 
+jest.mock("next/navigation", () => ({
+    useRouter: () => ({
+        push: jest.fn(),
+        refresh: jest.fn(),
+    }),
+}));
+
 const searchFields = [
     { label: "Destination", placeholder: "Where", icon: "pin" },
     { label: "Check In", placeholder: "N/A", icon: "calendar" },

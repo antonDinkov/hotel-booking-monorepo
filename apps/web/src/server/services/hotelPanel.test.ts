@@ -4,14 +4,39 @@ jest.resetModules();
 jest.mock("@/db", () => ({
   db: {
     select: jest.fn(),
+    update: jest.fn(),
   },
+}));
+
+jest.mock("./reviews", () => ({
+  getHotelReviewSummariesByHotelIds: jest.fn(),
 }));
 
 import { getHotelPanelData, getListingById, searchAvailableHotels } from "./hotelPanel";
 import { db } from "@/db";
-import type { HotelPanelData, ListingDetails, Listing } from "@/types/hotel-panel";
+import { getHotelReviewSummariesByHotelIds } from "./reviews";
 
-const mockDb = db as jest.Mocked<typeof db>;
+const mockDb = db as unknown as {
+  select: jest.Mock;
+  update: jest.Mock;
+};
+const mockGetHotelReviewSummariesByHotelIds =
+  getHotelReviewSummariesByHotelIds as jest.MockedFunction<typeof getHotelReviewSummariesByHotelIds>;
+
+const defaultReviewSummary = {
+  averageRating: 4.7,
+  reviewCount: 24,
+  excellentReviewCount: 18,
+  ratingLabel: "4.7",
+  reviewLabel: "Verified stays",
+  trustBadge: null,
+};
+
+const createUpdateQuery = () => ({
+  set: jest.fn().mockReturnValue({
+    where: jest.fn().mockResolvedValue(undefined),
+  }),
+});
 
 // Create a more sophisticated mock that handles different query patterns
 const createMockQuery = (result: any) => ({
@@ -64,6 +89,10 @@ const createAdvancedMock = () => {
 describe("hotelPanel service", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockDb.update.mockReturnValue(createUpdateQuery());
+    mockGetHotelReviewSummariesByHotelIds.mockImplementation(async (hotelIds) => (
+      new Map(hotelIds.map((hotelId) => [hotelId, defaultReviewSummary]))
+    ));
   });
 
   describe("getHotelPanelData", () => {
@@ -131,7 +160,9 @@ describe("hotelPanel service", () => {
         name: "Test Hotel",
         category: "Test City",
         rating: 4.7,
+        ratingLabel: "4.7",
         reviewLabel: "Verified stays",
+        trustBadge: null,
         image: {
           src: "https://example.com/test.jpg",
           alt: "Test Hotel cover image",
@@ -245,9 +276,6 @@ describe("hotelPanel service", () => {
       expect(result!.price).toBe(150);
       expect(result!.pricePerNight).toBe("From $150 per night");
       expect(result!.description).toBe("A beautiful hotel");
-      expect(result!.bedrooms).toBe(undefined);
-      expect(result!.bathrooms).toBe(undefined);
-      expect(result!.guests).toBe(undefined);
       expect(result!.amenities).toHaveLength(6);
       expect(result!.highlights).toHaveLength(4);
     });
@@ -416,7 +444,7 @@ describe("hotelPanel service", () => {
 
       const mockImages = [{ hotelId: 1, url: "image.jpg" }];
 
-      const mockRoomTypes = []; // No rooms meet capacity >= 4 requirement
+      const mockRoomTypes: Array<{ id: number; hotelId: number; capacity: number; totalRooms: number }> = []; // No rooms meet capacity >= 4 requirement
 
       let callCount = 0;
       mockDb.select = jest.fn().mockImplementation(() => {
@@ -643,7 +671,7 @@ describe("hotelPanel service", () => {
 
     it("should use fallback image when hotel has no images", async () => {
       const mockHotels = [{ id: 1, name: "No Image Hotel", location: "Test City" }];
-      const mockImages = []; // No images
+      const mockImages: Array<{ hotelId: number; url: string }> = []; // No images
       const mockRoomTypes = [{ id: 1, hotelId: 1, capacity: 2, totalRooms: 1 }];
 
       let callCount = 0;

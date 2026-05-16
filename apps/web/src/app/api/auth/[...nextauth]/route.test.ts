@@ -27,6 +27,14 @@ const mockGetServerSession = getServerSession as jest.MockedFunction<any>;
 const mockGetUserRoles = getUserRoles as jest.MockedFunction<any>;
 const mockEnsureOAuthUser = ensureOAuthUser as jest.MockedFunction<any>;
 
+type AuthCallbacks = NonNullable<typeof authOptions.callbacks>;
+const callbacks = authOptions.callbacks as AuthCallbacks & {
+  jwt: NonNullable<AuthCallbacks["jwt"]>;
+  session: NonNullable<AuthCallbacks["session"]>;
+  signIn: NonNullable<AuthCallbacks["signIn"]>;
+  redirect: NonNullable<AuthCallbacks["redirect"]>;
+};
+
 describe("auth route", () => {
   let infoSpy: jest.SpyInstance;
 
@@ -99,7 +107,7 @@ describe("auth route", () => {
   it("jwt callback attaches id, email and roles", async () => {
     mockGetUserRoles.mockResolvedValue(["admin"]);
 
-    const token = await authOptions.callbacks.jwt({ token: {}, user: { id: "u3", email: "e3" } } as any);
+    const token = await callbacks.jwt({ token: {}, user: { id: "u3", email: "e3" } } as any);
 
     expect(token.id).toBe("u3");
     expect(token.email).toBe("e3");
@@ -108,7 +116,7 @@ describe("auth route", () => {
 
   it("session callback sets session.user.id and email", async () => {
     const session = { user: {} };
-    const out = await authOptions.callbacks.session({ session, token: { id: "u4", email: "e4" } } as any);
+    const out = await callbacks.session({ session, token: { id: "u4", email: "e4" } } as any) as any;
 
     expect(out.user.id).toBe("u4");
     expect(out.user.email).toBe("e4");
@@ -118,7 +126,7 @@ describe("auth route", () => {
     const user: any = {};
     mockEnsureOAuthUser.mockResolvedValue({ user: { id: "oauth1", email: "o@example.com" }, created: true });
 
-    const allowed = await authOptions.callbacks.signIn({ user, account: { provider: "github" }, profile: { email: "o@example.com" } } as any);
+    const allowed = await callbacks.signIn({ user, account: { provider: "github" }, profile: { email: "o@example.com" } } as any);
 
     expect(allowed).toBe(true);
     expect(user.id).toBe("oauth1");
@@ -129,7 +137,7 @@ describe("auth route", () => {
     const user: any = {};
     mockEnsureOAuthUser.mockResolvedValue({ user: { id: "oauth2", email: "o2@example.com" }, created: false });
 
-    const allowed = await authOptions.callbacks.signIn({ user, account: { provider: "github" }, profile: { email: "o2@example.com" } } as any);
+    const allowed = await callbacks.signIn({ user, account: { provider: "github" }, profile: { email: "o2@example.com" } } as any);
 
     expect(allowed).toBe(true);
     expect(user.id).toBe("oauth2");
@@ -137,7 +145,7 @@ describe("auth route", () => {
   });
 
   it("signIn callback allows non-github providers", async () => {
-    const allowed = await authOptions.callbacks.signIn({ user: {}, account: { provider: "credentials" } } as any);
+    const allowed = await callbacks.signIn({ user: {}, account: { provider: "credentials" } } as any);
     expect(allowed).toBe(true);
   });
 
@@ -159,12 +167,12 @@ describe("auth route", () => {
 
   it("signIn callback returns false for github when no email available", async () => {
     const user: any = {};
-    const allowed = await authOptions.callbacks.signIn({ user, account: { provider: "github" }, profile: {} } as any);
+    const allowed = await callbacks.signIn({ user, account: { provider: "github" }, profile: {} } as any);
     expect(allowed).toBe(false);
   });
 
   it("redirect callback returns the provided baseUrl", async () => {
-    const out = await authOptions.callbacks.redirect({ baseUrl: "http://example.com" } as any);
+    const out = await callbacks.redirect({ baseUrl: "http://example.com" } as any);
     expect(out).toBe("http://example.com");
   });
 });

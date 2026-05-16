@@ -83,17 +83,6 @@ export default async function DashboardPage() {
                 </Link>
             </section>
 
-            <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-slate-900">Quick actions</h2>
-                <div className="mt-4 grid gap-3 grid-cols-2">
-                    <button className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100">
-                        Review a recent booking
-                    </button>
-                    <button className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100">
-                        Update profile preferences
-                    </button>
-                </div>
-            </section>
 
             {panelData ? (
                 <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8 lg:pt-24">

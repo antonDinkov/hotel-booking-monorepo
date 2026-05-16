@@ -5,6 +5,13 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { FeaturedListings } from "./FeaturedListings";
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    refresh: jest.fn(),
+  }),
+}));
+
 function makeListing(i: number) {
   return {
     id: String(i),

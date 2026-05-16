@@ -65,7 +65,7 @@ describe("BookingDetailsModal", () => {
     onClose: jest.fn(),
     booking,
     onCancelBooking: jest.fn(),
-    onLeaveReview: jest.fn(),
+    onSubmitReview: jest.fn(),
   };
 
   beforeEach(() => {
@@ -136,7 +136,7 @@ describe("BookingDetailsModal", () => {
     render(
       <BookingDetailsModal
         {...props}
-        booking={{ ...booking, status: "past" }}
+        booking={{ ...booking, status: "past", canReview: true }}
       />
     );
 
@@ -158,13 +158,14 @@ describe("BookingDetailsModal", () => {
     render(
       <BookingDetailsModal
         {...props}
-        booking={{ ...booking, status: "past" }}
+        booking={{ ...booking, status: "past", canReview: true }}
       />
     );
 
     await user.click(screen.getByText("Leave Review"));
+    await user.click(screen.getByText("Submit Review"));
 
-    expect(props.onLeaveReview).toHaveBeenCalledWith(booking.id);
+    expect(props.onSubmitReview).toHaveBeenCalledWith(booking.id, 5, "");
   });
 
   it("does not call handlers when callbacks are undefined", async () => {
@@ -172,20 +173,21 @@ describe("BookingDetailsModal", () => {
     const propsWithoutCallbacks = {
       ...props,
       onCancelBooking: undefined,
-      onLeaveReview: undefined,
+      onSubmitReview: undefined,
     };
 
     render(
       <BookingDetailsModal
         {...propsWithoutCallbacks}
-        booking={{ ...booking, status: "past" }}
+        booking={{ ...booking, status: "past", canReview: true }}
       />
     );
 
     await user.click(screen.getByText("Leave Review"));
+    await user.click(screen.getByText("Submit Review"));
     // Should not throw, just not call undefined function
 
-    expect(screen.getByText("Leave Review")).toBeInTheDocument();
+    expect(screen.getByText("Submit Review")).toBeInTheDocument();
   });
 
   // ------------------------
@@ -268,7 +270,7 @@ describe("BookingDetailsModal", () => {
     render(
       <BookingDetailsModal
         {...props}
-        booking={{ ...booking, status: "past" }}
+        booking={{ ...booking, status: "past", canReview: true }}
       />
     );
 
@@ -346,7 +348,7 @@ describe("BookingDetailsModal", () => {
     render(
       <BookingDetailsModal
         {...props}
-        booking={{ ...booking, status: "past" }}
+        booking={{ ...booking, status: "past", canReview: true }}
       />
     );
 

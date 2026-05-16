@@ -6,16 +6,6 @@ import FavoritesPageClient from "./FavoritesPageClient";
 
 const FAVORITES_PAGE_SIZE = 6;
 
-function buildPagination(loaded: number, total: number) {
-  const nextOffset = loaded < total ? loaded : null;
-  return {
-    limit: FAVORITES_PAGE_SIZE,
-    offset: 0,
-    nextOffset,
-    hasMore: nextOffset !== null,
-  };
-}
-
 export default async function FavoritesPage() {
   const auth = await authorize(["client"]);
 
@@ -44,7 +34,7 @@ export default async function FavoritesPage() {
       <FavoritesPageClient
         initialHotels={hotels}
         initialTotal={total}
-        initialPagination={buildPagination(hotels.length, total)}
+        pageSize={FAVORITES_PAGE_SIZE}
         initialFavoriteHotelIds={favoriteHotelIds}
       />
     </main>

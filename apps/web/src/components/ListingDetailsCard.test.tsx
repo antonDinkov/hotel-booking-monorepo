@@ -24,9 +24,6 @@ const listing: ListingDetails = {
   price: 240,
   pricePerNight: "$240/night",
   location: "Miami Beach, FL",
-  bedrooms: 2,
-  bathrooms: 2,
-  guests: 4,
   amenities: [
     { icon: "wave", name: "Oceanfront" },
     { icon: "wifi", name: "Wi-Fi" },
