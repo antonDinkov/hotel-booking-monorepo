@@ -8,6 +8,8 @@ interface MyBookingCardProps {
   totalPrice: number;
   status: BookingDisplayStatus;
   cancelledBadge?: CancelledBookingBadge;
+  canReview?: boolean;
+  hasReview?: boolean;
   daysRemaining?: number;
   // Accept the mouse event so the handler can stop propagation/prevent default
   onCardClick?: (e: React.MouseEvent) => void;
@@ -51,6 +53,8 @@ export function MyBookingCard({
   totalPrice,
   status,
   cancelledBadge,
+  canReview,
+  hasReview,
   daysRemaining,
   onCardClick,
 }: MyBookingCardProps) {
@@ -102,6 +106,10 @@ export function MyBookingCard({
             <p className="mt-2 text-slate-700">This reservation starts soon.</p>
           ) : status === "cancelled" ? (
             <p className="mt-2 text-slate-700">{getCancelledDetails(cancelledBadge)}</p>
+          ) : hasReview ? (
+            <p className="mt-2 text-slate-700">Review submitted.</p>
+          ) : canReview ? (
+            <p className="mt-2 text-slate-700">Ready for review.</p>
           ) : (
             <p className="mt-2 text-slate-700">This stay has completed.</p>
           )}

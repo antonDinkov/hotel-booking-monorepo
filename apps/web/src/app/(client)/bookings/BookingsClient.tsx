@@ -13,6 +13,7 @@ import type {
   CancelledBookingBadge,
   MyBooking,
 } from "@/types/booking";
+import type { Review } from "@/types/review";
 
 interface BookingsClientProps {
   activeBooking: MyBooking | null;
@@ -23,6 +24,14 @@ const BOOKINGS_PER_PAGE = 3;
 
 type CancelBookingPayload = {
     data?: CancelBookingResult;
+    error?: {
+        code?: string;
+        message?: string;
+    };
+};
+
+type ReviewPayload = {
+    data?: Review;
     error?: {
         code?: string;
         message?: string;
@@ -61,6 +70,27 @@ function getErrorNotice(error?: CancelBookingPayload["error"]): BookingCancellat
     };
 }
 
+function getReviewErrorNotice(error?: ReviewPayload["error"]): BookingCancellationNotice {
+    if (error?.code === "BOOKING_NOT_COMPLETED") {
+        return {
+            title: "Review unavailable",
+            message: error.message ?? "Only completed bookings can be reviewed.",
+        };
+    }
+
+    if (error?.code === "REVIEW_ALREADY_EXISTS") {
+        return {
+            title: "Review already submitted",
+            message: error.message ?? "This booking already has a review.",
+        };
+    }
+
+    return {
+        title: "Review failed",
+        message: error?.message ?? "Please try again later.",
+    };
+}
+
 function getSortPriority(booking: MyBooking): number {
     if (booking.status === "cancelled") return 2;
     if (booking.status === "past") return 1;
@@ -88,6 +118,15 @@ function toCancelledBooking(booking: MyBooking, result: CancelBookingResult): My
     };
 }
 
+function toReviewedBooking(booking: MyBooking, review: Review): MyBooking {
+    return {
+        ...booking,
+        hasReview: true,
+        canReview: false,
+        reviewId: review.id,
+    };
+}
+
 export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClientProps) {
     const router = useRouter();
     const [currentActiveBooking, setCurrentActiveBooking] = useState(activeBooking);
@@ -96,7 +135,8 @@ export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClie
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [isCancelling, setIsCancelling] = useState(false);
-    const [cancellationNotice, setCancellationNotice] = useState<BookingCancellationNotice | null>(null);
+    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+    const [actionNotice, setActionNotice] = useState<BookingCancellationNotice | null>(null);
     const [noticeTone, setNoticeTone] = useState<"success" | "error">("success");
 
     useEffect(() => {
@@ -117,7 +157,7 @@ export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClie
         e?.stopPropagation?.();
         e?.preventDefault?.();
         setSelectedBooking(booking);
-        setCancellationNotice(null);
+        setActionNotice(null);
         setIsModalOpen(true);
     };
 
@@ -131,7 +171,7 @@ export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClie
 
         const booking = selectedBooking;
         setIsCancelling(true);
-        setCancellationNotice(null);
+        setActionNotice(null);
 
         try {
             const response = await fetch(`/api/bookings/${bookingId}/cancel`, { method: "PATCH" });
@@ -139,7 +179,7 @@ export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClie
 
             if (!response.ok || !payload?.data) {
                 setNoticeTone("error");
-                setCancellationNotice(getErrorNotice(payload?.error));
+                setActionNotice(getErrorNotice(payload?.error));
                 return;
             }
 
@@ -156,21 +196,66 @@ export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClie
             }
 
             setNoticeTone("success");
-            setCancellationNotice(payload.data.notification);
+            setActionNotice(payload.data.notification);
             handleCloseModal();
             router.refresh();
         } catch {
             setNoticeTone("error");
-            setCancellationNotice({ title: "Cancellation failed", message: "Please contact support." });
+            setActionNotice({ title: "Cancellation failed", message: "Please contact support." });
         } finally {
             setIsCancelling(false);
         }
     };
 
-    const handleLeaveReview = (bookingId: string) => {
-        // TODO: Implement leave review logic
-        console.log("Leave review for:", bookingId);
-        handleCloseModal();
+    const handleSubmitReview = async (bookingId: string, rating: number, comment: string) => {
+        if (isSubmittingReview) return;
+
+        const booking = selectedBooking;
+        setIsSubmittingReview(true);
+        setActionNotice(null);
+
+        try {
+            const response = await fetch("/api/reviews", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    bookingId: Number(bookingId),
+                    rating,
+                    comment: comment.trim() || null,
+                }),
+            });
+            const payload = await response.json().catch(() => null) as ReviewPayload | null;
+
+            if (!response.ok || !payload?.data) {
+                setNoticeTone("error");
+                setActionNotice(getReviewErrorNotice(payload?.error));
+                return;
+            }
+
+            if (booking) {
+                const reviewedBooking = toReviewedBooking(booking, payload.data);
+                setSelectedBooking(reviewedBooking);
+                setCurrentInactiveBookings((items) => items.map((item) => (
+                    item.id === bookingId ? reviewedBooking : item
+                )));
+
+                if (currentActiveBooking?.id === bookingId) {
+                    setCurrentActiveBooking(reviewedBooking);
+                }
+            }
+
+            setNoticeTone("success");
+            setActionNotice({
+                title: "Review submitted",
+                message: "Your review has been published.",
+            });
+            router.refresh();
+        } catch {
+            setNoticeTone("error");
+            setActionNotice({ title: "Review failed", message: "Please try again later." });
+        } finally {
+            setIsSubmittingReview(false);
+        }
     };
 
     const handlePreviousPage = () => {
@@ -184,12 +269,12 @@ export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClie
     return (
         <>
             {/* Active Booking Section */}
-            {cancellationNotice && !isModalOpen && (
+            {actionNotice && !isModalOpen && (
                 <div className={`mb-6 rounded-xl p-4 text-sm ${
                     noticeTone === "error" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
                 }`}>
-                    <p className="font-semibold">{cancellationNotice.title}</p>
-                    <p className="mt-1">{cancellationNotice.message}</p>
+                    <p className="font-semibold">{actionNotice.title}</p>
+                    <p className="mt-1">{actionNotice.message}</p>
                 </div>
             )}
 
@@ -266,9 +351,10 @@ export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClie
                 onClose={handleCloseModal}
                 booking={selectedBooking}
                 onCancelBooking={handleCancelBooking}
-                onLeaveReview={handleLeaveReview}
+                onSubmitReview={handleSubmitReview}
                 isCancelling={isCancelling}
-                notice={isModalOpen ? cancellationNotice : null}
+                isSubmittingReview={isSubmittingReview}
+                notice={isModalOpen ? actionNotice : null}
                 noticeTone={noticeTone}
             />
         </>

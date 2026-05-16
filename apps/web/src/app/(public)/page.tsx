@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { HeroSection } from "../../components/HeroSection";
 import { FeaturedListings } from "../../components/FeaturedListings";
 import { SearchEngineWrapper } from "../../components/SearchEngineWrapper";
-import type { Listing, HotelPanelData } from "../../types/hotel-panel";
+import type { HotelPanelData } from "../../types/hotel-panel";
 
 export default async function Home() {
   const auth = await authorize(["client", "admin"]);

@@ -1,7 +1,9 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
 	boolean,
+	check,
 	date,
+	index,
 	integer,
 	pgTable,
 	serial,
@@ -9,6 +11,7 @@ import {
 	timestamp,
 	uuid,
 	primaryKey,
+	uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
@@ -73,7 +76,24 @@ export const hotels = pgTable("hotels", {
 		.notNull()
 		.references(() => users.id, { onDelete: "cascade" }),
 	isFeatured: boolean("is_featured").notNull().default(false),
+	registeredAt: timestamp("registered_at").notNull().defaultNow(),
 });
+
+export const favoriteHotels = pgTable(
+	"favorite_hotels",
+	{
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		hotelId: integer("hotel_id")
+			.notNull()
+			.references(() => hotels.id, { onDelete: "cascade" }),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(table) => ({
+		pk: primaryKey(table.userId, table.hotelId),
+	})
+);
 
 export const hotelImages = pgTable("hotel_images", {
 	id: serial("id").primaryKey(),
@@ -126,13 +146,57 @@ export const bookings = pgTable("bookings", {
 	createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const reviews = pgTable(
+	"reviews",
+	{
+		id: serial("id").primaryKey(),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => users.id),
+		hotelId: integer("hotel_id")
+			.notNull()
+			.references(() => hotels.id),
+		bookingId: integer("booking_id")
+			.notNull()
+			.references(() => bookings.id, { onDelete: "cascade" }),
+		rating: integer("rating").notNull(),
+		comment: text("comment"),
+		moderationStatus: text("moderation_status").notNull().default("published"),
+		partnerReply: text("partner_reply"),
+		partnerRepliedAt: timestamp("partner_replied_at"),
+		partnerRepliedBy: uuid("partner_replied_by").references(() => users.id, { onDelete: "set null" }),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		uniqueIndex("reviews_booking_id_unique").on(table.bookingId),
+		index("reviews_hotel_status_created_idx").on(table.hotelId, table.moderationStatus, table.createdAt),
+		index("reviews_user_created_idx").on(table.userId, table.createdAt),
+		check("reviews_rating_range_check", sql`${table.rating} >= 1 AND ${table.rating} <= 5`),
+		check("reviews_moderation_status_check", sql`${table.moderationStatus} IN ('published', 'hidden')`),
+	]
+);
+
 export const hotelsRelations = relations(hotels, ({ many, one }) => ({
 	images: many(hotelImages),
 	roomTypes: many(roomTypes),
 	paymentMethods: many(hotelPaymentMethods),
+	reviews: many(reviews),
+	favoriteHotels: many(favoriteHotels),
 	owner: one(users, {
 		fields: [hotels.ownerId],
 		references: [users.id],
+	}),
+}));
+
+export const favoriteHotelsRelations = relations(favoriteHotels, ({ one }) => ({
+	user: one(users, {
+		fields: [favoriteHotels.userId],
+		references: [users.id],
+	}),
+	hotel: one(hotels, {
+		fields: [favoriteHotels.hotelId],
+		references: [hotels.id],
 	}),
 }));
 
@@ -167,6 +231,29 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
 		fields: [bookings.userId],
 		references: [users.id],
 	}),
+	review: one(reviews, {
+		fields: [bookings.id],
+		references: [reviews.bookingId],
+	}),
+}));
+
+export const reviewsRelations = relations(reviews, ({ one }) => ({
+	user: one(users, {
+		fields: [reviews.userId],
+		references: [users.id],
+	}),
+	hotel: one(hotels, {
+		fields: [reviews.hotelId],
+		references: [hotels.id],
+	}),
+	booking: one(bookings, {
+		fields: [reviews.bookingId],
+		references: [bookings.id],
+	}),
+	partnerReplyAuthor: one(users, {
+		fields: [reviews.partnerRepliedBy],
+		references: [users.id],
+	}),
 }));
 
 export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
@@ -180,6 +267,8 @@ export const usersRelations = relations(users, ({ many, one }) => ({
 	userRoles: many(userRoles),
 	bookings: many(bookings),
 	ownedHotels: many(hotels),
+	reviews: many(reviews),
+	favoriteHotels: many(favoriteHotels),
 	profile: one(userProfiles, {
 		fields: [users.id],
 		references: [userProfiles.userId],

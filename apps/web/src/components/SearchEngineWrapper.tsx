@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { SearchEngine } from "./SearchEngine";
 import { ListingCard } from "./ListingCard";
 import { Pagination } from "./Pagination";
@@ -9,25 +9,32 @@ import type { SearchField, Listing } from "../types/hotel-panel";
 export function SearchEngineWrapper({
     searchFields,
     ctaLabel,
-    featuredListings,
+    favoriteHotelIds,
+    canFavorite = false,
 }: {
     searchFields: SearchField[];
     ctaLabel: string;
     featuredListings: Listing[];
+    favoriteHotelIds?: number[];
+    canFavorite?: boolean;
 }) {
     const [searchResults, setSearchResults] = useState<Listing[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [activeSearchParams, setActiveSearchParams] = useState<{ checkInDate?: string; checkOutDate?: string; guests?: string }>({});
     const [error, setError] = useState<string | null>(null);
+    const [favoriteIds, setFavoriteIds] = useState<number[]>(() => favoriteHotelIds ?? []);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 9;
     const resultsRef = useRef<HTMLElement | null>(null);
 
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchResults]);
+    const handleFavoriteChange = useCallback((hotelId: number, isFavorite: boolean) => {
+        setFavoriteIds((current) => {
+            if (isFavorite) return current.includes(hotelId) ? current : [...current, hotelId];
+            return current.filter((id) => id !== hotelId);
+        });
+    }, []);
 
     const handlePageChange = useCallback((p: number) => {
         setCurrentPage(p);
@@ -42,6 +49,7 @@ export function SearchEngineWrapper({
     const performSearch = useCallback(
         async (destination: string, checkInDate: string, checkOutDate: string, guestsCount: string) => {
             if (!destination.trim() || !checkInDate || !checkOutDate || !guestsCount) {
+                setCurrentPage(1);
                 setSearchResults([]);
                 setSearchQuery("");
                 setError(null);
@@ -49,6 +57,7 @@ export function SearchEngineWrapper({
                 return;
             }
 
+            setCurrentPage(1);
             setIsSearching(true);
             setError(null);
             setSearchQuery(destination);
@@ -109,6 +118,11 @@ export function SearchEngineWrapper({
         },
         [performSearch]
     );
+    const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
+    const paginatedListings = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return searchResults.slice(startIndex, startIndex + itemsPerPage);
+    }, [currentPage, searchResults, itemsPerPage]);
 
     return (
         <>
@@ -126,7 +140,7 @@ export function SearchEngineWrapper({
                 <section ref={resultsRef} className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
                     <div className="mb-8">
                         <h2 className="text-2xl font-bold text-slate-900">
-                            Search results for "{searchQuery}"
+                            Search results for <span>{searchQuery}</span>
                         </h2>
                         <p className="mt-2 text-slate-600">
                             {isSearching ? "Loading..." : `Found ${searchResults.length} properties`}
@@ -147,10 +161,15 @@ export function SearchEngineWrapper({
                     ) : searchResults.length > 0 ? (
                         <>
                             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                                {searchResults
-                                    .slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage)
-                                    .map((listing) => (
-                                        <ListingCard key={listing.id} listing={listing} searchParams={activeSearchParams} />
+                                {paginatedListings.map((listing) => (
+                                        <ListingCard
+                                            key={listing.id}
+                                            listing={listing}
+                                            searchParams={activeSearchParams}
+                                            initialIsFavorite={favoriteSet.has(Number(listing.id))}
+                                            canFavorite={canFavorite}
+                                            onFavoriteChange={handleFavoriteChange}
+                                        />
                                     ))}
                             </div>
 

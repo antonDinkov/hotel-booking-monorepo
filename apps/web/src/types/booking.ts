@@ -33,6 +33,7 @@ export interface CancelBookingResult {
 
 export interface MyBooking {
   id: string;
+  hotelId?: number;
   hotelName: string;
   hotelAddress?: string;
   hotelImage?: string;
@@ -46,6 +47,9 @@ export interface MyBooking {
   paymentStatus?: BookingPaymentStatus;
   cancelledBadge?: CancelledBookingBadge;
   canCancel?: boolean;
+  canReview?: boolean;
+  hasReview?: boolean;
+  reviewId?: number;
   daysRemaining?: number;
 }
 

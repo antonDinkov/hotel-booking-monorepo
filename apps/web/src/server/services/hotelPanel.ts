@@ -18,6 +18,7 @@ import { db } from "../../db";
 import { hotelImages, hotels, roomTypes, bookings } from "../../db/schema";
 import type { HotelPanelData, Listing, ListingDetails } from "../../types/hotel-panel";
 import type { RoomAvailability } from "../../types/room-availability";
+import { getHotelReviewSummariesByHotelIds } from "./reviews";
 
 type BookingRange = { checkInDate: string; checkOutDate: string; roomsCount: number | null };
 
@@ -57,15 +58,22 @@ export async function getHotelPanelData(): Promise<HotelPanelData> {
         .where(eq(hotels.isFeatured, true));
 
     const featuredMap = new Map<number, Listing>();
+    const hotelIds = Array.from(new Set(rows.map((row) => row.id)));
+    const reviewSummaries = await getHotelReviewSummariesByHotelIds(hotelIds);
 
     for (const row of rows) {
+        const summary = reviewSummaries.get(row.id);
+        if (!summary) continue;
+
         if (!featuredMap.has(row.id)) {
             featuredMap.set(row.id, {
                 id: String(row.id),
                 name: row.name,
                 category: row.location,
-                rating: 4.7,
-                reviewLabel: "Verified stays",
+                rating: summary.averageRating,
+                ratingLabel: summary.ratingLabel,
+                reviewLabel: summary.reviewLabel,
+                trustBadge: summary.trustBadge,
                 image: {
                     src: row.imageUrl ??
                         "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80",
@@ -123,6 +131,10 @@ export async function getListingById(id: string | number): Promise<ListingDetail
 
     if (!hotel) return null;
 
+    const reviewSummaries = await getHotelReviewSummariesByHotelIds([hotelId]);
+    const reviewSummary = reviewSummaries.get(hotelId);
+    if (!reviewSummary) return null;
+
     const roomTypesData = await db
         .select({ pricePerNight: roomTypes.pricePerNight })
         .from(roomTypes)
@@ -150,8 +162,10 @@ export async function getListingById(id: string | number): Promise<ListingDetail
         id: String(hotel.id),
         name: hotel.name,
         category: "Hotel",
-        rating: 4.7,
-        reviewLabel: "Verified stays",
+        rating: reviewSummary.averageRating,
+        ratingLabel: reviewSummary.ratingLabel,
+        reviewLabel: reviewSummary.reviewLabel,
+        trustBadge: reviewSummary.trustBadge,
         image: gallery[0],
         description: hotel.description ?? `${hotel.name} is located in ${hotel.location}.`,
         price: minPrice,
@@ -296,6 +310,8 @@ export async function searchAvailableHotels(
         .from(hotels)
         .where(ilike(hotels.location, `%${destination}%`));
 
+    const reviewSummaries = await getHotelReviewSummariesByHotelIds(hotelsData.map((hotel) => hotel.id));
+
     // 👉 взимаме всички images
     const images = await db
         .select({
@@ -387,12 +403,17 @@ export async function searchAvailableHotels(
         }
 
         if (hasAvailability) {
+            const summary = reviewSummaries.get(hotel.id);
+            if (!summary) continue;
+
             results.push({
                 id: String(hotel.id),
                 name: hotel.name,
                 category: hotel.location,
-                rating: 4.7,
-                reviewLabel: "Verified stays",
+                rating: summary.averageRating,
+                ratingLabel: summary.ratingLabel,
+                reviewLabel: summary.reviewLabel,
+                trustBadge: summary.trustBadge,
                 image: {
                     src:
                         imageMap.get(hotel.id) ??

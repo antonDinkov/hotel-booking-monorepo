@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { authorize } from "@/app/api/auth/[...nextauth]/route";
+import { getFavoriteHotelIds } from "@/server/services/favorites";
 import { getListingById, getRoomAvailabilityForHotel } from "@/server/services/hotelPanel";
 import { ListingDetailsCard } from "@/components/ListingDetailsCard";
 import type { ListingDetails } from "@/types/hotel-panel";
@@ -34,9 +36,14 @@ export default async function ListingPage({ params, searchParams }: Props) {
 
   if (!listing) return notFound();
 
-  const availability: RoomAvailability[] = checkInDate && checkOutDate
-    ? await getRoomAvailabilityForHotel(Number(resolvedParams.id), checkInDate, checkOutDate, guestsCount)
-    : [];
+  const auth = await authorize(["client"]);
+  const canFavorite = Boolean(auth.ok && auth.userId);
+  const [availability, favoriteHotelIds]: [RoomAvailability[], number[]] = await Promise.all([
+    checkInDate && checkOutDate
+      ? getRoomAvailabilityForHotel(Number(resolvedParams.id), checkInDate, checkOutDate, guestsCount)
+      : Promise.resolve([]),
+    canFavorite ? getFavoriteHotelIds(auth.userId as string) : Promise.resolve([]),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -47,6 +54,8 @@ export default async function ListingPage({ params, searchParams }: Props) {
         checkInDate={checkInDate}
         checkOutDate={checkOutDate}
         hasSearchDates={hasSearchDates}
+        initialIsFavorite={favoriteHotelIds.includes(Number(listing.id))}
+        canFavorite={canFavorite}
       />
     </main>
   );

@@ -2,13 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { AppButton } from "./AppButton";
 import { ArrowLeftIcon } from "@heroicons/react/24/solid";
+import { StarIcon as SolidStar } from "@heroicons/react/24/solid";
+import { StarIcon as OutlineStar } from "@heroicons/react/24/outline";
 import { createPendingBookingHoldRequest } from "@/lib/booking-client";
 import type { ListingDetails } from "../types/hotel-panel";
 import type { RoomAvailability } from "@/types/room-availability";
 import { RoomAvailabilityTable } from "./RoomAvailabilityTable";
+import ShiningStarBadge from "./ShiningStarBadge";
+import { FavoriteHeartButton } from "./FavoriteHeartButton";
 
 interface ListingDetailsCardProps {
   listing: ListingDetails;
@@ -17,10 +22,31 @@ interface ListingDetailsCardProps {
   checkInDate: string;
   checkOutDate: string;
   hasSearchDates?: boolean;
+  initialIsFavorite?: boolean;
+  canFavorite?: boolean;
 }
 
 function getNights(checkInDate: string, checkOutDate: string) {
   return Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function RatingDisplay({ rating, label }: { rating: number | null; label?: string }) {
+  if (rating === null) {
+    return <span className="text-2xl font-bold text-blue-700">{label ?? "New"}</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-2xl font-bold text-slate-950">{label ?? rating.toFixed(1)}</span>
+      <div className="flex items-center gap-0.5" aria-label={`${rating.toFixed(1)} out of 5 stars`}>
+        {Array.from({ length: 5 }, (_, index) => (
+          index < Math.floor(rating)
+            ? <SolidStar key={index} className="h-5 w-5 text-amber-400" />
+            : <OutlineStar key={index} className="h-5 w-5 text-amber-200" />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function ListingDetailsCard({
@@ -30,6 +56,8 @@ export function ListingDetailsCard({
   checkInDate,
   checkOutDate,
   hasSearchDates = true,
+  initialIsFavorite = false,
+  canFavorite = false,
 }: ListingDetailsCardProps) {
   const router = useRouter();
 
@@ -179,22 +207,31 @@ export function ListingDetailsCard({
           <div className="lg:col-span-2">
             {/* Header */}
             <div className="mb-8">
-              <p className="inline-block rounded-full bg-blue-100 px-4 py-1.5 text-sm font-semibold text-blue-700 mb-4">
-                {listing.category}
-              </p>
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <p className="inline-block rounded-full bg-blue-100 px-4 py-1.5 text-sm font-semibold text-blue-700">
+                  {listing.category}
+                </p>
+                <FavoriteHeartButton
+                  hotelId={listing.id}
+                  initialIsFavorite={initialIsFavorite}
+                  isAuthenticated={canFavorite}
+                  size="lg"
+                  variant="inline"
+                />
+              </div>
               <h1 className="text-4xl font-bold text-slate-950 mb-2">
                 {listing.name}
               </h1>
-              <div className="flex items-center gap-4">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-bold text-slate-950">
-                    {listing.rating}
-                  </span>
-                  <span className="text-yellow-400">★★★★★</span>
-                </div>
-                <span className="text-slate-600">
-                  {listing.reviewLabel}
-                </span>
+              <div className="flex flex-wrap items-center gap-3">
+                <RatingDisplay rating={listing.rating} label={listing.ratingLabel} />
+                <ShiningStarBadge badge={listing.trustBadge} />
+                <span className="text-slate-600">{listing.reviewLabel}</span>
+                <Link
+                  href={`/listings/${listing.id}/reviews`}
+                  className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-50"
+                >
+                  Reviews
+                </Link>
               </div>
             </div>
 

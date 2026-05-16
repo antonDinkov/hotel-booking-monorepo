@@ -2,7 +2,7 @@ import { and, eq, gt, inArray, lt, lte, ne, or } from "drizzle-orm";
 import type Stripe from "stripe";
 
 import { db } from "../../db";
-import { bookings, hotelImages, hotelPaymentMethods, hotels, roomTypes } from "../../db/schema";
+import { bookings, hotelImages, hotelPaymentMethods, hotels, reviews, roomTypes } from "../../db/schema";
 import { getStripe } from "@/server/lib/stripe";
 import type {
   CancelBookingResult,
@@ -38,6 +38,7 @@ type PaymentMethod = (typeof SUPPORTED_PAYMENT_METHODS)[number];
 
 interface BookingRow {
   id: number;
+  hotelId: number | null;
   checkInDate: string;
   checkOutDate: string;
   roomsCount: number | null;
@@ -49,6 +50,7 @@ interface BookingRow {
   hotelName: string | null;
   hotelAddress: string | null;
   hotelImageUrl: string | null;
+  reviewId: number | null;
 }
 
 interface BookingDetailsRow {
@@ -1032,6 +1034,7 @@ export async function getBookings(userId: string): Promise<MyBooking[]> {
   const rows = await db
     .select({
       id: bookings.id,
+      hotelId: hotels.id,
       checkInDate: bookings.checkInDate,
       checkOutDate: bookings.checkOutDate,
       roomsCount: bookings.roomsCount,
@@ -1043,11 +1046,13 @@ export async function getBookings(userId: string): Promise<MyBooking[]> {
       hotelName: hotels.name,
       hotelAddress: hotels.location,
       hotelImageUrl: hotelImages.imageKey,
+      reviewId: reviews.id,
     })
     .from(bookings)
     .leftJoin(roomTypes, eq(roomTypes.id, bookings.roomTypeId))
     .leftJoin(hotels, eq(hotels.id, roomTypes.hotelId))
     .leftJoin(hotelImages, eq(hotelImages.hotelId, hotels.id))
+    .leftJoin(reviews, eq(reviews.bookingId, bookings.id))
     .where(
       and(
         eq(bookings.userId, userId),
@@ -1084,14 +1089,16 @@ export async function getBookings(userId: string): Promise<MyBooking[]> {
     const checkOut = parseDateOnly(String(row.checkOutDate));
     const paymentMethod = isSupportedMethod(row.paymentMethod ?? "") ? row.paymentMethod as BookingPaymentMethod : null;
     const paymentStatus = isBookingPaymentStatus(row.paymentStatus) ? row.paymentStatus : "pending";
-    const isCancelled = row.status === "cancelled";
-    const status: BookingDisplayStatus = isCancelled ? "cancelled" : computeStayStatus(checkIn, checkOut);
-    const lifecycleStatus: BookingStatus = isCancelled ? "cancelled" : "confirmed";
-    const nights = getNightCount(String(row.checkInDate), String(row.checkOutDate));
-    const totalPrice = (row.roomPrice ?? 0) * Math.max(1, nights) * getRoomsCount(row.roomsCount);
+      const isCancelled = row.status === "cancelled";
+      const status: BookingDisplayStatus = isCancelled ? "cancelled" : computeStayStatus(checkIn, checkOut);
+      const lifecycleStatus: BookingStatus = isCancelled ? "cancelled" : "confirmed";
+      const nights = getNightCount(String(row.checkInDate), String(row.checkOutDate));
+      const totalPrice = (row.roomPrice ?? 0) * Math.max(1, nights) * getRoomsCount(row.roomsCount);
+      const hasReview = row.reviewId !== null;
 
     return {
       id: String(row.id),
+      hotelId: row.hotelId ?? undefined,
       hotelName: row.hotelName ?? "Unknown hotel",
       hotelAddress: row.hotelAddress ?? "",
       hotelImage: row.hotelImageUrl ?? undefined,
@@ -1108,6 +1115,9 @@ export async function getBookings(userId: string): Promise<MyBooking[]> {
         (paymentMethod === "cash_on_arrival" && paymentStatus === "pending") ||
         (paymentMethod === "stripe" && paymentStatus === "paid")
       ),
+      canReview: status === "past" && !hasReview,
+      hasReview,
+      reviewId: row.reviewId ?? undefined,
       daysRemaining: status === "active" ? computeDaysRemaining(checkOut) : undefined,
     };
   }).sort(sortMyBookings);

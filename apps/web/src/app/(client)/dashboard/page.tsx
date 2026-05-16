@@ -1,22 +1,26 @@
-import { getServerSession } from "next-auth/next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SearchEngineWrapper } from "@/components/SearchEngineWrapper";
 import { FeaturedListings } from "@/components/FeaturedListings";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authorize } from "@/app/api/auth/[...nextauth]/route";
 import { getHotelPanelData } from "@/server/services/hotelPanel";
 import { getBookings } from "@/server/services/bookings";
-import type { HotelPanelData } from "@/types/hotel-panel";
+import { getMyReviewsCount } from "@/server/services/reviews";
+import { getFavoriteHotelIds, getSavedHotelsCount } from "@/server/services/favorites";
 
 export default async function DashboardPage() {
-    const session = await getServerSession(authOptions);
+    const auth = await authorize(["client"]);
 
-    if (!session?.user?.id) {
+    if (!auth.ok || !auth.userId) {
         redirect("/login");
     }
 
-    const [panelData, bookings] = await Promise.all([
+    const [panelData, bookings, myReviewsCount, savedHotelsCount, favoriteHotelIds] = await Promise.all([
         getHotelPanelData(),
-        getBookings(session.user.id as string),
+        getBookings(auth.userId),
+        getMyReviewsCount(auth.userId),
+        getSavedHotelsCount(auth.userId),
+        getFavoriteHotelIds(auth.userId),
     ]);
     const upcomingTripsCount = bookings.filter((booking) => booking.status === "upcoming").length;
 
@@ -31,6 +35,8 @@ export default async function DashboardPage() {
                     searchFields={panelData.searchFields}
                     ctaLabel={panelData.search.cta}
                     featuredListings={panelData.featuredListings}
+                    favoriteHotelIds={favoriteHotelIds}
+                    canFavorite
                 />
             ) : null}
 
@@ -51,16 +57,30 @@ export default async function DashboardPage() {
                             : "No upcoming stays yet."}
                     </p>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <Link
+                    href="/favorites"
+                    className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
+                >
                     <p className="text-sm font-semibold text-slate-500">Saved Hotels</p>
-                    <p className="mt-3 text-3xl font-semibold text-slate-900">0</p>
-                    <p className="mt-2 text-xs text-slate-500">Browse listings to save favorites.</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <p className="text-sm font-semibold text-slate-500">Reviews</p>
-                    <p className="mt-3 text-3xl font-semibold text-slate-900">0</p>
-                    <p className="mt-2 text-xs text-slate-500">Share feedback after a stay.</p>
-                </div>
+                    <p className="mt-3 text-3xl font-semibold text-slate-900">{savedHotelsCount}</p>
+                    <p className="mt-2 text-xs text-slate-500">
+                        {savedHotelsCount > 0
+                            ? `View ${savedHotelsCount} saved hotel${savedHotelsCount === 1 ? "" : "s"}.`
+                            : "Browse listings to save favorites."}
+                    </p>
+                </Link>
+                <Link
+                    href="/reviews/me"
+                    className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
+                >
+                    <p className="text-sm font-semibold text-slate-500">My Reviews</p>
+                    <p className="mt-3 text-3xl font-semibold text-slate-900">{myReviewsCount}</p>
+                    <p className="mt-2 text-xs text-slate-500">
+                        {myReviewsCount > 0
+                            ? `View ${myReviewsCount} review${myReviewsCount === 1 ? "" : "s"} you have shared.`
+                            : "Share feedback after a stay."}
+                    </p>
+                </Link>
             </section>
 
             <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -86,7 +106,12 @@ export default async function DashboardPage() {
                         </p>
                     </div>
 
-                    <FeaturedListings listings={panelData.featuredListings} itemsPerPage={6} />
+                    <FeaturedListings
+                        listings={panelData.featuredListings}
+                        itemsPerPage={6}
+                        favoriteHotelIds={favoriteHotelIds}
+                        canFavorite
+                    />
                 </section>
             ) : null}
         </main>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useEffect } from "react";
 
 interface ProfileAvatarProps {
     targetWidth?: number;
@@ -13,12 +12,8 @@ interface ProfileAvatarProps {
 
 export default function ProfileAvatar({ targetWidth = 40, initialSrc, onFileChange, onRemove, isRemoving }: ProfileAvatarProps) {
     const inputRef = useRef<HTMLInputElement | null>(null);
-    const [preview, setPreview] = useState<string | undefined>(initialSrc);
+    const [preview, setPreview] = useState<string | undefined>(() => initialSrc);
     const [isRemovingLocal, setIsRemovingLocal] = useState(false);
-
-    useEffect(() => {
-        setPreview(initialSrc);
-    }, [initialSrc]);
 
     const handleButtonClick = () => inputRef.current?.click();
 

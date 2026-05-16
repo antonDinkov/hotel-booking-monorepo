@@ -1,3 +1,5 @@
+import type { HotelTrustBadge } from "./review";
+
 export type SearchFieldIcon = "pin" | "calendar" | "guests";
 
 export interface Brand {
@@ -36,8 +38,10 @@ export interface Listing {
   id: string;
   name: string;
   category: string;
-  rating: number;
+  rating: number | null;
+  ratingLabel?: string;
   reviewLabel: string;
+  trustBadge?: HotelTrustBadge | null;
   image: ListingImage;
 }
 
