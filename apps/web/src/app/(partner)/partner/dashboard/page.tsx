@@ -43,7 +43,7 @@ export default function Page() {
       <PartnerPageHeader
         eyebrow="Portfolio command center"
         title="Partner dashboard"
-        description="A static executive view for bookings, revenue, guest feedback, occupancy, and daily operating actions."
+        description="Portfolio view for bookings, revenue, guest feedback, occupancy, and daily operating actions across owned hotels."
         actions={
           <>
             <Link
@@ -85,7 +85,7 @@ export default function Page() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
         <PartnerSection
           title="Recent bookings"
-          description="Latest static reservations across the partner portfolio."
+          description="Latest reservations across the partner portfolio."
           actions={
             <Link
               href="/partner/bookings"

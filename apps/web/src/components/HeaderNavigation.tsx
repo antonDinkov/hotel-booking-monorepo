@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 
 import { AppButton } from "./AppButton";
@@ -24,7 +24,12 @@ export function isActiveForPaths(href: string, current: string, clickedPath: str
 
 interface HeaderNavigationProps {
     brandName: string;
-    session: any;
+    session: {
+        user?: {
+            email?: string | null;
+            name?: string | null;
+        } | null;
+    } | null;
     /** optional testing helper to force loading UI */
     isLoading?: boolean;
 }
@@ -37,7 +42,6 @@ export function HeaderNavigation({
     const isLoggedIn = Boolean(session);
     const userEmail = session?.user?.email ?? session?.user?.name ?? null;
     const pathname = usePathname() ?? "/";
-    const router = useRouter();
     const [isSigningOut, setIsSigningOut] = useState(false);
 
     // normalize pathnames to avoid mismatches with trailing slashes
@@ -122,7 +126,7 @@ export function HeaderNavigation({
                                 size="md"
                                 className={isActive("/partner") ? activeButtonClasses : inactiveButtonClasses}
                             >
-                                For Hosts
+                                For Partners
                             </AppButton>
                         </Link>
                     </div>

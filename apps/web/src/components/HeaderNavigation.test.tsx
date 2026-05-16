@@ -41,7 +41,7 @@ describe("HeaderNavigation", () => {
 
       expect(screen.getByText("Login")).toBeInTheDocument();
       expect(screen.getByText("Register")).toBeInTheDocument();
-      expect(screen.getByText("For Hosts")).toBeInTheDocument();
+      expect(screen.getByText("For Partners")).toBeInTheDocument();
 
       const brandLink = screen.getByRole("link", { name: "BookYourStay" });
       expect(brandLink).toHaveAttribute("href", "/");
@@ -80,11 +80,11 @@ describe("HeaderNavigation", () => {
       expect(registerBtn).toHaveClass("btn-active");
     });
 
-    it("marks For Hosts active when pathname is /partner", () => {
+    it("marks For Partners active when pathname is /partner", () => {
       usePathnameMock.mockReturnValue("/partner");
       render(<HeaderNavigation brandName="BookYourStay" session={null} />);
 
-      const partnerBtn = screen.getByRole("button", { name: "For Hosts" });
+      const partnerBtn = screen.getByRole("button", { name: "For Partners" });
       expect(partnerBtn).toHaveClass("btn-active");
     });
 
@@ -94,7 +94,7 @@ describe("HeaderNavigation", () => {
 
       const loginBtn = screen.getByRole("button", { name: "Login" });
       const registerBtn = screen.getByRole("button", { name: "Register" });
-      const hostBtn = screen.getByRole("button", { name: "For Hosts" });
+      const hostBtn = screen.getByRole("button", { name: "For Partners" });
 
       act(() => {
         fireEvent.click(loginBtn);

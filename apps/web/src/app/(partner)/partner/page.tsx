@@ -13,9 +13,9 @@ export default function PartnerWelcomePage() {
           </Link>
         </div>
         <div className="rounded-3xl bg-white/6 p-12 backdrop-blur-sm border border-white/10 shadow-2xl">
-          <h1 className="text-5xl font-extrabold tracking-tight mb-4">Welcome, Hosts</h1>
+          <h1 className="text-5xl font-extrabold tracking-tight mb-4">Partner With BookYourStay</h1>
           <p className="mb-8 text-lg text-white/90 max-w-2xl">
-            Join BookYourStay to welcome travelers from around the world. Manage your listings, set flexible pricing, and offer unforgettable stays.
+            Join BookYourStay to manage a hotel portfolio, coordinate bookings, and grow your hospitality business across multiple properties.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4">
@@ -25,7 +25,7 @@ export default function PartnerWelcomePage() {
                 size="lg"
                 className="w-full border-white/30 text-white/90 px-6 py-4"
               >
-                Already a host
+                Partner sign in
               </AppButton>
             </Link>
 
@@ -35,7 +35,7 @@ export default function PartnerWelcomePage() {
                 size="lg"
                 className="w-full bg-amber-400 text-slate-900 hover:bg-amber-500 px-6 py-4"
               >
-                Become a host
+                Create partner account
               </AppButton>
             </Link>
           </div>

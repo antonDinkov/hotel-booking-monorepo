@@ -7,7 +7,7 @@ export default function Page() {
       <PartnerPageHeader
         eyebrow="New listing"
         title="Add hotel"
-        description="A visual-only hotel creation form with business, location, media, policy, and payment sections."
+        description="Add another property to your partner portfolio with business, location, media, policy, and payment sections."
       />
       <PartnerHotelForm mode="new" />
     </>

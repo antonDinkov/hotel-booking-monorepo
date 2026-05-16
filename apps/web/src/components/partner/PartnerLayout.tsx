@@ -197,7 +197,7 @@ export default function PartnerLayout({ children }: PartnerRouteLayoutProps) {
                 </button>
                 <div>
                   <p className="text-xs text-slate-500">Partner workspace</p>
-                  <p className="text-sm font-semibold text-slate-100">Grand Orchid Group</p>
+                  <p className="text-sm font-semibold text-slate-100">Hotel portfolio</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">

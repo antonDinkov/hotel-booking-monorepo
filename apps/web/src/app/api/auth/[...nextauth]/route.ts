@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next"
 import CredentialsProvider from "next-auth/providers/credentials"
 import GitHubProvider from "next-auth/providers/github"
 
-import { ensureOAuthUser, getUserRoles, validateCredentials } from "@/server/services/auth"
+import { ensureOAuthUser, getUserRoles, validateCredentials, validatePartnerCredentials } from "@/server/services/auth"
 
 export const authOptions: NextAuthOptions = {
     providers: [
@@ -16,8 +16,13 @@ export const authOptions: NextAuthOptions = {
             async authorize(credentials) {
                 const email = credentials?.email?.toString().trim();
                 const password = credentials?.password?.toString();
+                const loginContext = (credentials as Record<string, string> | undefined)?.loginContext?.toString();
 
                 if (!email || !password) return null;
+
+                if (loginContext === "partner") {
+                    return validatePartnerCredentials(email, password);
+                }
 
                 return validateCredentials(email, password);
             }
@@ -73,13 +78,14 @@ export const authOptions: NextAuthOptions = {
             if (session.user) {
                 session.user.id = token.id as string;
                 if (token.email) session.user.email = token.email as string;
+                session.user.roles = Array.isArray(token.roles) ? token.roles : [];
             }
 
             return session;
         },
-        async redirect({ baseUrl }) {
-            // Keep default behavior (baseUrl) — avoid forcing /dashboard here to prevent
-            // having multiple redirect strategies. Middleware handles redirecting to /dashboard.
+        async redirect({ url, baseUrl }) {
+            if (url.startsWith("/")) return `${baseUrl}${url}`;
+            if (new URL(url).origin === baseUrl) return url;
             return baseUrl;
         },
     },

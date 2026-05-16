@@ -99,6 +99,13 @@
       "when": 1778918434931,
       "tag": "0013_far_firestar",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1778951043830,
+      "tag": "0014_multi_hotel_partners",
+      "breakpoints": true
     }
   ]
 }

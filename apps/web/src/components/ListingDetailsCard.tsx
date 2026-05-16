@@ -334,7 +334,7 @@ export function ListingDetailsCard({
               </AppButton>
 
               <AppButton variant="secondary" size="lg" className="w-full">
-                Contact Host
+                Contact partner
               </AppButton>
 
               <div className="mt-6 pt-6 border-t border-slate-200">

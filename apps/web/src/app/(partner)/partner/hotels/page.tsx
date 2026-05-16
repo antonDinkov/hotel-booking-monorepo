@@ -25,7 +25,7 @@ export default function Page() {
       <PartnerPageHeader
         eyebrow="Listing portfolio"
         title="Hotels"
-        description="A visual-only listing management surface for hotel status, performance, and common partner actions."
+        description="Portfolio-level hotel management for status, performance, and common partner actions."
         actions={
           <Link
             href="/partner/hotels/new"

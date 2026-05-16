@@ -1,10 +1,64 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { AppButton } from "./AppButton";
 
+const inputClass =
+  "w-full rounded-md border border-white/20 bg-white/5 px-3 py-2 text-white outline-none placeholder:text-white/45 focus:border-amber-300";
+const labelClass = "block text-sm font-medium text-white/90 mb-2";
+
+function getLoginErrorMessage(error: string) {
+  const decodedError = decodeURIComponent(error);
+  if (decodedError === "CredentialsSignin") return "Invalid email or password.";
+  return decodedError;
+}
+
+function getSafeCallbackUrl(value: string | null) {
+  if (!value || !value.startsWith("/partner")) return "/partner/dashboard";
+  if (value === "/partner" || value === "/partner/login" || value === "/partner/register") {
+    return "/partner/dashboard";
+  }
+  return value;
+}
+
+function getCurrentCallbackUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return getSafeCallbackUrl(params.get("callbackUrl"));
+}
+
 export default function PartnerLoginForm() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    const callbackUrl = getCurrentCallbackUrl();
+    const result = await signIn("credentials", {
+      email,
+      password,
+      loginContext: "partner",
+      redirect: false,
+      callbackUrl,
+    });
+
+    if (result?.error) {
+      setError(getLoginErrorMessage(result.error));
+      setIsSubmitting(false);
+      return;
+    }
+
+    router.push(result?.url ?? callbackUrl);
+  };
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-emerald-700 text-white flex items-center justify-center">
       <div className="mx-auto w-full max-w-md px-6 py-12">
@@ -12,24 +66,60 @@ export default function PartnerLoginForm() {
           <div className="mb-4">
             <Link href="/partner">
               <AppButton variant="ghost" size="sm" className="border-white/20 text-white/90">
-                ← Back to hosts
+                Back to partners
               </AppButton>
             </Link>
           </div>
-          <h1 className="text-3xl font-bold mb-2">Host sign in</h1>
-          <p className="text-sm text-white/80 mb-6">Sign in to manage your listings and bookings.</p>
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-white/90 mb-2">Email</label>
-              <input type="email" required placeholder="host@hotel.com" className="w-full rounded-md border border-white/20 bg-white/5 px-3 py-2 text-white/90"/>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-white/90 mb-2">Password</label>
-              <input type="password" required placeholder="Password" className="w-full rounded-md border border-white/20 bg-white/5 px-3 py-2 text-white/90"/>
-            </div>
-            <AppButton type="submit" variant="primary" size="lg" className="w-full bg-amber-400 text-slate-900">Sign in</AppButton>
+          <h1 className="text-3xl font-bold mb-2">Partner sign in</h1>
+          <p className="text-sm text-white/80 mb-6">
+            Access your portfolio workspace to manage hotels, bookings, and guest feedback.
+          </p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <label>
+              <span className={labelClass}>Email</span>
+              <input
+                type="email"
+                required
+                placeholder="partners@company.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className={inputClass}
+              />
+            </label>
+            <label>
+              <span className={labelClass}>Password</span>
+              <input
+                type="password"
+                required
+                placeholder="Enter password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className={inputClass}
+              />
+            </label>
+
+            {error ? (
+              <p className="rounded-lg border border-red-300/30 bg-red-500/10 px-3 py-2 text-sm text-red-100">
+                {error}
+              </p>
+            ) : null}
+
+            <AppButton
+              type="submit"
+              variant="primary"
+              size="lg"
+              disabled={isSubmitting}
+              className="w-full bg-amber-400 text-slate-900"
+            >
+              {isSubmitting ? "Signing in..." : "Sign in"}
+            </AppButton>
           </form>
-          <p className="mt-4 text-sm text-white/80">Not a host? <Link href="/partner/register" className="text-amber-300 font-semibold">Create host account</Link></p>
+          <p className="mt-4 text-sm text-white/80">
+            New business partner?{" "}
+            <Link href="/partner/register" className="text-amber-300 font-semibold">
+              Create partner account
+            </Link>
+          </p>
         </div>
       </div>
     </main>

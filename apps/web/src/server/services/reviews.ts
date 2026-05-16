@@ -2,7 +2,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import { db } from "@/db";
-import { bookings, hotels, reviews, roles, roomTypes, userProfiles, userRoles } from "@/db/schema";
+import { bookings, hotels, partners, reviews, roles, roomTypes, userProfiles, userRoles } from "@/db/schema";
 import type {
   CreateReviewRequest,
   HotelReview,
@@ -36,7 +36,7 @@ const HOTEL_REVIEW_FIELDS = {
   partnerReply: reviews.partnerReply,
   partnerRepliedAt: reviews.partnerRepliedAt,
   partnerRepliedBy: reviews.partnerRepliedBy,
-  hotelOwnerId: hotels.ownerId,
+  hotelPartnerUserId: partners.userId,
   partnerRepliedByName: replyAuthorProfiles.fullName,
   createdAt: reviews.createdAt,
   userName: reviewerProfiles.fullName,
@@ -70,7 +70,7 @@ interface ReviewRow {
   partnerReply: string | null;
   partnerRepliedAt: Date | string | null;
   partnerRepliedBy: string | null;
-  hotelOwnerId?: string | null;
+  hotelPartnerUserId?: string | null;
   partnerRepliedByName?: string | null;
   createdAt: Date | string;
 }
@@ -164,7 +164,7 @@ function getAvatarUrl(avatarKey: string | null): string | null {
 
 function mapPartnerReply(row: ReviewRow): PartnerReviewReply | null {
   if (!row.partnerReply || !row.partnerRepliedAt || !row.partnerRepliedBy) return null;
-  if (row.hotelOwnerId && row.partnerRepliedBy !== row.hotelOwnerId) return null;
+  if (row.hotelPartnerUserId && row.partnerRepliedBy !== row.hotelPartnerUserId) return null;
 
   return {
     comment: row.partnerReply,
@@ -412,6 +412,7 @@ export async function getHotelReviewsPage(
     .select(HOTEL_REVIEW_FIELDS)
     .from(reviews)
     .innerJoin(hotels, eq(hotels.id, reviews.hotelId))
+    .innerJoin(partners, eq(partners.id, hotels.partnerId))
     .leftJoin(reviewerProfiles, eq(reviewerProfiles.userId, reviews.userId))
     .leftJoin(replyAuthorProfiles, eq(replyAuthorProfiles.userId, reviews.partnerRepliedBy))
     .where(and(eq(reviews.hotelId, hotelId), eq(reviews.moderationStatus, "published")))
@@ -440,6 +441,7 @@ export async function getHotelReviews(hotelId: number): Promise<HotelReview[]> {
     .select(HOTEL_REVIEW_FIELDS)
     .from(reviews)
     .innerJoin(hotels, eq(hotels.id, reviews.hotelId))
+    .innerJoin(partners, eq(partners.id, hotels.partnerId))
     .leftJoin(reviewerProfiles, eq(reviewerProfiles.userId, reviews.userId))
     .leftJoin(replyAuthorProfiles, eq(replyAuthorProfiles.userId, reviews.partnerRepliedBy))
     .where(and(eq(reviews.hotelId, hotelId), eq(reviews.moderationStatus, "published")))
@@ -481,6 +483,7 @@ export async function getMyReviews(userId: string): Promise<MyReview[]> {
     .select(MY_REVIEW_FIELDS)
     .from(reviews)
     .innerJoin(hotels, eq(hotels.id, reviews.hotelId))
+    .innerJoin(partners, eq(partners.id, hotels.partnerId))
     .leftJoin(reviewerProfiles, eq(reviewerProfiles.userId, reviews.userId))
     .leftJoin(replyAuthorProfiles, eq(replyAuthorProfiles.userId, reviews.partnerRepliedBy))
     .where(eq(reviews.userId, userId))

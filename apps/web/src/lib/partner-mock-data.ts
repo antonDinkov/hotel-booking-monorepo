@@ -51,7 +51,7 @@ export const partnerStats: PartnerStat[] = [
 export const partnerQuickActions: PartnerQuickAction[] = [
   {
     label: "Add hotel",
-    description: "Create a new listing draft",
+    description: "Create a new portfolio property",
     href: "/partner/hotels/new",
   },
   {

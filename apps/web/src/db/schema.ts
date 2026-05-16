@@ -67,17 +67,54 @@ export const userRoles = pgTable(
 	})
 );
 
-export const hotels = pgTable("hotels", {
-	id: serial("id").primaryKey(),
-	name: text("name").notNull(),
-	location: text("location").notNull(),
-	description: text("description"),
-	ownerId: uuid("owner_id")
-		.notNull()
-		.references(() => users.id, { onDelete: "cascade" }),
-	isFeatured: boolean("is_featured").notNull().default(false),
-	registeredAt: timestamp("registered_at").notNull().defaultNow(),
-});
+export const partners = pgTable(
+	"partners",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		companyName: text("company_name").notNull(),
+		representativeFirstName: text("representative_first_name").notNull(),
+		representativeLastName: text("representative_last_name").notNull(),
+		position: text("position").notNull(),
+		email: text("email").notNull(),
+		phone: text("phone"),
+		website: text("website"),
+		companyAddress: text("company_address"),
+		vatNumber: text("vat_number"),
+		isVerified: boolean("is_verified").notNull().default(false),
+		verificationStatus: text("verification_status").notNull().default("pending"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		uniqueIndex("partners_user_id_unique").on(table.userId),
+		uniqueIndex("partners_email_unique").on(table.email),
+		uniqueIndex("partners_vat_number_unique").on(table.vatNumber),
+		index("partners_company_name_idx").on(table.companyName),
+		index("partners_verification_status_idx").on(table.verificationStatus),
+		check("partners_verification_status_check", sql`${table.verificationStatus} IN ('pending', 'verified', 'rejected', 'suspended')`),
+	]
+);
+
+export const hotels = pgTable(
+	"hotels",
+	{
+		id: serial("id").primaryKey(),
+		name: text("name").notNull(),
+		location: text("location").notNull(),
+		description: text("description"),
+		partnerId: uuid("partner_id")
+			.notNull()
+			.references(() => partners.id, { onDelete: "cascade" }),
+		isFeatured: boolean("is_featured").notNull().default(false),
+		registeredAt: timestamp("registered_at").notNull().defaultNow(),
+	},
+	(table) => [
+		index("hotels_partner_id_idx").on(table.partnerId),
+	]
+);
 
 export const favoriteHotels = pgTable(
 	"favorite_hotels",
@@ -183,9 +220,9 @@ export const hotelsRelations = relations(hotels, ({ many, one }) => ({
 	paymentMethods: many(hotelPaymentMethods),
 	reviews: many(reviews),
 	favoriteHotels: many(favoriteHotels),
-	owner: one(users, {
-		fields: [hotels.ownerId],
-		references: [users.id],
+	partner: one(partners, {
+		fields: [hotels.partnerId],
+		references: [partners.id],
 	}),
 }));
 
@@ -266,13 +303,24 @@ export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
 export const usersRelations = relations(users, ({ many, one }) => ({
 	userRoles: many(userRoles),
 	bookings: many(bookings),
-	ownedHotels: many(hotels),
 	reviews: many(reviews),
 	favoriteHotels: many(favoriteHotels),
 	profile: one(userProfiles, {
 		fields: [users.id],
 		references: [userProfiles.userId],
 	}),
+	partnerProfile: one(partners, {
+		fields: [users.id],
+		references: [partners.userId],
+	}),
+}));
+
+export const partnersRelations = relations(partners, ({ many, one }) => ({
+	user: one(users, {
+		fields: [partners.userId],
+		references: [users.id],
+	}),
+	hotels: many(hotels),
 }));
 
 export const rolesRelations = relations(roles, ({ many }) => ({

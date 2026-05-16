@@ -8,6 +8,7 @@ import {
 	hotelImages,
 	hotelPaymentMethods,
 	hotels,
+	partners,
 	reviews,
 	roles,
 	roomTypes,
@@ -148,145 +149,213 @@ const hotelSeedData = [
 		name: "Cedar Peak Hotel",
 		location: "Bandung, Indonesia",
 		description: "Modern mountain-view stay near Lembang.",
-		ownerIndex: 0,
+		partnerIndex: 0,
 		isFeatured: true,
 	},
 	{
 		name: "Harborline Suites",
 		location: "Surabaya, Indonesia",
 		description: "Business-friendly suites close to the harbor district.",
-		ownerIndex: 1,
+		partnerIndex: 1,
 		isFeatured: false,
 	},
 	{
 		name: "Savana Garden Inn",
 		location: "Yogyakarta, Indonesia",
 		description: "Quiet boutique hotel near Malioboro.",
-		ownerIndex: 2,
+		partnerIndex: 2,
 		isFeatured: true,
 	},
 	{
 		name: "Blue Dune Resort",
 		location: "Lombok, Indonesia",
 		description: "Beachside resort with family villas.",
-		ownerIndex: 3,
+		partnerIndex: 3,
 		isFeatured: true,
 	},
 	{
 		name: "Metropole 88",
 		location: "Jakarta, Indonesia",
 		description: "City-center hotel in Sudirman area.",
-		ownerIndex: 4,
+		partnerIndex: 4,
 		isFeatured: false,
 	},
 	{
 		name: "Palm Crest Hotel",
 		location: "Bali, Indonesia",
 		description: "Tropical-inspired hotel near Seminyak.",
-		ownerIndex: 5,
+		partnerIndex: 0,
 		isFeatured: true,
 	},
 	{
 		name: "Riverside Atelier",
 		location: "Solo, Indonesia",
 		description: "Minimalist hotel along the river promenade.",
-		ownerIndex: 6,
+		partnerIndex: 1,
 		isFeatured: false,
 	},
 	{
 		name: "Northwind Lodge",
 		location: "Medan, Indonesia",
 		description: "Cozy urban lodge with curated local dining.",
-		ownerIndex: 7,
+		partnerIndex: 2,
 		isFeatured: false,
 	},
 	{
 		name: "Lagoon Bay Hotel",
 		location: "Batam, Indonesia",
 		description: "Spacious rooms with bay-facing balconies.",
-		ownerIndex: 8,
+		partnerIndex: 3,
 		isFeatured: true,
 	},
 	{
 		name: "Amber Court",
 		location: "Semarang, Indonesia",
 		description: "Classic comfort stay in downtown Semarang.",
-		ownerIndex: 9,
+		partnerIndex: 4,
 		isFeatured: false,
 	},
 	{
 		name: "Cliffside Panorama",
 		location: "Labuan Bajo, Indonesia",
 		description: "Sunset-facing cliff hotel near marina.",
-		ownerIndex: 10,
+		partnerIndex: 0,
 		isFeatured: true,
 	},
 	{
 		name: "Kirana Heritage",
 		location: "Malang, Indonesia",
 		description: "Heritage concept hotel with garden courtyard.",
-		ownerIndex: 11,
+		partnerIndex: 1,
 		isFeatured: false,
 	},
 	{
 		name: "Summit Bay",
 		location: "Manado, Indonesia",
 		description: "Sea-view hotel popular with divers.",
-		ownerIndex: 12,
+		partnerIndex: 2,
 		isFeatured: false,
 	},
 	{
 		name: "Moonlight Quarters",
 		location: "Mataram, Indonesia",
 		description: "Calm contemporary rooms near central district.",
-		ownerIndex: 13,
+		partnerIndex: 3,
 		isFeatured: true,
 	},
 	{
 		name: "Opal Garden Hotel",
 		location: "Makassar, Indonesia",
 		description: "Fresh modern interiors and rooftop dining.",
-		ownerIndex: 14,
+		partnerIndex: 4,
 		isFeatured: false,
 	},
 	{
 		name: "Aurora Sky",
 		location: "Balikpapan, Indonesia",
 		description: "Elegant rooms with skyline views.",
-		ownerIndex: 15,
+		partnerIndex: 0,
 		isFeatured: false,
 	},
 	{
 		name: "Terra Nova Inn",
 		location: "Palembang, Indonesia",
 		description: "Comfort-focused hotel near river attractions.",
-		ownerIndex: 16,
+		partnerIndex: 1,
 		isFeatured: false,
 	},
 	{
 		name: "Verde Palace",
 		location: "Denpasar, Indonesia",
 		description: "Upscale stay with spa and pool facilities.",
-		ownerIndex: 17,
+		partnerIndex: 5,
 		isFeatured: true,
 	},
 	{
 		name: "Regatta Point",
 		location: "Banjarmasin, Indonesia",
 		description: "Riverside property with spacious family rooms.",
-		ownerIndex: 18,
+		partnerIndex: 3,
 		isFeatured: false,
 	},
 	{
 		name: "Pinefield Residence",
 		location: "Bogor, Indonesia",
 		description: "Cool-weather retreat with pine garden paths.",
-		ownerIndex: 19,
+		partnerIndex: 5,
 		isFeatured: true,
 	},
 ];
 
-const partnerUserEmails = Array.from({ length: 20 }, (_, index) => `partner${index + 1}@example.com`);
+const partnerSeedData = [
+	{
+		companyName: "Nusantara Summit Hospitality",
+		representativeFirstName: "Maya",
+		representativeLastName: "Santoso",
+		position: "Managing Director",
+		email: "maya.santoso@nusantarasummit.com",
+		phone: "+62 812 5555 0190",
+		website: "https://www.nusantarasummit.com",
+		companyAddress: "Jl. Sudirman No. 88, Jakarta, Indonesia",
+		vatNumber: "NPWP-01.234.567.8-901.000",
+	},
+	{
+		companyName: "Harborline Ventures",
+		representativeFirstName: "Adrian",
+		representativeLastName: "Wijaya",
+		position: "Operations Director",
+		email: "adrian.wijaya@harborlineventures.com",
+		phone: "+62 811 4400 1288",
+		website: "https://www.harborlineventures.com",
+		companyAddress: "Jl. Pemuda No. 42, Surabaya, Indonesia",
+		vatNumber: "NPWP-02.345.678.9-012.000",
+	},
+	{
+		companyName: "Savana Heritage Stays",
+		representativeFirstName: "Ratih",
+		representativeLastName: "Pradana",
+		position: "Partner Relations Lead",
+		email: "ratih.pradana@savanaheritage.com",
+		phone: "+62 813 7700 4412",
+		website: "https://www.savanaheritage.com",
+		companyAddress: "Jl. Malioboro No. 15, Yogyakarta, Indonesia",
+		vatNumber: "NPWP-03.456.789.0-123.000",
+	},
+	{
+		companyName: "Blue Dune Collection",
+		representativeFirstName: "Kevin",
+		representativeLastName: "Mahendra",
+		position: "Commercial Manager",
+		email: "kevin.mahendra@bluedunecollection.com",
+		phone: "+62 878 1122 6540",
+		website: "https://www.bluedunecollection.com",
+		companyAddress: "Jl. Pantai Kuta No. 27, Lombok, Indonesia",
+		vatNumber: "NPWP-04.567.890.1-234.000",
+	},
+	{
+		companyName: "Metropole Urban Hotels",
+		representativeFirstName: "Clara",
+		representativeLastName: "Halim",
+		position: "Portfolio Manager",
+		email: "clara.halim@metropoleurban.com",
+		phone: "+62 821 3000 7788",
+		website: "https://www.metropoleurban.com",
+		companyAddress: "Jl. Gatot Subroto No. 101, Jakarta, Indonesia",
+		vatNumber: "NPWP-05.678.901.2-345.000",
+	},
+	{
+		companyName: "Verde Peak Resorts",
+		representativeFirstName: "Bagus",
+		representativeLastName: "Permana",
+		position: "Regional General Manager",
+		email: "bagus.permana@verdepeakresorts.com",
+		phone: "+62 819 8844 2210",
+		website: "https://www.verdepeakresorts.com",
+		companyAddress: "Jl. Raya Puputan No. 55, Denpasar, Indonesia",
+		vatNumber: "NPWP-06.789.012.3-456.000",
+	},
+] as const;
+
 const guestUserEmails = Array.from({ length: 40 }, (_, index) => `user${index + 1}@example.com`);
 const peterUserEmail = "peter@abv.bg";
 const adminUserEmail = "admin@abv.bg";
@@ -311,6 +380,7 @@ async function seed() {
 	await db.delete(roomTypes);
 	await db.delete(userRoles);
 	await db.delete(hotels);
+	await db.delete(partners);
 	await db.delete(roles);
 	await db.delete(users);
 
@@ -329,13 +399,37 @@ async function seed() {
 	const partnerUsers = await db
 		.insert(users)
 		.values(
-			partnerUserEmails.map((email) => ({
-				email,
+			partnerSeedData.map((partner) => ({
+				email: partner.email,
 				passwordHash,
 				isActive: true,
 			}))
 		)
 		.returning({ id: users.id, email: users.email });
+
+	const insertedPartners = await db
+		.insert(partners)
+		.values(
+			partnerSeedData.map((partner, index) => ({
+				userId: partnerUsers[index].id,
+				companyName: partner.companyName,
+				representativeFirstName: partner.representativeFirstName,
+				representativeLastName: partner.representativeLastName,
+				position: partner.position,
+				email: partner.email,
+				phone: partner.phone,
+				website: partner.website,
+				companyAddress: partner.companyAddress,
+				vatNumber: partner.vatNumber,
+				isVerified: true,
+				verificationStatus: "verified",
+			}))
+		)
+		.returning({ id: partners.id, userId: partners.userId, companyName: partners.companyName });
+
+	const partnerUserIdByPartnerId = new Map(
+		insertedPartners.map((partner) => [partner.id, partner.userId])
+	);
 
 	const [peterUser] = await db
 		.insert(users)
@@ -374,12 +468,12 @@ async function seed() {
 				name: hotel.name,
 				location: hotel.location,
 				description: hotel.description,
-				ownerId: partnerUsers[hotel.ownerIndex].id,
+				partnerId: insertedPartners[hotel.partnerIndex].id,
 				isFeatured: hotel.isFeatured,
 				registeredAt: addDays(today, index < recentHotelCount ? -20 - index * 6 : -140 - index * 3),
 			}))
 		)
-		.returning({ id: hotels.id, name: hotels.name, ownerId: hotels.ownerId });
+		.returning({ id: hotels.id, name: hotels.name, partnerId: hotels.partnerId });
 
 	const hotelPaymentMethodsSeed = insertedHotels.flatMap((hotel) => [
 		{
@@ -398,10 +492,18 @@ async function seed() {
 
 	// Seed user profiles for all users
 	const allUsers = [...partnerUsers, peterUser, adminUser, ...guestUsers];
-	const userProfilesSeed = allUsers.map((user) => ({
-		userId: user.id,
-		fullName: user.email.split("@")[0],
-	}));
+	const partnerSeedByEmail = new Map<string, (typeof partnerSeedData)[number]>(
+		partnerSeedData.map((partner) => [partner.email, partner])
+	);
+	const userProfilesSeed = allUsers.map((user) => {
+		const partner = partnerSeedByEmail.get(user.email);
+		return {
+			userId: user.id,
+			fullName: partner
+				? `${partner.representativeFirstName} ${partner.representativeLastName}`
+				: user.email.split("@")[0],
+		};
+	});
 
 	await db.insert(userProfiles).values(userProfilesSeed);
 
@@ -491,7 +593,8 @@ async function seed() {
 
 	const reviewBookingSpecs = insertedHotels.flatMap((hotel, hotelIndex) => {
 		const roomType = firstRoomTypeByHotel.get(hotel.id);
-		if (!roomType) return [];
+		const partnerUserId = partnerUserIdByPartnerId.get(hotel.partnerId);
+		if (!roomType || !partnerUserId) return [];
 
 		const templateCount = hotelIndex < recentHotelCount ? recentHotelReviewCount : establishedHotelReviewCount;
 		return reviewTemplates.slice(0, templateCount).map((template, reviewIndex) => {
@@ -502,7 +605,7 @@ async function seed() {
 
 			return {
 				hotelId: hotel.id,
-				ownerId: hotel.ownerId,
+				partnerUserId,
 				roomTypeId: roomType.id,
 				userId: user.id,
 				checkInDate: toDateOnly(checkIn),
@@ -641,7 +744,7 @@ async function seed() {
 			moderationStatus: "published" as const,
 			partnerReply: spec.partnerReply,
 			partnerRepliedAt,
-			partnerRepliedBy: spec.partnerReply ? spec.ownerId : null,
+			partnerRepliedBy: spec.partnerReply ? spec.partnerUserId : null,
 			createdAt,
 			updatedAt: partnerRepliedAt ?? createdAt,
 		};
@@ -673,6 +776,7 @@ async function seed() {
 
 	console.log(`Inserted roles: ${insertedRoles.length}`);
 	console.log(`Inserted partner users: ${partnerUsers.length}`);
+	console.log(`Inserted partners: ${insertedPartners.length}`);
 	console.log(`Inserted guest users: ${guestUsers.length}`);
 	console.log(`Inserted user profiles: ${userProfilesSeed.length}`);
 	console.log(`Inserted hotels: ${insertedHotels.length}`);

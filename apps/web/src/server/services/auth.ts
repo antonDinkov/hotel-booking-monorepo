@@ -1,24 +1,69 @@
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { users, roles, userRoles } from "@/db/schema";
 
-export async function validateCredentials(email: string, password: string) {
-    const user = await db
+type AuthUserRecord = {
+    id: string;
+    email: string;
+    passwordHash: string | null;
+    isActive: boolean;
+};
+
+async function getAuthUserByEmail(email: string): Promise<AuthUserRecord | null> {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    return db
         .select({
             id: users.id,
             email: users.email,
             passwordHash: users.passwordHash,
+            isActive: users.isActive,
         })
         .from(users)
-        .where(eq(users.email, email))
+        .where(eq(users.email, normalizedEmail))
+        .then((rows) => rows[0] ?? null);
+}
+
+async function isPasswordValid(user: AuthUserRecord, password: string): Promise<boolean> {
+    if (!user.passwordHash) return false;
+    return bcrypt.compare(password, user.passwordHash);
+}
+
+async function userHasRole(userId: string, roleName: string): Promise<boolean> {
+    const row = await db
+        .select({ userId: userRoles.userId })
+        .from(userRoles)
+        .innerJoin(roles, eq(userRoles.roleId, roles.id))
+        .where(and(eq(userRoles.userId, userId), eq(roles.name, roleName)))
         .then((rows) => rows[0]);
 
-    if (!user || !user.passwordHash) return null;
+    return Boolean(row);
+}
 
-    const isValid = await bcrypt.compare(password, user.passwordHash);
+export async function validateCredentials(email: string, password: string) {
+    const user = await getAuthUserByEmail(email);
+
+    if (!user || !user.isActive) return null;
+
+    const isValid = await isPasswordValid(user, password);
     if (!isValid) return null;
+
+    return { id: user.id, email: user.email };
+}
+
+export async function validatePartnerCredentials(email: string, password: string) {
+    const user = await getAuthUserByEmail(email);
+
+    if (!user) throw new Error("No partner account was found for this email.");
+    if (!user.isActive) throw new Error("This partner account is disabled.");
+    if (!(await userHasRole(user.id, "partner"))) {
+        throw new Error("No partner account was found for this email.");
+    }
+    if (!(await isPasswordValid(user, password))) {
+        throw new Error("Invalid email or password.");
+    }
 
     return { id: user.id, email: user.email };
 }
@@ -94,5 +139,5 @@ export async function getUserRoles(userId: string) {
         .innerJoin(userRoles, eq(userRoles.roleId, roles.id))
         .where(eq(userRoles.userId, userId));
 
-    return rows.map((r: any) => r.name as string);
+    return rows.map((row) => row.name);
 }

@@ -25,7 +25,7 @@ export default function Page() {
           <PartnerCard className="space-y-4">
             <div className="flex items-center gap-3 text-amber-200">
               <BuildingOffice2Icon className="h-5 w-5" aria-hidden="true" />
-              <h2 className="font-semibold text-white">Grand Orchid Group</h2>
+              <h2 className="font-semibold text-white">Partner business profile</h2>
             </div>
             <input className={inputClass} placeholder="Company legal name" />
             <input className={inputClass} placeholder="Business registration number" />
