@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowRightOnRectangleIcon,
   ChartBarIcon,
   ChatBubbleLeftRightIcon,
   ClipboardDocumentListIcon,
@@ -13,6 +14,8 @@ import {
   BuildingOfficeIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
+import { signOut } from "next-auth/react";
+import { useState } from "react";
 import type { AdminNavigationItem, AdminSidebarProps } from "@/types/admin";
 
 const navigationItems: AdminNavigationItem[] = [
@@ -83,6 +86,18 @@ function isActiveRoute(pathname: string, prefixes: string[]) {
 }
 
 export default function AdminSidebar({ pathname, onNavigate }: AdminSidebarProps) {
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true);
+      await signOut({ redirect: true, callbackUrl: "/admin/login" });
+    } catch (error) {
+      console.error("Error signing out of admin area:", error);
+      setIsSigningOut(false);
+    }
+  };
+
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-slate-800 bg-[#090d12]">
       <div className="border-b border-slate-800 px-4 py-4">
@@ -122,17 +137,19 @@ export default function AdminSidebar({ pathname, onNavigate }: AdminSidebarProps
       <div className="border-t border-slate-800 p-3">
         <div className="border border-slate-800 bg-slate-950 p-3">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Mode
+            Session
           </p>
-          <p className="mt-1 text-xs text-slate-300">Static admin scaffold</p>
+          <p className="mt-1 text-xs text-slate-300">Authenticated admin workspace</p>
         </div>
-        <Link
-          href="/admin/login"
-          onClick={onNavigate}
-          className="mt-2 block border border-slate-800 px-3 py-2 text-center text-xs font-semibold text-slate-400 transition hover:border-slate-700 hover:text-slate-100"
+        <button
+          type="button"
+          onClick={() => void handleSignOut()}
+          disabled={isSigningOut}
+          className="mt-2 flex w-full items-center justify-center gap-2 border border-slate-800 px-3 py-2 text-center text-xs font-semibold text-slate-400 transition hover:border-slate-700 hover:text-slate-100 disabled:cursor-wait disabled:opacity-70"
         >
-          Mock sign out
-        </Link>
+          <ArrowRightOnRectangleIcon className="h-4 w-4" aria-hidden="true" />
+          {isSigningOut ? "Signing out..." : "Logout"}
+        </button>
       </div>
     </aside>
   );

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { AppButton } from "./AppButton";
+import { sanitizeCallbackUrl } from "@/lib/auth/role-routing";
 
 const inputClass =
   "w-full rounded-md border border-white/20 bg-white/5 px-3 py-2 text-white outline-none placeholder:text-white/45 focus:border-amber-300";
@@ -16,17 +17,9 @@ function getLoginErrorMessage(error: string) {
   return decodedError;
 }
 
-function getSafeCallbackUrl(value: string | null) {
-  if (!value || !value.startsWith("/partner")) return "/partner/dashboard";
-  if (value === "/partner" || value === "/partner/login" || value === "/partner/register") {
-    return "/partner/dashboard";
-  }
-  return value;
-}
-
 function getCurrentCallbackUrl() {
   const params = new URLSearchParams(window.location.search);
-  return getSafeCallbackUrl(params.get("callbackUrl"));
+  return sanitizeCallbackUrl(params.get("callbackUrl"), "partner");
 }
 
 export default function PartnerLoginForm() {
@@ -74,26 +67,32 @@ export default function PartnerLoginForm() {
           <p className="text-sm text-white/80 mb-6">
             Access your portfolio workspace to manage hotels, bookings, and guest feedback.
           </p>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <label>
+          <form name="partner-login-form" onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
+            <label htmlFor="partnerEmail">
               <span className={labelClass}>Email</span>
               <input
+                id="partnerEmail"
+                name="partnerEmail"
                 type="email"
                 required
                 placeholder="partners@company.com"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
+                autoComplete="section-partner username"
                 className={inputClass}
               />
             </label>
-            <label>
+            <label htmlFor="partnerPassword">
               <span className={labelClass}>Password</span>
               <input
+                id="partnerPassword"
+                name="partnerPassword"
                 type="password"
                 required
                 placeholder="Enter password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                autoComplete="section-partner current-password"
                 className={inputClass}
               />
             </label>

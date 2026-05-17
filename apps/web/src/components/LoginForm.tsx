@@ -3,37 +3,51 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FaGithub } from "react-icons/fa";
 import { AppButton } from "./AppButton";
+import { sanitizeCallbackUrl } from "@/lib/auth/role-routing";
+
+function getLoginErrorMessage(error: string) {
+    const decodedError = decodeURIComponent(error);
+    if (decodedError === "CredentialsSignin" || decodedError === "AccessDenied") {
+        return "Invalid email or password.";
+    }
+
+    return decodedError;
+}
 
 export default function LoginForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(
+        searchParams.get("error") ? getLoginErrorMessage(searchParams.get("error") as string) : null
+    );
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setError(null);
         setIsSubmitting(true);
+        const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"), "client");
 
         const result = await signIn("credentials", {
             email,
             password,
+            loginContext: "client",
             redirect: false,
-            callbackUrl: "/dashboard",
+            callbackUrl,
         });
 
         if (result?.error) {
-            setError("Invalid email or password.");
+            setError(getLoginErrorMessage(result.error));
             setIsSubmitting(false);
             return;
         }
 
-        // Use Next.js router for navigation (easier to test than window.location)
-        router.push(result?.url ?? "/dashboard");
+        router.push(result?.url ?? callbackUrl);
     };
 
     return (
@@ -51,27 +65,33 @@ export default function LoginForm() {
                     <p className="text-sm text-slate-500 mb-6">Use your email and password to access your account.</p>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form name="client-login-form" onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                                <label htmlFor="clientEmail" className="block text-sm font-medium text-slate-700 mb-2">Email</label>
                                 <input
+                                    id="clientEmail"
+                                    name="clientEmail"
                                     type="email"
                                     required
                                     placeholder="you@company.com"
                                     value={email}
                                     onChange={(event) => setEmail(event.target.value)}
+                                    autoComplete="section-client username"
                                     className="w-full rounded-md border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Password</label>
+                                <label htmlFor="clientPassword" className="block text-sm font-medium text-slate-700 mb-2">Password</label>
                                 <input
+                                    id="clientPassword"
+                                    name="clientPassword"
                                     type="password"
                                     required
                                     placeholder="Enter password"
                                     value={password}
                                     onChange={(event) => setPassword(event.target.value)}
+                                    autoComplete="section-client current-password"
                                     className="w-full rounded-md border border-slate-200 px-3 py-2"
                                 />
                             </div>
@@ -109,7 +129,7 @@ export default function LoginForm() {
                                     className="w-full border-slate-200"
                                     leftIcon={<FaGithub className="h-5 w-5" />}
                                     onClick={() => void signIn("github", {
-                                        callbackUrl: "/dashboard",
+                                        callbackUrl: sanitizeCallbackUrl(searchParams.get("callbackUrl"), "client"),
                                     })}
                                     type="button"
                                 >

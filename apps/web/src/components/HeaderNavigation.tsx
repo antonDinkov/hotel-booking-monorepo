@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 
 import { AppButton } from "./AppButton";
 import { BuildingStorefrontIcon } from "@heroicons/react/24/solid";
+import { getRoleDashboard } from "@/lib/auth/role-routing";
 
 function BrandMark() {
     return <BuildingStorefrontIcon className="h-7 w-7 text-blue-700" />;
@@ -28,6 +29,7 @@ interface HeaderNavigationProps {
         user?: {
             email?: string | null;
             name?: string | null;
+            roles?: string[];
         } | null;
     } | null;
     /** optional testing helper to force loading UI */
@@ -41,6 +43,9 @@ export function HeaderNavigation({
 }: HeaderNavigationProps) {
     const isLoggedIn = Boolean(session);
     const userEmail = session?.user?.email ?? session?.user?.name ?? null;
+    const roles = session?.user?.roles ?? [];
+    const dashboardHref = getRoleDashboard(roles);
+    const showClientNavigation = roles.includes("client");
     const pathname = usePathname() ?? "/";
     const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -69,7 +74,7 @@ export function HeaderNavigation({
     const activeButtonClasses = "bg-blue-700 text-white shadow-lg shadow-blue-700/20 hover:bg-blue-800 border-transparent btn-active";
     const inactiveButtonClasses = "border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-slate-400 hover:bg-slate-50";
     // homeHref redirect logged in users to /dashboard or / when clicking the brand link 
-    const homeHref = isLoggedIn ? "/dashboard" : "/";
+    const homeHref = isLoggedIn ? dashboardHref : "/";
     const handleSignOut = async () => {
         try {
             setIsSigningOut(true);
@@ -138,38 +143,42 @@ export function HeaderNavigation({
                             </p>
                         ) : null}
 
-                        <Link href="/dashboard" prefetch={false} aria-current={isActive("/dashboard") ? "page" : undefined} className="relative inline-flex">
+                        <Link href={dashboardHref} prefetch={false} aria-current={isActive(dashboardHref) ? "page" : undefined} className="relative inline-flex">
                             <AppButton
-                                onClick={() => setClickedPath("/dashboard")}
-                                variant={isActive("/dashboard") ? "primary" : "secondary"}
+                                onClick={() => setClickedPath(dashboardHref)}
+                                variant={isActive(dashboardHref) ? "primary" : "secondary"}
                                 size="md"
-                                className={isActive("/dashboard") ? activeButtonClasses : inactiveButtonClasses}
+                                className={isActive(dashboardHref) ? activeButtonClasses : inactiveButtonClasses}
                             >
-                                Dashboard
+                                {roles.includes("admin") ? "Admin Dashboard" : roles.includes("partner") ? "Partner Dashboard" : "Dashboard"}
                             </AppButton>
                         </Link>
 
-                        <Link href="/bookings" prefetch={false} aria-current={isActive("/bookings") ? "page" : undefined} className="relative inline-flex">
-                            <AppButton
-                                onClick={() => setClickedPath("/bookings")}
-                                variant={isActive("/bookings") ? "primary" : "secondary"}
-                                size="md"
-                                className={isActive("/bookings") ? activeButtonClasses : inactiveButtonClasses}
-                            >
-                                My Bookings
-                            </AppButton>
-                        </Link>
+                        {showClientNavigation ? (
+                            <>
+                                <Link href="/bookings" prefetch={false} aria-current={isActive("/bookings") ? "page" : undefined} className="relative inline-flex">
+                                    <AppButton
+                                        onClick={() => setClickedPath("/bookings")}
+                                        variant={isActive("/bookings") ? "primary" : "secondary"}
+                                        size="md"
+                                        className={isActive("/bookings") ? activeButtonClasses : inactiveButtonClasses}
+                                    >
+                                        My Bookings
+                                    </AppButton>
+                                </Link>
 
-                        <Link href="/profile" prefetch={false} aria-current={isActive("/profile") ? "page" : undefined} className="relative inline-flex">
-                            <AppButton
-                                onClick={() => setClickedPath("/profile")}
-                                variant={isActive("/profile") ? "primary" : "secondary"}
-                                size="md"
-                                className={isActive("/profile") ? activeButtonClasses : inactiveButtonClasses}
-                            >
-                                Profile
-                            </AppButton>
-                        </Link>
+                                <Link href="/profile" prefetch={false} aria-current={isActive("/profile") ? "page" : undefined} className="relative inline-flex">
+                                    <AppButton
+                                        onClick={() => setClickedPath("/profile")}
+                                        variant={isActive("/profile") ? "primary" : "secondary"}
+                                        size="md"
+                                        className={isActive("/profile") ? activeButtonClasses : inactiveButtonClasses}
+                                    >
+                                        Profile
+                                    </AppButton>
+                                </Link>
+                            </>
+                        ) : null}
 
                         <AppButton variant="secondary" size="md" onClick={handleSignOut} disabled={isSigningOut}>
                             {isSigningOut ? "Signing out..." : "Logout"}

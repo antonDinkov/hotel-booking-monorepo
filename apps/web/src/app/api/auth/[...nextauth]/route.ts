@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth/next"
 import CredentialsProvider from "next-auth/providers/credentials"
 import GitHubProvider from "next-auth/providers/github"
 
-import { ensureOAuthUser, getUserRoles, validateCredentials, validatePartnerCredentials } from "@/server/services/auth"
+import { getRoleDashboard } from "@/lib/auth/role-routing"
+import { ensureOAuthUser, getUserRoles, validateCredentialsForRole } from "@/server/services/auth"
 
 export const authOptions: NextAuthOptions = {
     providers: [
@@ -11,7 +12,8 @@ export const authOptions: NextAuthOptions = {
             name: "Credentials",
             credentials: {
                 email: { label: "Email", type: "text" },
-                password: { label: "Password", type: "password" }
+                password: { label: "Password", type: "password" },
+                loginContext: { label: "Login Context", type: "text" }
             },
             async authorize(credentials) {
                 const email = credentials?.email?.toString().trim();
@@ -20,11 +22,11 @@ export const authOptions: NextAuthOptions = {
 
                 if (!email || !password) return null;
 
-                if (loginContext === "partner") {
-                    return validatePartnerCredentials(email, password);
+                if (loginContext === "partner" || loginContext === "admin") {
+                    return validateCredentialsForRole(email, password, loginContext);
                 }
 
-                return validateCredentials(email, password);
+                return validateCredentialsForRole(email, password, "client");
             }
         }),
         GitHubProvider({
@@ -61,6 +63,11 @@ export const authOptions: NextAuthOptions = {
 
             user.id = oauthUser.id;
             user.email = oauthUser.email;
+
+            const roles = await getUserRoles(oauthUser.id);
+            if (!roles.includes("client")) {
+                return "/login?error=" + encodeURIComponent("This account is not a client account. Please use the correct login page.");
+            }
 
             return true;
         },
@@ -126,9 +133,7 @@ export async function authorizeApi(allowedRoles: string[]) {
 }
 
 export function redirectToRoleDashboard(roles: string[]) {
-    if (roles.includes("admin")) return "/admin/dashboard";
-    if (roles.includes("partner")) return "/partner/dashboard";
-    return "/dashboard";
+    return getRoleDashboard(roles);
 }
 
 const handler = NextAuth(authOptions)

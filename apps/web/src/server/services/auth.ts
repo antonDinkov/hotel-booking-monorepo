@@ -42,7 +42,13 @@ async function userHasRole(userId: string, roleName: string): Promise<boolean> {
     return Boolean(row);
 }
 
-export async function validateCredentials(email: string, password: string) {
+const roleMismatchMessages = {
+    admin: "This account is not an admin account. Please use the correct login page.",
+    client: "This account is not a client account. Please use the correct login page.",
+    partner: "This account is not a partner account. Please use the correct login page.",
+} as const;
+
+export async function validateCredentialsForRole(email: string, password: string, roleName: keyof typeof roleMismatchMessages) {
     const user = await getAuthUserByEmail(email);
 
     if (!user || !user.isActive) return null;
@@ -50,19 +56,8 @@ export async function validateCredentials(email: string, password: string) {
     const isValid = await isPasswordValid(user, password);
     if (!isValid) return null;
 
-    return { id: user.id, email: user.email };
-}
-
-export async function validatePartnerCredentials(email: string, password: string) {
-    const user = await getAuthUserByEmail(email);
-
-    if (!user) throw new Error("No partner account was found for this email.");
-    if (!user.isActive) throw new Error("This partner account is disabled.");
-    if (!(await userHasRole(user.id, "partner"))) {
-        throw new Error("No partner account was found for this email.");
-    }
-    if (!(await isPasswordValid(user, password))) {
-        throw new Error("Invalid email or password.");
+    if (!(await userHasRole(user.id, roleName))) {
+        throw new Error(roleMismatchMessages[roleName]);
     }
 
     return { id: user.id, email: user.email };

@@ -1,6 +1,6 @@
-// Home page is guest-facing; authenticated users are redirected to `/dashboard`.
 import { getHotelPanelData } from "@/server/services/hotelPanel";
 import { authorize } from "@/app/api/auth/[...nextauth]/route";
+import { getRoleDashboard } from "@/lib/auth/role-routing";
 import { redirect } from "next/navigation";
 import { HeroSection } from "../../components/HeroSection";
 import { FeaturedListings } from "../../components/FeaturedListings";
@@ -8,9 +8,9 @@ import { SearchEngineWrapper } from "../../components/SearchEngineWrapper";
 import type { HotelPanelData } from "../../types/hotel-panel";
 
 export default async function Home() {
-  const auth = await authorize(["client", "admin"]);
+  const auth = await authorize(["client", "partner", "admin"]);
   if (auth.ok) {
-    redirect("/dashboard");
+    redirect(getRoleDashboard(auth.roles));
   }
 
   const panelData: HotelPanelData | null = await getHotelPanelData();

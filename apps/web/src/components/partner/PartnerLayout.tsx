@@ -1,8 +1,8 @@
 "use client";
 
 import {
+  ArrowRightOnRectangleIcon,
   Bars3Icon,
-  BellIcon,
   BuildingOffice2Icon,
   CalendarDaysIcon,
   ChartBarIcon,
@@ -13,6 +13,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { PartnerRouteLayoutProps } from "@/types/partner";
@@ -49,22 +50,16 @@ const navigationItems = [
     activePrefixes: ["/partner/reviews"],
   },
   {
-    label: "Analytics",
-    href: "/partner/analytics",
-    icon: ChartBarIcon,
-    activePrefixes: ["/partner/analytics"],
-  },
-  {
     label: "Calendar",
     href: "/partner/calendar",
     icon: CalendarDaysIcon,
     activePrefixes: ["/partner/calendar"],
   },
   {
-    label: "Notifications",
-    href: "/partner/notifications",
-    icon: BellIcon,
-    activePrefixes: ["/partner/notifications"],
+    label: "Analytics",
+    href: "/partner/analytics",
+    icon: ChartBarIcon,
+    activePrefixes: ["/partner/analytics"],
   },
   {
     label: "Settings",
@@ -81,6 +76,17 @@ function isActiveRoute(pathname: string, prefixes: string[]) {
 export default function PartnerLayout({ children }: PartnerRouteLayoutProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true);
+      await signOut({ redirect: true, callbackUrl: "/partner/login" });
+    } catch (error) {
+      console.error("Error signing out of partner area:", error);
+      setIsSigningOut(false);
+    }
+  };
 
   if (plainPartnerRoutes.has(pathname)) {
     return <>{children}</>;
@@ -121,6 +127,15 @@ export default function PartnerLayout({ children }: PartnerRouteLayoutProps) {
                 </Link>
               );
             })}
+            <button
+              type="button"
+              onClick={() => void handleSignOut()}
+              disabled={isSigningOut}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-300 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-wait disabled:opacity-70"
+            >
+              <ArrowRightOnRectangleIcon className="h-5 w-5" aria-hidden="true" />
+              {isSigningOut ? "Signing out..." : "Logout"}
+            </button>
           </nav>
           <div className="mt-auto rounded-lg border border-emerald-300/20 bg-emerald-300/10 p-4">
             <p className="text-sm font-semibold text-emerald-100">Portfolio health</p>
@@ -178,6 +193,15 @@ export default function PartnerLayout({ children }: PartnerRouteLayoutProps) {
                     </Link>
                   );
                 })}
+                <button
+                  type="button"
+                  onClick={() => void handleSignOut()}
+                  disabled={isSigningOut}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-300 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-wait disabled:opacity-70"
+                >
+                  <ArrowRightOnRectangleIcon className="h-5 w-5" aria-hidden="true" />
+                  {isSigningOut ? "Signing out..." : "Logout"}
+                </button>
               </nav>
             </aside>
           </div>
@@ -202,24 +226,19 @@ export default function PartnerLayout({ children }: PartnerRouteLayoutProps) {
               </div>
               <div className="flex items-center gap-2">
                 <Link
-                  href="/"
-                  className="hidden rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.06] sm:inline-flex"
-                >
-                  Public site
-                </Link>
-                <Link
-                  href="/partner/notifications"
-                  className="rounded-lg border border-white/10 p-2 text-slate-200 transition hover:bg-white/[0.06]"
-                  aria-label="Open notifications"
-                >
-                  <BellIcon className="h-5 w-5" aria-hidden="true" />
-                </Link>
-                <Link
                   href="/partner/settings"
                   className="rounded-lg border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-300/15"
                 >
                   Settings
                 </Link>
+                <button
+                  type="button"
+                  onClick={() => void handleSignOut()}
+                  disabled={isSigningOut}
+                  className="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.06] disabled:cursor-wait disabled:opacity-70"
+                >
+                  {isSigningOut ? "Signing out..." : "Logout"}
+                </button>
               </div>
             </div>
           </header>
