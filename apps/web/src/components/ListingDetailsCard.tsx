@@ -30,6 +30,14 @@ function getNights(checkInDate: string, checkOutDate: string) {
   return Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24));
 }
 
+function getRequiredRooms(room: RoomAvailability, guestsCount: number): number {
+  return room.requiredRooms ?? Math.ceil(guestsCount / Math.max(1, room.capacity));
+}
+
+function getDefaultRoomCount(room: RoomAvailability, guestsCount: number): number {
+  return Math.min(room.availableRooms, Math.max(1, getRequiredRooms(room, guestsCount)));
+}
+
 function RatingDisplay({ rating, label }: { rating: number | null; label?: string }) {
   if (rating === null) {
     return <span className="text-2xl font-bold text-blue-700">{label ?? "New"}</span>;
@@ -63,8 +71,10 @@ export function ListingDetailsCard({
 
   const defaultRoomTypeId = useMemo(() => {
     if (availability.length === 0) return null;
-    const sorted = [...availability].sort((a, b) => a.capacity - b.capacity);
-    const exact = sorted.find((room) => room.capacity === guestsCount);
+    const sorted = [...availability].sort(
+      (a, b) => getRequiredRooms(a, guestsCount) - getRequiredRooms(b, guestsCount) || a.capacity - b.capacity
+    );
+    const exact = sorted.find((room) => room.capacity * getRequiredRooms(room, guestsCount) === guestsCount);
     return (exact ?? sorted[0]).roomTypeId;
   }, [availability, guestsCount]);
 
@@ -87,10 +97,13 @@ export function ListingDetailsCard({
         next[room.roomTypeId] = 0;
       });
       const current = prev[defaultRoomTypeId] ?? 0;
-      next[defaultRoomTypeId] = Math.max(current, 1);
+      const defaultRoom = availability.find((room) => room.roomTypeId === defaultRoomTypeId);
+      next[defaultRoomTypeId] = defaultRoom
+        ? Math.min(defaultRoom.availableRooms, Math.max(current, getDefaultRoomCount(defaultRoom, guestsCount)))
+        : Math.max(current, 1);
       return next;
     });
-  }, [availability, defaultRoomTypeId]);
+  }, [availability, defaultRoomTypeId, guestsCount]);
 
   const handleSelectRoomType = (roomTypeId: number) => {
     setSelectedRoomTypeId(roomTypeId);
@@ -99,7 +112,8 @@ export function ListingDetailsCard({
       availability.forEach((room) => {
         next[room.roomTypeId] = 0;
       });
-      next[roomTypeId] = 1;
+      const selected = availability.find((room) => room.roomTypeId === roomTypeId);
+      next[roomTypeId] = selected ? getDefaultRoomCount(selected, guestsCount) : 1;
       return next;
     });
   };
@@ -114,13 +128,15 @@ export function ListingDetailsCard({
 
   const selectedRoom = availability.find((room) => room.roomTypeId === selectedRoomTypeId) ?? null;
   const selectedRooms = selectedRoomTypeId ? roomCounts[selectedRoomTypeId] ?? 0 : 0;
+  const selectedRequiredRooms = selectedRoom ? getRequiredRooms(selectedRoom, guestsCount) : 1;
+  const hasEnoughSelectedRooms = Boolean(selectedRoom && selectedRooms >= selectedRequiredRooms);
   const totalPerNight = selectedRoom ? selectedRoom.pricePerNight * selectedRooms : 0;
 
   const nights = getNights(checkInDate, checkOutDate);
   const totalPrice = totalPerNight * nights;
 
   const handleReserve = async () => {
-    if (!selectedRoomTypeId || selectedRooms < 1 || !hasSearchDates || !selectedRoom) return;
+    if (!selectedRoomTypeId || !hasEnoughSelectedRooms || !hasSearchDates || !selectedRoom) return;
 
     setIsReserving(true);
     setReserveError(null);
@@ -148,7 +164,7 @@ export function ListingDetailsCard({
     const params = new URLSearchParams({
       roomTypeId: String(selectedRoomTypeId),
       roomPrice: String(selectedRoom.pricePerNight),
-      rooms: String(selectedRooms || 1),
+      rooms: String(selectedRooms || selectedRequiredRooms),
       guests: String(guestsCount),
       roomCapacity: String(selectedRoom.capacity),
     });
@@ -254,7 +270,6 @@ export function ListingDetailsCard({
             </div>
 
             <RoomAvailabilityTable
-              listingId={listing.id}
               availability={availability}
               guestsCount={guestsCount}
               checkInDate={checkInDate}
@@ -328,7 +343,7 @@ export function ListingDetailsCard({
                 size="lg"
                 className="mb-3 w-full shadow-blue-700/25"
                 onClick={primaryAction}
-                disabled={!selectedRoomTypeId || selectedRooms < 1 || isReserving}
+                disabled={!selectedRoomTypeId || !hasEnoughSelectedRooms || isReserving}
               >
                 {isReserving ? "Reserving..." : primaryActionLabel}
               </AppButton>

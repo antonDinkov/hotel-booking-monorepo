@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import type { RoomAvailability } from "@/types/room-availability";
 
 interface RoomAvailabilityTableProps {
-  listingId: string;
   availability: RoomAvailability[];
   guestsCount: number;
   checkInDate: string;
@@ -16,7 +15,6 @@ interface RoomAvailabilityTableProps {
 }
 
 export function RoomAvailabilityTable({
-  listingId,
   availability,
   guestsCount,
   checkInDate,
@@ -32,6 +30,16 @@ export function RoomAvailabilityTable({
     if (!hasDates) return "Add dates to see availability.";
     return `Showing availability for ${guestsCount} guest${guestsCount === 1 ? "" : "s"}.`;
   }, [hasDates, guestsCount]);
+
+  const getRequiredRooms = (room: RoomAvailability) => (
+    room.requiredRooms ?? Math.ceil(guestsCount / Math.max(1, room.capacity))
+  );
+
+  const getRoomOptions = (room: RoomAvailability) => {
+    const requiredRooms = getRequiredRooms(room);
+    const optionCount = room.availableRooms - requiredRooms + 1;
+    return Array.from({ length: Math.max(0, optionCount) }, (_, i) => requiredRooms + i);
+  };
 
   return (
     <section className="mb-8">
@@ -62,9 +70,13 @@ export function RoomAvailabilityTable({
               {availability.map((room) => (
                 <tr key={room.roomTypeId} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-900">{room.name}</td>
-                  <td className="px-4 py-3 text-slate-600">Up to {room.capacity} guests</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    Up to {room.capacity} guest{room.capacity === 1 ? "" : "s"} each
+                  </td>
                   <td className="px-4 py-3 text-slate-900">${room.pricePerNight}</td>
-                  <td className="px-4 py-3 text-slate-600">{room.availableRooms} rooms left</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {room.availableRooms} left, {getRequiredRooms(room)} needed
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <input
@@ -80,18 +92,15 @@ export function RoomAvailabilityTable({
                         disabled={selectedRoomTypeId !== room.roomTypeId}
                         aria-label={`Select number of rooms for ${room.name}`}
                       >
-                        {selectedRoomTypeId === room.roomTypeId
-                          ? Array.from({ length: room.availableRooms }, (_, i) => {
-                              const value = i + 1;
-                              return (
-                                <option key={value} value={value}>
-                                  {value}
-                                </option>
-                              );
-                            })
-                          : (
-                              <option value={0}>0</option>
-                            )}
+                        {selectedRoomTypeId === room.roomTypeId ? (
+                          getRoomOptions(room).map((value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          ))
+                        ) : (
+                          <option value={0}>0</option>
+                        )}
                       </select>
                     </div>
                   </td>
@@ -103,7 +112,7 @@ export function RoomAvailabilityTable({
       )}
 
       <p className="mt-3 text-xs text-slate-500">
-        Guest number cannot exceed the room capacity.
+        Room count must cover the full guest party for the selected room type.
       </p>
 
     </section>

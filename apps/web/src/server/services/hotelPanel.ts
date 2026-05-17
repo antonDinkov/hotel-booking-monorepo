@@ -12,7 +12,7 @@
  * - Makes logic reusable for mobile clients by exposing the same
  *   underlying behavior behind an HTTP API.
  */
-import { and, eq, gte, ilike, lt, lte, gt, inArray, or } from "drizzle-orm";
+import { and, eq, ilike, lt, lte, gt, inArray, or } from "drizzle-orm";
 
 import { db } from "../../db";
 import { hotelImages, hotels, roomTypes, bookings } from "../../db/schema";
@@ -214,6 +214,10 @@ function calculateAvailableRooms(
     return Math.max(0, minAvailable);
 }
 
+function getRequiredRoomsForGuests(guestsCount: number, capacity: number): number {
+    return Math.ceil(guestsCount / Math.max(1, capacity));
+}
+
 export async function getRoomAvailabilityForHotel(
     hotelId: number,
     checkInDate: string,
@@ -239,7 +243,7 @@ export async function getRoomAvailabilityForHotel(
             totalRooms: roomTypes.totalRooms,
         })
         .from(roomTypes)
-        .where(and(eq(roomTypes.hotelId, hotelId), gte(roomTypes.capacity, guestsCount)));
+        .where(eq(roomTypes.hotelId, hotelId));
 
     if (roomTypesData.length === 0) return [];
 
@@ -292,9 +296,10 @@ export async function getRoomAvailabilityForHotel(
                 pricePerNight: roomType.pricePerNight,
                 totalRooms: roomType.totalRooms,
                 availableRooms,
+                requiredRooms: getRequiredRoomsForGuests(guestsCount, roomType.capacity),
             };
         })
-        .filter((roomType) => roomType.availableRooms > 0);
+        .filter((roomType) => roomType.availableRooms >= roomType.requiredRooms);
 }
 
 export async function searchAvailableHotels(
@@ -335,12 +340,7 @@ export async function searchAvailableHotels(
         const roomTypesData = await db
             .select()
             .from(roomTypes)
-            .where(
-                and(
-                    eq(roomTypes.hotelId, hotel.id),
-                    gte(roomTypes.capacity, guestsCount)
-                )
-            );
+            .where(eq(roomTypes.hotelId, hotel.id));
 
         let hasAvailability = false;
 
@@ -364,39 +364,18 @@ export async function searchAvailableHotels(
                     )
                 );
 
-            const dailyMap = new Map<string, number>();
+            const availableRooms = calculateAvailableRooms(
+                roomType.totalRooms,
+                bookingsData.map((booking) => ({
+                    checkInDate: String(booking.checkInDate),
+                    checkOutDate: String(booking.checkOutDate),
+                    roomsCount: booking.roomsCount,
+                })),
+                checkInDate,
+                checkOutDate
+            );
 
-            for (const booking of bookingsData) {
-                const start = new Date(booking.checkInDate);
-                const end = new Date(booking.checkOutDate);
-
-                for (
-                    let d = new Date(start);
-                    d < end;
-                    d.setDate(d.getDate() + 1)
-                ) {
-                    const key = formatDateKey(d);
-                    dailyMap.set(key, (dailyMap.get(key) || 0) + Math.max(1, booking.roomsCount ?? 1));
-                }
-            }
-
-            let isAvailable = true;
-
-            for (
-                let d = new Date(checkInDate);
-                d < new Date(checkOutDate);
-                d.setDate(d.getDate() + 1)
-            ) {
-                const key = formatDateKey(d);
-                const booked = dailyMap.get(key) || 0;
-
-                if (booked >= roomType.totalRooms) {
-                    isAvailable = false;
-                    break;
-                }
-            }
-
-            if (isAvailable) {
+            if (availableRooms >= getRequiredRoomsForGuests(guestsCount, roomType.capacity)) {
                 hasAvailability = true;
                 break;
             }

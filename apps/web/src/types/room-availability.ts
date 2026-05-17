@@ -6,4 +6,6 @@ export interface RoomAvailability {
   pricePerNight: number;
   totalRooms: number;
   availableRooms: number;
+  // Minimum rooms of this type needed to fit the current guest search.
+  requiredRooms?: number;
 }
