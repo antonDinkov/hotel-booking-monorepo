@@ -138,10 +138,15 @@ export const hotelImages = pgTable("hotel_images", {
 	hotelId: integer("hotel_id")
 		.notNull()
 		.references(() => hotels.id),
+	roomTypeId: integer("room_type_id")
+		.references(() => roomTypes.id, { onDelete: "cascade" }),
 	sortOrder: integer("sort_order").notNull().default(0),
 	isCover: boolean("is_cover").notNull().default(false),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+	index("hotel_images_hotel_room_idx").on(table.hotelId, table.roomTypeId),
+	index("hotel_images_room_type_id_idx").on(table.roomTypeId),
+]);
 
 export const roomTypes = pgTable("room_types", {
 	id: serial("id").primaryKey(),
@@ -242,6 +247,10 @@ export const hotelImagesRelations = relations(hotelImages, ({ one }) => ({
 		fields: [hotelImages.hotelId],
 		references: [hotels.id],
 	}),
+	roomType: one(roomTypes, {
+		fields: [hotelImages.roomTypeId],
+		references: [roomTypes.id],
+	}),
 }));
 
 export const roomTypesRelations = relations(roomTypes, ({ many, one }) => ({
@@ -249,6 +258,7 @@ export const roomTypesRelations = relations(roomTypes, ({ many, one }) => ({
 		fields: [roomTypes.hotelId],
 		references: [hotels.id],
 	}),
+	images: many(hotelImages),
 	bookings: many(bookings),
 }));
 

@@ -1,20 +1,33 @@
+import { notFound, redirect } from "next/navigation";
+
+import { authorize } from "@/app/api/auth/[...nextauth]/route";
 import PartnerHotelForm from "@/components/partner/PartnerHotelForm";
 import PartnerPageHeader from "@/components/partner/PartnerPageHeader";
-import { partnerHotels } from "@/lib/partner-mock-data";
+import { getPartnerHotelDetails } from "@/server/services/partnerHotels";
 import type { PartnerHotelPageProps } from "@/types/partner";
 
+function parseHotelId(value: string): number {
+  const hotelId = Number(value);
+  if (!Number.isInteger(hotelId) || hotelId < 1) notFound();
+  return hotelId;
+}
+
 export default async function Page({ params }: PartnerHotelPageProps) {
+  const auth = await authorize(["partner"]);
+  if (!auth.ok || !auth.userId) redirect("/partner/login");
+
   const { id } = await params;
-  const hotel = partnerHotels.find((item) => item.id === id) ?? partnerHotels[0];
+  const hotel = await getPartnerHotelDetails(auth.userId, parseHotelId(id));
+  if (!hotel) notFound();
 
   return (
     <>
       <PartnerPageHeader
         eyebrow="Listing editor"
         title={`Edit ${hotel.name}`}
-        description="A static editing surface matching the add hotel sections without persisting changes."
+        description="Edit hotel details, general images, cover image, ordering, and payment methods."
       />
-      <PartnerHotelForm mode="edit" hotelId={hotel.id} />
+      <PartnerHotelForm mode="edit" hotel={hotel} />
     </>
   );
 }

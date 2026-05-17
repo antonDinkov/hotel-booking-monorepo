@@ -1,7 +1,8 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { favoriteHotels, hotelImages, hotels, roles, userRoles } from "@/db/schema";
+import { resolveImageUrl } from "@/lib/image-urls";
 import type { FavoriteMutationResult, FavoritePaginationInput } from "@/types/favorite";
 import type { Listing } from "@/types/hotel-panel";
 import { getHotelReviewSummariesByHotelIds } from "./reviews";
@@ -73,13 +74,13 @@ async function getCoverImagesByHotelId(hotelIds: number[]): Promise<Map<number, 
       imageUrl: hotelImages.imageKey,
     })
     .from(hotelImages)
-    .where(inArray(hotelImages.hotelId, hotelIds))
+    .where(and(inArray(hotelImages.hotelId, hotelIds), isNull(hotelImages.roomTypeId)))
     .orderBy(desc(hotelImages.isCover), asc(hotelImages.sortOrder), asc(hotelImages.id));
 
   const imagesByHotelId = new Map<number, string>();
   for (const row of rows) {
     if (!imagesByHotelId.has(row.hotelId)) {
-      imagesByHotelId.set(row.hotelId, row.imageUrl);
+      imagesByHotelId.set(row.hotelId, resolveImageUrl(row.imageUrl));
     }
   }
 

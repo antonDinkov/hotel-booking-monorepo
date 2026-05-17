@@ -1,44 +1,48 @@
 import {
   BanknotesIcon,
   BuildingOffice2Icon,
-  CalendarDaysIcon,
-  ChatBubbleLeftRightIcon,
+  PencilSquareIcon,
   PhotoIcon,
-  StarIcon,
 } from "@heroicons/react/24/outline";
+import Image from "next/image";
 import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+
+import { authorize } from "@/app/api/auth/[...nextauth]/route";
 import PartnerBadge from "@/components/partner/PartnerBadge";
 import PartnerCard from "@/components/partner/PartnerCard";
-import PartnerChartPlaceholder from "@/components/partner/PartnerChartPlaceholder";
 import PartnerPageHeader from "@/components/partner/PartnerPageHeader";
 import PartnerSection from "@/components/partner/PartnerSection";
-import {
-  partnerBookings,
-  partnerHotels,
-  partnerReviews,
-  partnerRooms,
-} from "@/lib/partner-mock-data";
-import type { PartnerBadgeTone, PartnerHotelPageProps } from "@/types/partner";
+import { getPartnerHotelDetails } from "@/server/services/partnerHotels";
+import type { PartnerHotelPageProps } from "@/types/partner";
+import type { PartnerPaymentMethod } from "@/types/partner-hotel";
 
-function statusTone(status: string): PartnerBadgeTone {
-  if (status === "Active" || status === "Available") return "emerald";
-  if (status === "Draft" || status === "Limited") return "amber";
-  return "slate";
+function parseHotelId(value: string): number {
+  const hotelId = Number(value);
+  if (!Number.isInteger(hotelId) || hotelId < 1) notFound();
+  return hotelId;
+}
+
+function formatPaymentMethod(method: PartnerPaymentMethod): string {
+  if (method === "stripe") return "Card via Stripe";
+  return "Cash on arrival";
 }
 
 export default async function Page({ params }: PartnerHotelPageProps) {
+  const auth = await authorize(["partner"]);
+  if (!auth.ok || !auth.userId) redirect("/partner/login");
+
   const { id } = await params;
-  const hotel = partnerHotels.find((item) => item.id === id) ?? partnerHotels[0];
-  const rooms = partnerRooms.filter((room) => room.hotelId === hotel.id);
-  const bookings = partnerBookings.filter((booking) => booking.hotelId === hotel.id);
-  const reviews = partnerReviews.filter((review) => review.hotel === hotel.name);
+  const hotelId = parseHotelId(id);
+  const hotel = await getPartnerHotelDetails(auth.userId, hotelId);
+  if (!hotel) notFound();
 
   return (
     <>
       <PartnerPageHeader
         eyebrow="Hotel details"
         title={hotel.name}
-        description={`${hotel.address}, ${hotel.city}. Visual-only operational detail page for partner managers.`}
+        description={`${hotel.location}. Live operational detail page for partner hotel management.`}
         actions={
           <>
             <Link
@@ -52,167 +56,156 @@ export default async function Page({ params }: PartnerHotelPageProps) {
               href={`/partner/hotels/${hotel.id}/edit`}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
             >
+              <PencilSquareIcon className="h-4 w-4" aria-hidden="true" />
               Edit hotel
             </Link>
           </>
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {["Overview", "Rooms", "Bookings", "Reviews", "Pricing", "Photos"].map(
-          (item) => (
-            <a
-              key={item}
-              href={`#${item.toLowerCase()}`}
-              className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-center text-sm font-semibold text-slate-200 transition hover:bg-white/[0.08]"
-            >
-              {item}
-            </a>
-          )
-        )}
+      <div className="grid gap-3 sm:grid-cols-4">
+        {["Overview", "Rooms", "Payments", "Photos"].map((item) => (
+          <a
+            key={item}
+            href={`#${item.toLowerCase()}`}
+            className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-center text-sm font-semibold text-slate-200 transition hover:bg-white/[0.08]"
+          >
+            {item}
+          </a>
+        ))}
       </div>
 
       <section id="overview" className="grid gap-5 lg:grid-cols-4">
         <PartnerCard>
           <p className="text-sm text-slate-400">Status</p>
           <div className="mt-3">
-            <PartnerBadge tone={statusTone(hotel.status)}>{hotel.status}</PartnerBadge>
+            <PartnerBadge tone="emerald">Active</PartnerBadge>
           </div>
         </PartnerCard>
         <PartnerCard>
-          <p className="text-sm text-slate-400">Average rating</p>
-          <p className="mt-3 text-2xl font-semibold text-white">{hotel.rating}</p>
+          <p className="text-sm text-slate-400">Room types</p>
+          <p className="mt-3 text-2xl font-semibold text-white">{hotel.roomTypeCount}</p>
         </PartnerCard>
         <PartnerCard>
-          <p className="text-sm text-slate-400">Occupancy</p>
-          <p className="mt-3 text-2xl font-semibold text-white">{hotel.occupancy}</p>
+          <p className="text-sm text-slate-400">Hotel photos</p>
+          <p className="mt-3 text-2xl font-semibold text-white">{hotel.images.length}</p>
         </PartnerCard>
         <PartnerCard>
-          <p className="text-sm text-slate-400">Revenue</p>
-          <p className="mt-3 text-2xl font-semibold text-white">{hotel.revenue}</p>
+          <p className="text-sm text-slate-400">Payment methods</p>
+          <p className="mt-3 text-2xl font-semibold text-white">{hotel.paymentMethods.length}</p>
         </PartnerCard>
       </section>
+
+      <PartnerSection
+        title="Hotel information"
+        description="Guest-facing name, location, and description from the database."
+      >
+        <PartnerCard>
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
+            <div>
+              <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Location</p>
+              <p className="mt-2 font-semibold text-white">{hotel.location}</p>
+              <p className="mt-5 text-sm leading-6 text-slate-300">
+                {hotel.description ?? "No description has been added yet."}
+              </p>
+            </div>
+            <div className="aspect-[4/3] overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+              {hotel.coverImageUrl ? (
+                <Image
+                  src={hotel.coverImageUrl}
+                  alt={`${hotel.name} cover image`}
+                  width={520}
+                  height={390}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-slate-500">
+                  <PhotoIcon className="h-8 w-8" aria-hidden="true" />
+                </div>
+              )}
+            </div>
+          </div>
+        </PartnerCard>
+      </PartnerSection>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <PartnerSection
           title="Rooms"
-          description="Room inventory connected to this static hotel preview."
+          description="Room type summary for this hotel."
           className="scroll-mt-24"
         >
           <div id="rooms" className="grid gap-4">
-            {rooms.map((room) => (
+            {hotel.rooms.length > 0 ? hotel.rooms.map((room) => (
               <PartnerCard key={room.id}>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="font-semibold text-white">{room.name}</h3>
                     <p className="mt-1 text-sm text-slate-400">
-                      {room.type} - {room.capacity} - {room.rate}/night
+                      Capacity {room.capacity} - ${room.pricePerNight}/night - {room.totalRooms} total rooms
                     </p>
                   </div>
-                  <PartnerBadge tone={statusTone(room.status)}>{room.status}</PartnerBadge>
+                  <PartnerBadge tone="emerald">{room.images.length} photos</PartnerBadge>
                 </div>
               </PartnerCard>
-            ))}
+            )) : (
+              <PartnerCard>
+                <p className="text-sm text-slate-400">No room types have been added yet.</p>
+              </PartnerCard>
+            )}
           </div>
         </PartnerSection>
 
         <PartnerSection
-          title="Pricing"
-          description="Static visual trend for nightly revenue."
+          title="Payments"
+          description="Booking payment methods configured for this hotel."
           className="scroll-mt-24"
         >
-          <div id="pricing">
-            <PartnerChartPlaceholder
-              title="Average daily rate"
-              value="$214"
-              caption="last 7-day preview"
-              bars={[48, 55, 62, 76, 71, 86, 82]}
-            />
-          </div>
-        </PartnerSection>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <PartnerSection
-          title="Bookings"
-          description="Recent stays tied to this hotel."
-          className="scroll-mt-24"
-        >
-          <div id="bookings" className="grid gap-4">
-            {bookings.map((booking) => (
-              <Link key={booking.id} href={`/partner/bookings/${booking.id}`}>
-                <PartnerCard className="transition hover:border-amber-300/30 hover:bg-white/[0.08]">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <h3 className="font-semibold text-white">{booking.guest}</h3>
-                      <p className="mt-1 text-sm text-slate-400">
-                        {booking.room} - {booking.dates}
-                      </p>
-                    </div>
-                    <PartnerBadge tone={booking.status === "Cancelled" ? "rose" : "emerald"}>
-                      {booking.status}
-                    </PartnerBadge>
-                  </div>
-                </PartnerCard>
-              </Link>
-            ))}
-          </div>
-        </PartnerSection>
-
-        <PartnerSection
-          title="Reviews"
-          description="Guest feedback for the selected hotel."
-          className="scroll-mt-24"
-        >
-          <div id="reviews" className="grid gap-4">
-            {reviews.map((review) => (
-              <PartnerCard key={review.id}>
+          <div id="payments" className="grid gap-4">
+            {hotel.paymentMethods.length > 0 ? hotel.paymentMethods.map((method) => (
+              <PartnerCard key={method}>
                 <div className="flex items-center justify-between gap-4">
-                  <h3 className="font-semibold text-white">{review.guest}</h3>
-                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-amber-200">
-                    <StarIcon className="h-4 w-4" aria-hidden="true" />
-                    {review.rating}
-                  </span>
+                  <span className="font-semibold text-white">{formatPaymentMethod(method)}</span>
+                  <BanknotesIcon className="h-5 w-5 text-amber-200" aria-hidden="true" />
                 </div>
-                <p className="mt-3 text-sm leading-6 text-slate-300">{review.comment}</p>
               </PartnerCard>
-            ))}
+            )) : (
+              <PartnerCard>
+                <p className="text-sm text-slate-400">No payment methods have been configured.</p>
+              </PartnerCard>
+            )}
           </div>
         </PartnerSection>
       </div>
 
       <section id="photos" className="scroll-mt-24 space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Photos</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Placeholder media grid for the hotel gallery.
-            </p>
-          </div>
-          <div className="flex gap-2 text-xs text-slate-500">
-            <span className="inline-flex items-center gap-1">
-              <CalendarDaysIcon className="h-4 w-4" aria-hidden="true" />
-              Preview
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <ChatBubbleLeftRightIcon className="h-4 w-4" aria-hidden="true" />
-              Guest-facing
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <BanknotesIcon className="h-4 w-4" aria-hidden="true" />
-              No upload
-            </span>
-          </div>
+        <div>
+          <h2 className="text-lg font-semibold text-white">Photos</h2>
+          <p className="mt-1 text-sm text-slate-400">General hotel image gallery.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
-          {[1, 2, 3].map((item) => (
+          {hotel.images.length > 0 ? hotel.images.map((image) => (
             <div
-              key={item}
-              className="flex aspect-[4/3] items-center justify-center rounded-lg border border-dashed border-white/15 bg-white/[0.04] text-slate-400"
+              key={image.id}
+              className="relative aspect-[4/3] overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]"
             >
+              <Image
+                src={image.imageUrl}
+                alt={`${hotel.name} image`}
+                width={520}
+                height={390}
+                className="h-full w-full object-cover"
+              />
+              {image.isCover ? (
+                <span className="absolute left-2 top-2 rounded-full bg-amber-300 px-2.5 py-1 text-xs font-semibold text-slate-950">
+                  Cover
+                </span>
+              ) : null}
+            </div>
+          )) : (
+            <div className="flex aspect-[4/3] items-center justify-center rounded-lg border border-dashed border-white/15 bg-white/[0.04] text-slate-400">
               <PhotoIcon className="h-8 w-8" aria-hidden="true" />
             </div>
-          ))}
+          )}
         </div>
       </section>
     </>

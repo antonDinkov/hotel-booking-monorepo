@@ -12,10 +12,11 @@
  * - Makes logic reusable for mobile clients by exposing the same
  *   underlying behavior behind an HTTP API.
  */
-import { and, eq, ilike, lt, lte, gt, inArray, or } from "drizzle-orm";
+import { and, eq, ilike, isNull, lt, lte, gt, inArray, or } from "drizzle-orm";
 
 import { db } from "../../db";
 import { hotelImages, hotels, roomTypes, bookings } from "../../db/schema";
+import { resolveImageUrl } from "@/lib/image-urls";
 import type { HotelPanelData, Listing, ListingDetails } from "../../types/hotel-panel";
 import type { RoomAvailability } from "../../types/room-availability";
 import { getHotelReviewSummariesByHotelIds } from "./reviews";
@@ -54,7 +55,7 @@ export async function getHotelPanelData(): Promise<HotelPanelData> {
             imageUrl: hotelImages.imageKey,
         })
         .from(hotels)
-        .leftJoin(hotelImages, eq(hotelImages.hotelId, hotels.id))
+        .leftJoin(hotelImages, and(eq(hotelImages.hotelId, hotels.id), isNull(hotelImages.roomTypeId)))
         .where(eq(hotels.isFeatured, true));
 
     const featuredMap = new Map<number, Listing>();
@@ -75,7 +76,7 @@ export async function getHotelPanelData(): Promise<HotelPanelData> {
                 reviewLabel: summary.reviewLabel,
                 trustBadge: summary.trustBadge,
                 image: {
-                    src: row.imageUrl ??
+                    src: row.imageUrl ? resolveImageUrl(row.imageUrl) :
                         "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80",
                     alt: `${row.name} cover image`,
                 },
@@ -147,10 +148,10 @@ export async function getListingById(id: string | number): Promise<ListingDetail
     const images = await db
         .select({ url: hotelImages.imageKey })
         .from(hotelImages)
-        .where(eq(hotelImages.hotelId, hotelId));
+        .where(and(eq(hotelImages.hotelId, hotelId), isNull(hotelImages.roomTypeId)));
 
     const gallery = images.length
-        ? images.map((img, index) => ({ src: img.url, alt: `${hotel.name} image ${index + 1}` }))
+        ? images.map((img, index) => ({ src: resolveImageUrl(img.url), alt: `${hotel.name} image ${index + 1}` }))
         : [
             {
                 src: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80",
@@ -322,6 +323,7 @@ export async function searchAvailableHotels(
         .select({
             hotelId: hotelImages.hotelId,
             url: hotelImages.imageKey,
+            roomTypeId: hotelImages.roomTypeId,
         })
         .from(hotelImages);
 
@@ -329,8 +331,10 @@ export async function searchAvailableHotels(
     const imageMap = new Map<number, string>();
 
     for (const img of images) {
+        if (img.roomTypeId !== null && img.roomTypeId !== undefined) continue;
+
         if (!imageMap.has(img.hotelId)) {
-            imageMap.set(img.hotelId, img.url);
+            imageMap.set(img.hotelId, resolveImageUrl(img.url));
         }
     }
 

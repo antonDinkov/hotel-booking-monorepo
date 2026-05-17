@@ -1,8 +1,9 @@
-import { and, eq, gt, inArray, lt, lte, ne, or } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lt, lte, ne, or } from "drizzle-orm";
 import type Stripe from "stripe";
 
 import { db } from "../../db";
 import { bookings, hotelImages, hotelPaymentMethods, hotels, reviews, roomTypes } from "../../db/schema";
+import { resolveImageUrl } from "@/lib/image-urls";
 import { getStripe } from "@/server/lib/stripe";
 import type {
   CancelBookingResult,
@@ -1051,7 +1052,7 @@ export async function getBookings(userId: string): Promise<MyBooking[]> {
     .from(bookings)
     .leftJoin(roomTypes, eq(roomTypes.id, bookings.roomTypeId))
     .leftJoin(hotels, eq(hotels.id, roomTypes.hotelId))
-    .leftJoin(hotelImages, eq(hotelImages.hotelId, hotels.id))
+    .leftJoin(hotelImages, and(eq(hotelImages.hotelId, hotels.id), isNull(hotelImages.roomTypeId)))
     .leftJoin(reviews, eq(reviews.bookingId, bookings.id))
     .where(
       and(
@@ -1101,7 +1102,7 @@ export async function getBookings(userId: string): Promise<MyBooking[]> {
       hotelId: row.hotelId ?? undefined,
       hotelName: row.hotelName ?? "Unknown hotel",
       hotelAddress: row.hotelAddress ?? "",
-      hotelImage: row.hotelImageUrl ?? undefined,
+      hotelImage: row.hotelImageUrl ? resolveImageUrl(row.hotelImageUrl) : undefined,
       roomType: row.roomTypeName ?? "Room",
       checkIn: formatDate(checkIn),
       checkOut: formatDate(checkOut),

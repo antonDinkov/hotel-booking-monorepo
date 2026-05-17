@@ -63,6 +63,26 @@ export async function validateCredentialsForRole(email: string, password: string
     return { id: user.id, email: user.email };
 }
 
+export async function validateCredentials(email: string, password: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await db
+        .select({
+            id: users.id,
+            email: users.email,
+            passwordHash: users.passwordHash,
+        })
+        .from(users)
+        .where(eq(users.email, normalizedEmail))
+        .then((rows) => rows[0]);
+
+    if (!user?.passwordHash) return null;
+
+    const isValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isValid) return null;
+
+    return { id: user.id, email: user.email };
+}
+
 export async function ensureOAuthUser(email: string) {
     const normalizedEmail = email.trim().toLowerCase();
 
