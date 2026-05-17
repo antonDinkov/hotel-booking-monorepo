@@ -6,6 +6,7 @@ export default function PartnerChartPlaceholder({
   value,
   caption,
   bars = [36, 48, 54, 72, 64, 82],
+  badgeLabel = "Preview",
 }: PartnerChartPlaceholderProps) {
   return (
     <PartnerCard>
@@ -16,7 +17,7 @@ export default function PartnerChartPlaceholder({
           <p className="mt-1 text-xs text-slate-500">{caption}</p>
         </div>
         <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 text-xs font-semibold text-amber-200">
-          Preview
+          {badgeLabel}
         </span>
       </div>
       <div className="mt-6 flex h-28 items-end gap-2">

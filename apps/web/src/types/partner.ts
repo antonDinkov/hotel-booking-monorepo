@@ -62,6 +62,7 @@ export type PartnerChartPlaceholderProps = {
   value: string;
   caption: string;
   bars?: number[];
+  badgeLabel?: string;
 };
 
 export type PartnerHotelFormProps = {
