@@ -2,9 +2,17 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
+  parseAdminReviewFilters,
+  parseAdminReviewUpdate,
+} from "@/lib/admin-review-validation";
+import {
   parsePartnerReviewFilters,
   parsePartnerReviewReply,
 } from "@/lib/partner-review-validation";
+import type {
+  AdminReviewFilters,
+  AdminReviewUpdateInput,
+} from "@/types/admin-reviews";
 import type {
   PartnerReviewFilters,
   PartnerReviewReplyInput,
@@ -55,6 +63,12 @@ export function parsePartnerReviewQuery(
   return parsePartnerReviewFilters(searchParams);
 }
 
+export function parseAdminReviewQuery(
+  searchParams: URLSearchParams
+): AdminReviewFilters {
+  return parseAdminReviewFilters(searchParams);
+}
+
 export async function parsePartnerReviewReplyRequest(
   request: Request
 ): Promise<PartnerReviewReplyInput> {
@@ -67,6 +81,20 @@ export async function parsePartnerReviewReplyRequest(
   }
 
   return parsePartnerReviewReply(body);
+}
+
+export async function parseAdminReviewModerationRequest(
+  request: Request
+): Promise<AdminReviewUpdateInput> {
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    throw new Error("INVALID_JSON");
+  }
+
+  return parseAdminReviewUpdate(body);
 }
 
 export function mapReviewError(error: unknown) {
@@ -96,4 +124,16 @@ export function mapPartnerReviewError(error: unknown) {
 
   console.error("Partner review operation failed:", error);
   return apiError("Partner review operation failed", "PARTNER_REVIEW_OPERATION_FAILED", 500);
+}
+
+export function mapAdminReviewError(error: unknown) {
+  const code = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+
+  if (code === "VALIDATION_ERROR") return apiError("Missing or invalid review fields", code, 400);
+  if (code === "INVALID_JSON") return apiError("Invalid JSON body", code, 400);
+  if (code === "INVALID_REVIEW_ID") return apiError("Invalid review ID", code, 400);
+  if (code === "REVIEW_NOT_FOUND") return apiError("Review not found", code, 404);
+
+  console.error("Admin review operation failed:", error);
+  return apiError("Admin review operation failed", "ADMIN_REVIEW_OPERATION_FAILED", 500);
 }

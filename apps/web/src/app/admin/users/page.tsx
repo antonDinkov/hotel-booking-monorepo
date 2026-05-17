@@ -1,86 +1,64 @@
-import Link from "next/link";
-import AdminActionMenu from "@/components/admin/AdminActionMenu";
-import AdminFilters from "@/components/admin/AdminFilters";
+import { redirect } from "next/navigation";
+
+import AdminPanel from "@/components/admin/AdminPanel";
 import AdminSection from "@/components/admin/AdminSection";
-import AdminStatusBadge from "@/components/admin/AdminStatusBadge";
-import AdminTable from "@/components/admin/AdminTable";
-import { accountStatusTone } from "@/lib/admin-display";
-import { adminUsers } from "@/lib/admin-mock-data";
-import type { AdminTableColumn, AdminUser } from "@/types/admin";
+import AdminUsersClient from "@/components/admin/AdminUsersClient";
+import { authorize } from "@/app/api/auth/[...nextauth]/route";
+import { parseAdminUserFilters } from "@/lib/admin-user-validation";
+import { listAdminUsers } from "@/server/services/adminUsers";
 
-const userColumns: AdminTableColumn<AdminUser>[] = [
-  {
-    header: "User",
-    render: (user) => (
-      <div>
-        <Link href={`/admin/users/${user.id}`} className="font-semibold text-slate-100 hover:text-blue-200">
-          {user.name}
-        </Link>
-        <p className="mt-1 text-slate-500">{user.email}</p>
-      </div>
-    ),
-  },
-  {
-    header: "Role",
-    render: (user) => <AdminStatusBadge label={user.role} tone={user.role === "admin" ? "red" : "neutral"} />,
-  },
-  {
-    header: "Status",
-    render: (user) => <AdminStatusBadge label={user.status} tone={accountStatusTone(user.status)} />,
-  },
-  { header: "Bookings", render: (user) => user.bookings },
-  {
-    header: "Risk",
-    render: (user) => (
-      <span className={user.riskScore >= 70 ? "font-semibold text-red-200" : "text-slate-400"}>
-        {user.riskScore}
-      </span>
-    ),
-  },
-  { header: "Last active", render: (user) => user.lastActive },
-  {
-    header: "Actions",
-    render: (user) => (
-      <AdminActionMenu
-        actions={[
-          { label: "Inspect", href: `/admin/users/${user.id}`, tone: "blue" },
-          { label: "Suspend", href: `/admin/users/${user.id}?action=suspend`, tone: "red" },
-          { label: "Activate", href: `/admin/users/${user.id}?action=activate`, tone: "neutral" },
-        ]}
-      />
-    ),
-  },
-];
+type AdminUsersPageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
-export default function Page() {
+async function requireAdmin() {
+  const auth = await authorize(["admin"]);
+  if (!auth.ok) redirect("/admin/login");
+}
+
+export default async function Page({ searchParams }: AdminUsersPageProps) {
+  await requireAdmin();
+
+  let filters;
+  try {
+    filters = parseAdminUserFilters(await searchParams);
+  } catch {
+    return (
+      <>
+        <UsersPageHeader />
+        <AdminSection title="Invalid filters">
+          <AdminPanel className="p-4 text-xs leading-6 text-red-200">
+            The current users query contains invalid filter, sort, date, or
+            pagination values.
+          </AdminPanel>
+        </AdminSection>
+      </>
+    );
+  }
+
+  const result = await listAdminUsers(filters);
+
   return (
     <>
-      <div className="flex flex-col gap-2 border-b border-slate-800 pb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600">
-          Identity and account operations
-        </p>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-50">
-          User management
-        </h1>
-        <p className="max-w-3xl text-xs leading-5 text-slate-500">
-          Static table scaffold for account status, roles, risk signals, and
-          moderation actions.
-        </p>
-      </div>
-
-      <AdminFilters
-        filters={[
-          { label: "All", href: "/admin/users", active: true, count: adminUsers.length },
-          { label: "Clients", href: "/admin/users?role=client", count: 3 },
-          { label: "Partners", href: "/admin/users?role=partner", count: 2 },
-          { label: "Suspended", href: "/admin/users?status=suspended", count: 1, tone: "red" },
-          { label: "Review", href: "/admin/users?status=under_review", count: 2, tone: "amber" },
-        ]}
-      />
-
-      <AdminSection title="Users table" description="Dense operational account list with future-ready row actions.">
-        <AdminTable rows={adminUsers} columns={userColumns} getRowKey={(user) => user.id} />
-      </AdminSection>
+      <UsersPageHeader />
+      <AdminUsersClient result={result} />
     </>
+  );
+}
+
+function UsersPageHeader() {
+  return (
+    <div className="flex flex-col gap-2 border-b border-slate-800 pb-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600">
+        Identity and account operations
+      </p>
+      <h1 className="text-xl font-semibold tracking-tight text-slate-50">
+        User management
+      </h1>
+      <p className="max-w-3xl text-xs leading-5 text-slate-500">
+        Database-backed account status, roles, profile data, and user activity
+        totals.
+      </p>
+    </div>
   );
 }

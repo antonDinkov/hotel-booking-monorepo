@@ -108,6 +108,13 @@ export type AdminFiltersProps = {
   filters: AdminFilterOption[];
 };
 
+export type AdminPagination = {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+};
+
 export type AdminDetailPageProps = {
   params: Promise<{
     id: string;

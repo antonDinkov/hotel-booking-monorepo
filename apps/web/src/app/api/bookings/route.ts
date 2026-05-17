@@ -5,8 +5,10 @@ import { createPendingBookingHold, getBookings, getHotelPaymentMethods } from "@
 import {
   apiError,
   authError,
+  mapAdminBookingError,
   mapCreateBookingError,
   mapPartnerBookingError,
+  parseAdminBookingQuery,
   parseCreateBookingHoldBody,
   parsePartnerBookingQuery,
 } from "./booking-api-helpers";
@@ -16,6 +18,17 @@ export async function GET(request?: Request) {
   if (!auth.ok) return authError(auth.status);
 
   const searchParams = request ? new URL(request.url).searchParams : new URLSearchParams();
+  if (auth.roles?.includes("admin")) {
+    try {
+      const filters = parseAdminBookingQuery(searchParams);
+      const { listAdminBookings } = await import("@/server/services/adminBookings");
+      const result = await listAdminBookings(filters);
+      return NextResponse.json({ data: result });
+    } catch (error) {
+      return mapAdminBookingError(error);
+    }
+  }
+
   if (auth.roles?.includes("partner")) {
     try {
       const filters = parsePartnerBookingQuery(searchParams);

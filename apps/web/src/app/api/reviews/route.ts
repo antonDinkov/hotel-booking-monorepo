@@ -6,8 +6,10 @@ import { listPartnerReviews } from "@/server/services/partnerReviews";
 import {
   apiError,
   authError,
+  mapAdminReviewError,
   mapPartnerReviewError,
   mapReviewError,
+  parseAdminReviewQuery,
   parseCreateReviewBody,
   parsePartnerReviewQuery,
   parseReviewPageQuery,
@@ -23,6 +25,18 @@ function shouldUsePartnerReviews(searchParams: URLSearchParams): boolean {
 
 export async function GET(request: Request) {
   const searchParams = new URL(request.url).searchParams;
+  const adminAuth = await authorizeApi(["admin"]);
+  if (adminAuth.ok) {
+    try {
+      const filters = parseAdminReviewQuery(searchParams);
+      const { listAdminReviews } = await import("@/server/services/adminReviews");
+      const result = await listAdminReviews(filters);
+      return NextResponse.json({ data: result });
+    } catch (error) {
+      return mapAdminReviewError(error);
+    }
+  }
+
   const parsed = parseReviewPageQuery(searchParams);
   if (shouldUsePartnerReviews(searchParams)) {
     const auth = await authorizeApi(["partner"]);

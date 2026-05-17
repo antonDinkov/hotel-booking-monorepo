@@ -2,9 +2,17 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
+  parseAdminBookingFilters,
+  parseAdminBookingUpdate,
+} from "@/lib/admin-booking-validation";
+import {
   parsePartnerBookingFilters,
   parsePartnerBookingStatusUpdate,
 } from "@/lib/partner-booking-validation";
+import type {
+  AdminBookingFilters,
+  AdminBookingUpdateInput,
+} from "@/types/admin-bookings";
 import type {
   PartnerBookingFilters,
   PartnerBookingStatusUpdateInput,
@@ -51,6 +59,12 @@ export function parsePartnerBookingQuery(
   return parsePartnerBookingFilters(searchParams);
 }
 
+export function parseAdminBookingQuery(
+  searchParams: URLSearchParams
+): AdminBookingFilters {
+  return parseAdminBookingFilters(searchParams);
+}
+
 export async function parsePartnerBookingStatusRequest(
   request: Request
 ): Promise<PartnerBookingStatusUpdateInput> {
@@ -63,6 +77,20 @@ export async function parsePartnerBookingStatusRequest(
   }
 
   return parsePartnerBookingStatusUpdate(body);
+}
+
+export async function parseAdminBookingStatusRequest(
+  request: Request
+): Promise<AdminBookingUpdateInput> {
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    throw new Error("INVALID_JSON");
+  }
+
+  return parseAdminBookingUpdate(body);
 }
 
 export function parseConfirmStripeSessionBody(body: unknown) {
@@ -161,4 +189,16 @@ export function mapPartnerBookingError(error: unknown) {
 
   console.error("Partner booking request failed:", error);
   return apiError("Partner booking request failed", "PARTNER_BOOKING_REQUEST_FAILED", 500);
+}
+
+export function mapAdminBookingError(error: unknown) {
+  const code = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+
+  if (code === "VALIDATION_ERROR") return apiError("Missing or invalid booking fields", code, 400);
+  if (code === "INVALID_JSON") return apiError("Invalid JSON body", code, 400);
+  if (code === "INVALID_BOOKING_ID") return apiError("Invalid booking ID", code, 400);
+  if (code === "BOOKING_NOT_FOUND") return apiError("Booking not found", code, 404);
+
+  console.error("Admin booking request failed:", error);
+  return apiError("Admin booking request failed", "ADMIN_BOOKING_REQUEST_FAILED", 500);
 }

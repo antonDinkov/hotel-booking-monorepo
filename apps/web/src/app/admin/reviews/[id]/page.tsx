@@ -1,9 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 
-import AdminUserDetailClient from "@/components/admin/AdminUserDetailClient";
+import AdminReviewDetailClient from "@/components/admin/AdminReviewDetailClient";
 import { authorize } from "@/app/api/auth/[...nextauth]/route";
-import { parseAdminUserId } from "@/lib/admin-user-validation";
-import { getAdminUserDetails } from "@/server/services/adminUsers";
+import { parseAdminReviewId } from "@/lib/admin-review-validation";
+import { getAdminReviewDetails } from "@/server/services/adminReviews";
 import type { AdminDetailPageProps } from "@/types/admin";
 
 async function requireAdmin() {
@@ -14,15 +14,15 @@ async function requireAdmin() {
 export default async function Page({ params }: AdminDetailPageProps) {
   await requireAdmin();
 
-  let userId: string;
+  let reviewId: number;
   try {
-    userId = parseAdminUserId((await params).id);
+    reviewId = parseAdminReviewId((await params).id);
   } catch {
     notFound();
   }
 
-  const user = await getAdminUserDetails(userId);
-  if (!user) notFound();
+  const review = await getAdminReviewDetails(reviewId);
+  if (!review) notFound();
 
-  return <AdminUserDetailClient user={user} />;
+  return <AdminReviewDetailClient review={review} />;
 }
