@@ -107,7 +107,7 @@ function toIsoString(value: Date | string): string {
 }
 
 function isCompletedBooking(row: ReviewableBookingRow): boolean {
-  const isConfirmed = row.status === "confirmed";
+  const isConfirmed = row.status === "confirmed" || row.status === "completed";
   const checkoutHasPassed = parseDateOnly(row.checkOutDate) < parseDateOnly(formatDate(new Date()));
   const isPaidStripe = row.paymentMethod === "stripe" && row.paymentStatus === "paid";
   const isCashOnArrival = row.paymentMethod === "cash_on_arrival" && row.paymentStatus === "pending";

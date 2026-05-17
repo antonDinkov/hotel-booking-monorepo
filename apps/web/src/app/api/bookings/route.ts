@@ -2,13 +2,32 @@ import { NextResponse } from "next/server";
 
 import { authorizeApi } from "@/app/api/auth/[...nextauth]/route";
 import { createPendingBookingHold, getBookings, getHotelPaymentMethods } from "@/server/services/bookings";
-import { apiError, authError, mapCreateBookingError, parseCreateBookingHoldBody } from "./booking-api-helpers";
+import {
+  apiError,
+  authError,
+  mapCreateBookingError,
+  mapPartnerBookingError,
+  parseCreateBookingHoldBody,
+  parsePartnerBookingQuery,
+} from "./booking-api-helpers";
 
 export async function GET(request?: Request) {
-  const auth = await authorizeApi(["client", "admin"]);
+  const auth = await authorizeApi(["client", "partner", "admin"]);
   if (!auth.ok) return authError(auth.status);
 
-  const hotelIdParam = request ? new URL(request.url).searchParams.get("hotelId") : null;
+  const searchParams = request ? new URL(request.url).searchParams : new URLSearchParams();
+  if (auth.roles?.includes("partner")) {
+    try {
+      const filters = parsePartnerBookingQuery(searchParams);
+      const { listPartnerBookings } = await import("@/server/services/partnerBookings");
+      const result = await listPartnerBookings(auth.userId as string, filters);
+      return NextResponse.json({ data: result });
+    } catch (error) {
+      return mapPartnerBookingError(error);
+    }
+  }
+
+  const hotelIdParam = searchParams.get("hotelId");
   if (hotelIdParam) {
     const hotelId = Number(hotelIdParam);
     if (!Number.isInteger(hotelId) || hotelId < 1) return apiError("Invalid hotel ID", "INVALID_HOTEL_ID", 400);

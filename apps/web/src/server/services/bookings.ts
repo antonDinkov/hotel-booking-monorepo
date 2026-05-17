@@ -5,6 +5,14 @@ import { db } from "../../db";
 import { bookings, hotelImages, hotelPaymentMethods, hotels, reviews, roomTypes } from "../../db/schema";
 import { resolveImageUrl } from "@/lib/image-urls";
 import { getStripe } from "@/server/lib/stripe";
+import {
+  calculateBookingNights,
+  calculateBookingTotal,
+  formatDateOnly,
+  getBookingRoomsCount,
+  isDateOnly as isValidDateOnly,
+  parseDateOnly,
+} from "@/server/services/bookingCalculations";
 import type {
   CancelBookingResult,
   CancelledBookingBadge,
@@ -88,33 +96,16 @@ function addMinutes(date: Date, minutes: number): Date {
   return new Date(date.getTime() + minutes * 60 * 1000);
 }
 
-function parseDateOnly(value: string): Date {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
-}
-
 function isDateOnly(value: string): boolean {
-  const parsed = parseDateOnly(value);
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(parsed.getTime()) && formatDate(parsed) === value;
+  return isValidDateOnly(value);
 }
 
 function getNightCount(checkInDate: string, checkOutDate: string): number {
-  const checkIn = parseDateOnly(checkInDate);
-  const checkOut = parseDateOnly(checkOutDate);
-  const msPerDay = 1000 * 60 * 60 * 24;
-
-  return Math.max(0, Math.round((checkOut.getTime() - checkIn.getTime()) / msPerDay));
+  return calculateBookingNights(checkInDate, checkOutDate);
 }
 
 function formatDate(date: Date | string): string {
-  if (typeof date === "string") {
-    return date.slice(0, 10);
-  }
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return formatDateOnly(date);
 }
 
 function computeStayStatus(checkIn: Date, checkOut: Date): BookingDisplayStatus {
@@ -183,7 +174,12 @@ function getRefundStatus(refund: Stripe.Refund): "refund_pending" | "refunded" {
 }
 
 function normalizeBookingStatus(row: BookingDetailsRow, now = new Date()): BookingStatus {
-  if (row.status === "confirmed" || row.status === "cancelled" || row.status === "expired") {
+  if (
+    row.status === "confirmed" ||
+    row.status === "cancelled" ||
+    row.status === "completed" ||
+    row.status === "expired"
+  ) {
     return row.status;
   }
 
@@ -200,7 +196,7 @@ function normalizeBookingPaymentStatus(row: BookingDetailsRow, bookingStatus: Bo
     return isBookingPaymentStatus(row.paymentStatus) ? row.paymentStatus : "cancelled";
   }
 
-  if (bookingStatus === "confirmed") {
+  if (bookingStatus === "confirmed" || bookingStatus === "completed") {
     if (isBookingPaymentStatus(row.paymentStatus)) {
       return row.paymentStatus;
     }
@@ -242,12 +238,16 @@ function validateStayInput(input: CreateBookingHoldRequest): void {
 }
 
 function getRoomsCount(value: number | null): number {
-  return value && value > 0 ? value : 1;
+  return getBookingRoomsCount(value);
 }
 
 function getTotalPrice(row: BookingDetailsRow): number {
-  const nights = Math.max(1, getNightCount(row.checkInDate, row.checkOutDate));
-  return row.pricePerNight * nights * getRoomsCount(row.roomsCount);
+  return calculateBookingTotal({
+    pricePerNight: row.pricePerNight,
+    roomsCount: row.roomsCount,
+    checkInDate: row.checkInDate,
+    checkOutDate: row.checkOutDate,
+  });
 }
 
 function isActivePendingHold(row: BookingDetailsRow, now = new Date()): boolean {
@@ -1059,7 +1059,7 @@ export async function getBookings(userId: string): Promise<MyBooking[]> {
         eq(bookings.userId, userId),
         or(
           and(
-            eq(bookings.status, "confirmed"),
+            inArray(bookings.status, ["confirmed", "completed"]),
             or(
               and(eq(bookings.paymentMethod, "stripe"), eq(bookings.paymentStatus, "paid")),
               and(eq(bookings.paymentMethod, "cash_on_arrival"), eq(bookings.paymentStatus, "pending"))
@@ -1090,12 +1090,21 @@ export async function getBookings(userId: string): Promise<MyBooking[]> {
     const checkOut = parseDateOnly(String(row.checkOutDate));
     const paymentMethod = isSupportedMethod(row.paymentMethod ?? "") ? row.paymentMethod as BookingPaymentMethod : null;
     const paymentStatus = isBookingPaymentStatus(row.paymentStatus) ? row.paymentStatus : "pending";
-      const isCancelled = row.status === "cancelled";
-      const status: BookingDisplayStatus = isCancelled ? "cancelled" : computeStayStatus(checkIn, checkOut);
-      const lifecycleStatus: BookingStatus = isCancelled ? "cancelled" : "confirmed";
-      const nights = getNightCount(String(row.checkInDate), String(row.checkOutDate));
-      const totalPrice = (row.roomPrice ?? 0) * Math.max(1, nights) * getRoomsCount(row.roomsCount);
-      const hasReview = row.reviewId !== null;
+    const isCancelled = row.status === "cancelled";
+    const isCompleted = row.status === "completed";
+    const status: BookingDisplayStatus = isCancelled
+      ? "cancelled"
+      : isCompleted
+        ? "past"
+        : computeStayStatus(checkIn, checkOut);
+    const lifecycleStatus: BookingStatus = isCancelled
+      ? "cancelled"
+      : isCompleted
+        ? "completed"
+        : "confirmed";
+    const nights = getNightCount(String(row.checkInDate), String(row.checkOutDate));
+    const totalPrice = (row.roomPrice ?? 0) * Math.max(1, nights) * getRoomsCount(row.roomsCount);
+    const hasReview = row.reviewId !== null;
 
     return {
       id: String(row.id),
@@ -1112,7 +1121,7 @@ export async function getBookings(userId: string): Promise<MyBooking[]> {
       paymentMethod,
       paymentStatus,
       cancelledBadge: isCancelled ? getCancelledBookingBadge(paymentMethod, paymentStatus) : undefined,
-      canCancel: !isCancelled && (
+      canCancel: lifecycleStatus === "confirmed" && (
         (paymentMethod === "cash_on_arrival" && paymentStatus === "pending") ||
         (paymentMethod === "stripe" && paymentStatus === "paid")
       ),

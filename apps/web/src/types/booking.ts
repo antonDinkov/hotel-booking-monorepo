@@ -1,4 +1,4 @@
-export type BookingStatus = "pending_payment" | "confirmed" | "cancelled" | "expired";
+export type BookingStatus = "pending_payment" | "confirmed" | "cancelled" | "completed" | "expired";
 export type BookingLifecycleStatus = BookingStatus;
 export type BookingDisplayStatus = "upcoming" | "active" | "past" | "cancelled";
 export type BookingPaymentMethod = "stripe" | "cash_on_arrival";

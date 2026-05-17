@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import {
+  parsePartnerBookingFilters,
+  parsePartnerBookingStatusUpdate,
+} from "@/lib/partner-booking-validation";
+import type {
+  PartnerBookingFilters,
+  PartnerBookingStatusUpdateInput,
+} from "@/types/partner-booking";
+
 const createBookingHoldSchema = z
   .object({
     hotelId: z.coerce.number().int().positive(),
@@ -34,6 +43,26 @@ export function parseBookingId(id: string) {
 
 export function parseCreateBookingHoldBody(body: unknown) {
   return createBookingHoldSchema.safeParse(body);
+}
+
+export function parsePartnerBookingQuery(
+  searchParams: URLSearchParams
+): PartnerBookingFilters {
+  return parsePartnerBookingFilters(searchParams);
+}
+
+export async function parsePartnerBookingStatusRequest(
+  request: Request
+): Promise<PartnerBookingStatusUpdateInput> {
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    throw new Error("INVALID_JSON");
+  }
+
+  return parsePartnerBookingStatusUpdate(body);
 }
 
 export function parseConfirmStripeSessionBody(body: unknown) {
@@ -115,4 +144,21 @@ export function mapCancelBookingError(error: unknown) {
 
   console.error("Booking cancellation failed:", error);
   return apiError("Failed to cancel booking", "BOOKING_CANCEL_FAILED", 500);
+}
+
+export function mapPartnerBookingError(error: unknown) {
+  const code = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+
+  if (code === "VALIDATION_ERROR") {
+    return apiError("Missing or invalid booking fields", code, 400);
+  }
+  if (code === "INVALID_JSON") return apiError("Invalid JSON body", code, 400);
+  if (code === "PARTNER_PROFILE_NOT_FOUND") return apiError("Partner profile not found", code, 403);
+  if (code === "BOOKING_NOT_FOUND") return apiError("Booking not found", code, 404);
+  if (code === "INVALID_STATUS_TRANSITION") {
+    return apiError("This booking status transition is not allowed", code, 400);
+  }
+
+  console.error("Partner booking request failed:", error);
+  return apiError("Partner booking request failed", "PARTNER_BOOKING_REQUEST_FAILED", 500);
 }
