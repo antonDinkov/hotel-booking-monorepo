@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 
 import { apiError, authError } from "@/app/api/api-response";
 import { authorizeApi } from "@/app/api/auth/[...nextauth]/route";
+import { parseAdminAccountSettingsInput } from "@/lib/admin-settings-validation";
 import { parsePartnerAccountSettingsInput } from "@/lib/partner-settings-validation";
+import {
+  getAdminAccountSettings,
+  updateAdminAccountSettings,
+} from "@/server/services/adminSettings";
 import {
   getPartnerAccountSettings,
   updatePartnerAccountSettings,
@@ -30,6 +35,15 @@ function mapUserSettingsError(error: unknown) {
   return apiError("Account settings request failed", "ACCOUNT_SETTINGS_REQUEST_FAILED", 500);
 }
 
+function hasRole(roles: string[] | undefined, role: string): boolean {
+  return Boolean(roles?.includes(role));
+}
+
+function shouldUseAdminScope(request: Request, roles: string[] | undefined): boolean {
+  const scope = new URL(request.url).searchParams.get("scope");
+  return scope === "admin" || (hasRole(roles, "admin") && !hasRole(roles, "partner"));
+}
+
 async function readJson(request: Request): Promise<unknown> {
   try {
     return await request.json();
@@ -38,11 +52,17 @@ async function readJson(request: Request): Promise<unknown> {
   }
 }
 
-export async function GET() {
-  const auth = await authorizeApi(["partner"]);
+export async function GET(request: Request) {
+  const auth = await authorizeApi(["partner", "admin"]);
   if (!auth.ok) return authError(auth.status);
 
   try {
+    if (shouldUseAdminScope(request, auth.roles)) {
+      if (!hasRole(auth.roles, "admin")) return authError(403);
+      const data = await getAdminAccountSettings(auth.userId as string);
+      return NextResponse.json({ data });
+    }
+
     const data = await getPartnerAccountSettings(auth.userId as string);
     return NextResponse.json({ data });
   } catch (error) {
@@ -51,11 +71,20 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const auth = await authorizeApi(["partner"]);
+  const auth = await authorizeApi(["partner", "admin"]);
   if (!auth.ok) return authError(auth.status);
 
   try {
-    const input = parsePartnerAccountSettingsInput(await readJson(request));
+    const body = await readJson(request);
+
+    if (shouldUseAdminScope(request, auth.roles)) {
+      if (!hasRole(auth.roles, "admin")) return authError(403);
+      const input = parseAdminAccountSettingsInput(body);
+      const data = await updateAdminAccountSettings(auth.userId as string, input);
+      return NextResponse.json({ data });
+    }
+
+    const input = parsePartnerAccountSettingsInput(body);
     const data = await updatePartnerAccountSettings(auth.userId as string, input);
     return NextResponse.json({ data });
   } catch (error) {
