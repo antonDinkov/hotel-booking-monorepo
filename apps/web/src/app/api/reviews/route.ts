@@ -2,10 +2,41 @@ import { NextResponse } from "next/server";
 
 import { authorizeApi } from "@/app/api/auth/[...nextauth]/route";
 import { createReview, getHotelReviewsPage } from "@/server/services/reviews";
-import { apiError, authError, mapReviewError, parseCreateReviewBody, parseReviewPageQuery } from "./review-api-helpers";
+import { listPartnerReviews } from "@/server/services/partnerReviews";
+import {
+  apiError,
+  authError,
+  mapPartnerReviewError,
+  mapReviewError,
+  parseCreateReviewBody,
+  parsePartnerReviewQuery,
+  parseReviewPageQuery,
+} from "./review-api-helpers";
+
+function shouldUsePartnerReviews(searchParams: URLSearchParams): boolean {
+  if (searchParams.get("scope") === "partner") return true;
+  if (!searchParams.has("hotelId")) return true;
+
+  return ["rating", "moderationStatus", "replyStatus", "dateFrom", "dateTo", "sort", "page", "pageSize"]
+    .some((key) => searchParams.has(key));
+}
 
 export async function GET(request: Request) {
-  const parsed = parseReviewPageQuery(new URL(request.url).searchParams);
+  const searchParams = new URL(request.url).searchParams;
+  const parsed = parseReviewPageQuery(searchParams);
+  if (shouldUsePartnerReviews(searchParams)) {
+    const auth = await authorizeApi(["partner"]);
+    if (!auth.ok) return authError(auth.status);
+
+    try {
+      const filters = parsePartnerReviewQuery(searchParams);
+      const result = await listPartnerReviews(auth.userId as string, filters);
+      return NextResponse.json({ data: result });
+    } catch (error) {
+      return mapPartnerReviewError(error);
+    }
+  }
+
   if (!parsed.success) return apiError("Missing or invalid review query", "VALIDATION_ERROR", 400);
 
   try {

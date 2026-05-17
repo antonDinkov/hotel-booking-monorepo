@@ -1,27 +1,48 @@
-import PartnerChartPlaceholder from "@/components/partner/PartnerChartPlaceholder";
-import PartnerPageHeader from "@/components/partner/PartnerPageHeader";
-import { partnerAnalyticsMetrics } from "@/lib/partner-mock-data";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
-export default function Page() {
+import { authorize } from "@/app/api/auth/[...nextauth]/route";
+import PartnerPageHeader from "@/components/partner/PartnerPageHeader";
+import { parsePartnerAnalyticsFilters } from "@/lib/partner-analytics-validation";
+import { getPartnerAnalytics } from "@/server/services/partnerAnalytics";
+import type { PartnerAnalyticsPageProps } from "@/types/partner-analytics";
+import PartnerAnalyticsClient from "./PartnerAnalyticsClient";
+
+function getFilters(
+  searchParams: Record<string, string | string[] | undefined> | undefined
+) {
+  try {
+    return parsePartnerAnalyticsFilters(searchParams ?? {});
+  } catch {
+    redirect("/partner/analytics");
+  }
+}
+
+export default async function Page({ searchParams }: PartnerAnalyticsPageProps) {
+  const auth = await authorize(["partner"]);
+  if (!auth.ok || !auth.userId) redirect("/partner/login");
+
+  const resolvedSearchParams = await searchParams;
+  const filters = getFilters(resolvedSearchParams);
+  const result = await getPartnerAnalytics(auth.userId, filters);
+
   return (
     <>
       <PartnerPageHeader
-        eyebrow="Performance preview"
+        eyebrow="Portfolio performance"
         title="Analytics"
-        description="Simple visual analytics placeholders for bookings, revenue, occupancy, hotel performance, cancellations, and ratings."
+        description="Database-backed metrics for owned hotels, revenue, bookings, occupancy, and published guest reviews."
       />
 
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {partnerAnalyticsMetrics.map((metric) => (
-          <PartnerChartPlaceholder
-            key={metric.title}
-            title={metric.title}
-            value={metric.value}
-            caption={metric.caption}
-            bars={metric.bars}
-          />
-        ))}
-      </div>
+      <Suspense
+        fallback={
+          <div className="rounded-lg border border-white/10 bg-white/[0.06] p-5 text-sm text-slate-400">
+            Loading analytics...
+          </div>
+        }
+      >
+        <PartnerAnalyticsClient key={JSON.stringify(result.filters)} initialResult={result} />
+      </Suspense>
     </>
   );
 }

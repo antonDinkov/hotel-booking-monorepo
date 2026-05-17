@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import {
+  parsePartnerReviewFilters,
+  parsePartnerReviewReply,
+} from "@/lib/partner-review-validation";
+import type {
+  PartnerReviewFilters,
+  PartnerReviewReplyInput,
+} from "@/types/partner-review";
+
 const createReviewSchema = z.object({
   bookingId: z.coerce.number().int().positive(),
   rating: z.coerce.number().int().min(1).max(5),
@@ -27,12 +36,37 @@ export function parseCreateReviewBody(body: unknown) {
   return createReviewSchema.safeParse(body);
 }
 
+export function parseReviewId(id: string) {
+  const reviewId = Number(id);
+  return Number.isInteger(reviewId) && reviewId > 0 ? reviewId : null;
+}
+
 export function parseReviewPageQuery(searchParams: URLSearchParams) {
   return reviewPageQuerySchema.safeParse({
     hotelId: searchParams.get("hotelId"),
     limit: searchParams.get("limit") ?? undefined,
     offset: searchParams.get("offset") ?? undefined,
   });
+}
+
+export function parsePartnerReviewQuery(
+  searchParams: URLSearchParams
+): PartnerReviewFilters {
+  return parsePartnerReviewFilters(searchParams);
+}
+
+export async function parsePartnerReviewReplyRequest(
+  request: Request
+): Promise<PartnerReviewReplyInput> {
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    throw new Error("INVALID_JSON");
+  }
+
+  return parsePartnerReviewReply(body);
 }
 
 export function mapReviewError(error: unknown) {
@@ -50,4 +84,16 @@ export function mapReviewError(error: unknown) {
 
   console.error("Review operation failed:", error);
   return apiError("Review operation failed", "REVIEW_OPERATION_FAILED", 500);
+}
+
+export function mapPartnerReviewError(error: unknown) {
+  const code = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+
+  if (code === "VALIDATION_ERROR") return apiError("Missing or invalid review fields", code, 400);
+  if (code === "INVALID_JSON") return apiError("Invalid JSON body", code, 400);
+  if (code === "PARTNER_PROFILE_NOT_FOUND") return apiError("Partner profile not found", code, 403);
+  if (code === "REVIEW_NOT_FOUND") return apiError("Review not found", code, 404);
+
+  console.error("Partner review operation failed:", error);
+  return apiError("Partner review operation failed", "PARTNER_REVIEW_OPERATION_FAILED", 500);
 }
