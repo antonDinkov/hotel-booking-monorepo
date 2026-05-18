@@ -30,6 +30,21 @@ export type Listing = {
   trustBadge?: HotelTrustBadge | null;
 };
 
+export type Amenity = {
+  icon: string;
+  name: string;
+};
+
+export type ListingDetails = Listing & {
+  amenities: Amenity[];
+  description: string;
+  highlights: string[];
+  images: ListingImage[];
+  location: string;
+  price: number;
+  pricePerNight: string;
+};
+
 export type ListingSearchPagination = {
   page: number;
   pageSize: number;

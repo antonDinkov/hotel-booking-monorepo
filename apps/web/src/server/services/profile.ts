@@ -4,7 +4,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { db } from "@/db";
 import { users, userProfiles } from "@/db/schema";
-import type { ProfileData, ProfilePreferences } from "@/types/profile";
+import { resolveImageUrl } from "@/lib/image-urls";
+import type { ProfileData, ProfileDataWithAvatarUrl, ProfilePreferences } from "@/types/profile";
 
 const DEFAULT_PREFERENCES: ProfilePreferences = {
     smoking: false,
@@ -64,6 +65,13 @@ function mapProfileRow(row: ProfileRow): ProfileData {
             country: normalizeOptionalString(row.country),
             zip: normalizeOptionalString(row.zip),
         },
+    };
+}
+
+function withAvatarUrl(profile: ProfileData): ProfileDataWithAvatarUrl {
+    return {
+        ...profile,
+        avatarUrl: profile.avatarKey ? resolveImageUrl(profile.avatarKey) : null,
     };
 }
 
@@ -139,18 +147,17 @@ export {
     buildProfileUpdateValues,
 };
 
-export async function getCurrentUserProfile(): Promise<ProfileData | null> {
-    const userId = await getCurrentUserId();
-    if (!userId) return null;
-
+export async function getUserProfile(userId: string): Promise<ProfileData | null> {
     const row = await getProfileRow(userId);
     return row ? mapProfileRow(row) : null;
 }
 
-export async function updateCurrentUserProfile(profile: ProfileData): Promise<ProfileData | null> {
-    const userId = await getCurrentUserId();
-    if (!userId) return null;
+export async function getUserProfileWithAvatarUrl(userId: string): Promise<ProfileDataWithAvatarUrl | null> {
+    const profile = await getUserProfile(userId);
+    return profile ? withAvatarUrl(profile) : null;
+}
 
+export async function updateUserProfile(userId: string, profile: ProfileData): Promise<ProfileData | null> {
     await db.update(users).set({ email: profile.email }).where(eq(users.id, userId));
 
     const insertValues = buildProfileInsertValues(userId, profile);
@@ -163,4 +170,49 @@ export async function updateCurrentUserProfile(profile: ProfileData): Promise<Pr
 
     const row = await getProfileRow(userId);
     return row ? mapProfileRow(row) : null;
+}
+
+export async function updateUserProfileWithAvatarUrl(
+    userId: string,
+    profile: ProfileData
+): Promise<ProfileDataWithAvatarUrl | null> {
+    const updated = await updateUserProfile(userId, profile);
+    return updated ? withAvatarUrl(updated) : null;
+}
+
+export async function getCurrentUserProfile(): Promise<ProfileData | null> {
+    const userId = await getCurrentUserId();
+    return userId ? getUserProfile(userId) : null;
+}
+
+export async function updateCurrentUserProfile(profile: ProfileData): Promise<ProfileData | null> {
+    const userId = await getCurrentUserId();
+    return userId ? updateUserProfile(userId, profile) : null;
+}
+
+export async function uploadUserAvatar(userId: string, file: File): Promise<ProfileDataWithAvatarUrl> {
+    const existing = await getUserProfile(userId);
+    if (!existing) throw new Error("PROFILE_NOT_FOUND");
+
+    const { uploadAvatar } = await import("@/server/lib/r2");
+    const key = await uploadAvatar(userId, file);
+    const updated = await updateUserProfile(userId, { ...existing, avatarKey: key });
+    if (!updated) throw new Error("PROFILE_UPDATE_FAILED");
+
+    return withAvatarUrl(updated);
+}
+
+export async function removeUserAvatar(userId: string): Promise<ProfileDataWithAvatarUrl> {
+    const existing = await getUserProfile(userId);
+    if (!existing) throw new Error("PROFILE_NOT_FOUND");
+
+    if (existing.avatarKey) {
+        const { deleteAvatar } = await import("@/server/lib/r2");
+        await deleteAvatar(existing.avatarKey);
+    }
+
+    const updated = await updateUserProfile(userId, { ...existing, avatarKey: null });
+    if (!updated) throw new Error("PROFILE_UPDATE_FAILED");
+
+    return withAvatarUrl(updated);
 }

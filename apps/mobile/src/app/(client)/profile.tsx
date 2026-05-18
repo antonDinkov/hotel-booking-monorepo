@@ -1,70 +1,346 @@
-import type { ReactNode } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import type { ComponentProps, PropsWithChildren } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import AppButton from '@/components/AppButton';
+import AppTextInput from '@/components/AppTextInput';
+import EmptyState from '@/components/EmptyState';
 import ScreenContainer from '@/components/ScreenContainer';
 import { useAuth } from '@/context/AuthContext';
+import {
+  getCurrentProfile,
+  removeProfileAvatar,
+  updateCurrentProfile,
+  uploadProfileAvatar,
+} from '@/lib/clientApi';
+import type { ProfileData, ProfileDataWithAvatarUrl } from '@/types/profile';
+
+const GENDER_OPTIONS = ['Female', 'Male', 'Non-binary', 'Prefer not to say'];
 
 export default function Profile() {
   const router = useRouter();
-  const { authState, logout } = useAuth();
-  const user = authState.user;
+  const { logout } = useAuth();
+  const [profile, setProfile] = useState<ProfileDataWithAvatarUrl | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const loadProfile = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      setProfile(await getCurrentProfile());
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Profile could not be loaded.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
 
   async function handleLogout() {
     await logout();
     router.replace('/login');
   }
 
+  async function handleSave() {
+    if (!profile || isSaving) return;
+    const validationErrors = validateProfile(profile);
+    setErrors(validationErrors);
+    setNotice(null);
+
+    if (Object.keys(validationErrors).length > 0) return;
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      setProfile(await updateCurrentProfile(stripAvatarUrl(profile)));
+      setNotice('Profile updated.');
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Profile could not be saved.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handlePickAvatar() {
+    if (!profile || isUploading) return;
+
+    setIsUploading(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      if (Platform.OS !== 'web') {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          setError('Photo library permission is required to choose an avatar.');
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        mediaTypes: ['images'],
+        quality: 1,
+      });
+
+      if (result.canceled || !result.assets[0]) return;
+
+      const formData = new FormData();
+      appendAvatarFile(formData, result.assets[0]);
+      setProfile(await uploadProfileAvatar(formData));
+      setNotice('Avatar updated.');
+    } catch (avatarError) {
+      setError(avatarError instanceof Error ? avatarError.message : 'Avatar upload failed.');
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    if (!profile?.avatarKey || isUploading) return;
+
+    setIsUploading(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      setProfile(await removeProfileAvatar());
+      setNotice('Avatar removed.');
+    } catch (removeError) {
+      setError(removeError instanceof Error ? removeError.message : 'Avatar could not be removed.');
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  function updateProfile(updater: (current: ProfileDataWithAvatarUrl) => ProfileDataWithAvatarUrl) {
+    setProfile((current) => (current ? updater(current) : current));
+    setNotice(null);
+  }
+
+  if (isLoading) {
+    return (
+      <ScreenContainer title="My Profile" subtitle="Client account and travel details.">
+        <ActivityIndicator color="#2563eb" size="large" />
+      </ScreenContainer>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <ScreenContainer title="My Profile">
+        <EmptyState
+          actionLabel="Retry"
+          message={error ?? 'Your profile is not available.'}
+          onAction={loadProfile}
+          title="Profile unavailable"
+        />
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer title="My Profile" subtitle="Client account and travel details.">
       <View style={styles.headerCard}>
-        <Text style={styles.avatar}>{getInitials(user?.fullName ?? user?.email ?? 'Client')}</Text>
+        <Avatar profile={profile} />
         <View style={styles.headerText}>
-          <Text style={styles.name}>{user?.fullName ?? 'Client'}</Text>
-          <Text style={styles.email}>{user?.email ?? 'Not available'}</Text>
+          <Text style={styles.name}>{profile.name || profile.email}</Text>
+          <Text style={styles.email}>{profile.email}</Text>
         </View>
       </View>
 
+      <View style={styles.avatarActions}>
+        <AppButton
+          disabled={isUploading}
+          label={isUploading ? 'Working...' : 'Choose Photo'}
+          onPress={handlePickAvatar}
+          variant="secondary"
+        />
+        {profile.avatarKey ? (
+          <AppButton disabled={isUploading} label="Remove Photo" onPress={handleRemoveAvatar} variant="danger" />
+        ) : null}
+      </View>
+
+      {notice ? <Text style={styles.successBox}>{notice}</Text> : null}
+      {error ? <Text style={styles.errorBox}>{error}</Text> : null}
+
       <ProfileSection title="Personal Information">
-        <Detail label="Name" value={user?.fullName ?? 'Client'} />
-        <Detail label="Email" value={user?.email ?? 'Not available'} />
-        <Detail label="Phone" value="Not provided" />
+        <ProfileInput
+          error={errors.name}
+          label="Name"
+          onChangeText={(name) => updateProfile((current) => ({ ...current, name }))}
+          value={profile.name}
+        />
+        <ProfileInput editable={false} label="Email" value={profile.email} />
+        <ProfileInput
+          error={errors.phone}
+          label="Phone"
+          onChangeText={(phone) => updateProfile((current) => ({ ...current, phone }))}
+          value={profile.phone}
+        />
       </ProfileSection>
 
       <ProfileSection title="Address">
-        <Detail label="Street" value="Not provided" />
-        <Detail label="City" value="Not provided" />
-        <Detail label="Country" value="Not provided" />
+        <ProfileInput
+          label="Street"
+          onChangeText={(street) => updateProfile((current) => ({
+            ...current,
+            address: { ...current.address, street },
+          }))}
+          value={profile.address.street}
+        />
+        <View style={styles.inlineFields}>
+          <ProfileInput
+            label="City"
+            onChangeText={(city) => updateProfile((current) => ({
+              ...current,
+              address: { ...current.address, city },
+            }))}
+            value={profile.address.city}
+            wrapperStyle={styles.inlineField}
+          />
+          <ProfileInput
+            label="Country"
+            onChangeText={(country) => updateProfile((current) => ({
+              ...current,
+              address: { ...current.address, country },
+            }))}
+            value={profile.address.country}
+            wrapperStyle={styles.inlineField}
+          />
+        </View>
+        <ProfileInput
+          label="ZIP"
+          onChangeText={(zip) => updateProfile((current) => ({
+            ...current,
+            address: { ...current.address, zip },
+          }))}
+          value={profile.address.zip}
+        />
       </ProfileSection>
 
       <ProfileSection title="Travel Details">
-        <Detail label="Nationality" value="Not provided" />
-        <Detail label="Date of Birth" value="Not provided" />
-        <Detail label="Passport Number" value="Not provided" />
+        <ProfileInput
+          label="Nationality"
+          onChangeText={(nationality) => updateProfile((current) => ({ ...current, nationality }))}
+          value={profile.nationality}
+        />
+        <ProfileInput
+          error={errors.dateOfBirth}
+          label="Date of Birth"
+          onChangeText={(dateOfBirth) => updateProfile((current) => ({ ...current, dateOfBirth }))}
+          placeholder="YYYY-MM-DD"
+          value={profile.dateOfBirth}
+        />
+        <Text style={styles.label}>Gender</Text>
+        <View style={styles.genderOptions}>
+          {GENDER_OPTIONS.map((gender) => (
+            <Pressable
+              key={gender}
+              onPress={() => updateProfile((current) => ({ ...current, gender }))}
+              style={[styles.genderOption, profile.gender === gender && styles.genderOptionActive]}>
+              <Text style={[styles.genderText, profile.gender === gender && styles.genderTextActive]}>{gender}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <ProfileInput
+          label="Passport Number"
+          onChangeText={(passportNumber) => updateProfile((current) => ({ ...current, passportNumber }))}
+          value={profile.passportNumber}
+        />
       </ProfileSection>
 
-      <AppButton label="Logout" variant="danger" onPress={handleLogout} />
+      <View style={styles.actions}>
+        <AppButton disabled={isSaving} label={isSaving ? 'Saving...' : 'Save Profile'} onPress={handleSave} />
+        <AppButton label="Logout" variant="danger" onPress={handleLogout} />
+      </View>
     </ScreenContainer>
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function Avatar({ profile }: { profile: ProfileDataWithAvatarUrl }) {
+  if (profile.avatarUrl) {
+    return <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />;
+  }
+
+  return <Text style={styles.avatar}>{getInitials(profile.name || profile.email || 'Client')}</Text>;
+}
+
+function ProfileInput({
+  error,
+  wrapperStyle,
+  ...props
+}: ComponentProps<typeof AppTextInput> & { error?: string; wrapperStyle?: object }) {
   return (
-    <View style={styles.detail}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
+    <View style={wrapperStyle}>
+      <AppTextInput {...props} />
+      {error ? <Text style={styles.fieldError}>{error}</Text> : null}
     </View>
   );
 }
 
-function ProfileSection({ children, title }: { children: ReactNode; title: string }) {
+function ProfileSection({ children, title }: PropsWithChildren<{ title: string }>) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
       {children}
     </View>
   );
+}
+
+function appendAvatarFile(formData: FormData, asset: ImagePicker.ImagePickerAsset) {
+  if (Platform.OS === 'web' && asset.file) {
+    formData.append('avatar', asset.file);
+    return;
+  }
+
+  const name = asset.fileName ?? `avatar.${getExtension(asset.mimeType)}`;
+  const type = asset.mimeType ?? 'image/jpeg';
+  formData.append('avatar', { uri: asset.uri, name, type } as unknown as Blob);
+}
+
+function getExtension(mimeType?: string): string {
+  if (mimeType === 'image/png') return 'png';
+  if (mimeType === 'image/webp') return 'webp';
+  if (mimeType === 'image/avif') return 'avif';
+  return 'jpg';
+}
+
+function validateProfile(profile: ProfileDataWithAvatarUrl): Record<string, string> {
+  const errors: Record<string, string> = {};
+  if (profile.name.trim().length > 120) errors.name = 'Name is too long.';
+  if (profile.phone.trim().length > 40) errors.phone = 'Phone is too long.';
+  if (profile.dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(profile.dateOfBirth)) {
+    errors.dateOfBirth = 'Use YYYY-MM-DD.';
+  }
+  return errors;
+}
+
+function stripAvatarUrl(profile: ProfileDataWithAvatarUrl): ProfileData {
+  return {
+    address: profile.address,
+    avatarKey: profile.avatarKey,
+    dateOfBirth: profile.dateOfBirth,
+    email: profile.email,
+    gender: profile.gender,
+    name: profile.name,
+    nationality: profile.nationality,
+    passportNumber: profile.passportNumber,
+    phone: profile.phone,
+    preferences: profile.preferences,
+  };
 }
 
 function getInitials(value: string): string {
@@ -77,28 +353,76 @@ function getInitials(value: string): string {
 }
 
 const styles = StyleSheet.create({
+  actions: {
+    gap: 10,
+  },
   avatar: {
     backgroundColor: '#dbeafe',
-    borderRadius: 8,
+    borderRadius: 38,
     color: '#1d4ed8',
     fontSize: 24,
     fontWeight: '900',
+    height: 76,
+    lineHeight: 76,
     overflow: 'hidden',
-    paddingHorizontal: 18,
-    paddingVertical: 16,
     textAlign: 'center',
     width: 76,
   },
-  detail: {
-    borderTopColor: '#e2e8f0',
-    borderTopWidth: 1,
-    gap: 4,
-    paddingTop: 12,
+  avatarActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 14,
+  },
+  avatarImage: {
+    borderRadius: 38,
+    height: 76,
+    width: 76,
   },
   email: {
     color: '#64748b',
     fontSize: 14,
     fontWeight: '700',
+  },
+  errorBox: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    borderRadius: 8,
+    borderWidth: 1,
+    color: '#b91c1c',
+    fontWeight: '800',
+    marginBottom: 14,
+    padding: 12,
+  },
+  fieldError: {
+    color: '#b91c1c',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  genderOption: {
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  genderOptionActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  genderOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  genderText: {
+    color: '#334155',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  genderTextActive: {
+    color: '#ffffff',
   },
   headerCard: {
     alignItems: 'center',
@@ -108,18 +432,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     gap: 14,
-    marginBottom: 16,
+    marginBottom: 12,
     padding: 16,
   },
   headerText: {
     flex: 1,
     gap: 4,
   },
+  inlineField: {
+    flex: 1,
+    minWidth: 180,
+  },
+  inlineFields: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
   label: {
-    color: '#64748b',
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
+    color: '#334155',
+    fontSize: 14,
+    fontWeight: '700',
   },
   name: {
     color: '#172554',
@@ -140,9 +472,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
   },
-  value: {
-    color: '#334155',
-    fontSize: 15,
-    fontWeight: '700',
+  successBox: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#bbf7d0',
+    borderRadius: 8,
+    borderWidth: 1,
+    color: '#047857',
+    fontWeight: '800',
+    marginBottom: 14,
+    padding: 12,
   },
 });

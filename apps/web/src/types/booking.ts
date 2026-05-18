@@ -40,6 +40,8 @@ export interface MyBooking {
   roomType: string;
   checkIn: string;
   checkOut: string;
+  guestsCount?: number;
+  roomsCount?: number;
   totalPrice: number;
   status: BookingDisplayStatus;
   lifecycleStatus?: BookingLifecycleStatus;

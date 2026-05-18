@@ -35,6 +35,10 @@ export interface ProfileData {
     address: ProfileAddress;
 }
 
+export type ProfileDataWithAvatarUrl = ProfileData & {
+    avatarUrl?: string | null;
+};
+
 // Reusable editable field config used by the profile UI
 export type InputType = "text" | "date" | "select" | "number";
 

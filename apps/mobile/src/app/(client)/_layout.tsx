@@ -39,7 +39,7 @@ export default function ClientLayout() {
           paddingTop: 8,
           shadowOpacity: 0,
         },
-        sceneContainerStyle: {
+        sceneStyle: {
           backgroundColor: '#f8fbff',
         },
       }}>
@@ -73,6 +73,7 @@ export default function ClientLayout() {
       <Tabs.Screen name="favorites" options={{ href: null }} />
       <Tabs.Screen name="reviews" options={{ href: null }} />
       <Tabs.Screen name="listings" options={{ href: null }} />
+      <Tabs.Screen name="booking-summary" options={{ href: null }} />
       <Tabs.Screen name="bookings/[id]" options={{ href: null }} />
       <Tabs.Screen name="listings/[id]" options={{ href: null }} />
     </Tabs>

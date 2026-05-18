@@ -2,8 +2,14 @@ import { NextResponse } from "next/server";
 
 import { apiError, authError } from "@/app/api/api-response";
 import { authorizeApi } from "@/app/api/auth/[...nextauth]/route";
+import { parseClientProfileInput } from "@/lib/profile-validation";
 import { parseAdminAccountSettingsInput } from "@/lib/admin-settings-validation";
 import { parsePartnerAccountSettingsInput } from "@/lib/partner-settings-validation";
+import {
+  getUserProfile,
+  getUserProfileWithAvatarUrl,
+  updateUserProfileWithAvatarUrl,
+} from "@/server/services/profile";
 import {
   getAdminAccountSettings,
   updateAdminAccountSettings,
@@ -39,6 +45,10 @@ function hasRole(roles: string[] | undefined, role: string): boolean {
   return Boolean(roles?.includes(role));
 }
 
+function shouldUseClientProfile(roles: string[] | undefined): boolean {
+  return hasRole(roles, "client") && !hasRole(roles, "partner") && !hasRole(roles, "admin");
+}
+
 function shouldUseAdminScope(request: Request, roles: string[] | undefined): boolean {
   const scope = new URL(request.url).searchParams.get("scope");
   return scope === "admin" || (hasRole(roles, "admin") && !hasRole(roles, "partner"));
@@ -52,11 +62,46 @@ async function readJson(request: Request): Promise<unknown> {
   }
 }
 
+function mapClientProfileError(error: unknown) {
+  const code = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+
+  if (code === "VALIDATION_ERROR") return apiError("Missing or invalid profile fields", code, 400);
+  if (code === "INVALID_JSON") return apiError("Invalid JSON body", code, 400);
+  if (code === "PROFILE_NOT_FOUND") return apiError("Profile not found", code, 404);
+
+  console.error("Client profile request failed:", error);
+  return apiError("Profile request failed", "PROFILE_REQUEST_FAILED", 500);
+}
+
+async function updateClientProfile(request: Request, userId: string) {
+  const body = await readJson(request);
+  const parsed = parseClientProfileInput(body);
+  if (!parsed.success) throw new Error("VALIDATION_ERROR");
+
+  const existing = await getUserProfile(userId);
+  if (!existing) throw new Error("PROFILE_NOT_FOUND");
+
+  const updated = await updateUserProfileWithAvatarUrl(userId, {
+    ...parsed.data,
+    email: existing.email,
+    avatarKey: parsed.data.avatarKey ?? existing.avatarKey,
+  });
+  if (!updated) throw new Error("PROFILE_NOT_FOUND");
+
+  return updated;
+}
+
 export async function GET(request: Request) {
-  const auth = await authorizeApi(["partner", "admin"]);
+  const auth = await authorizeApi(["client", "partner", "admin"]);
   if (!auth.ok) return authError(auth.status);
 
   try {
+    if (shouldUseClientProfile(auth.roles)) {
+      const data = await getUserProfileWithAvatarUrl(auth.userId as string);
+      if (!data) return apiError("Profile not found", "PROFILE_NOT_FOUND", 404);
+      return NextResponse.json({ data });
+    }
+
     if (shouldUseAdminScope(request, auth.roles)) {
       if (!hasRole(auth.roles, "admin")) return authError(403);
       const data = await getAdminAccountSettings(auth.userId as string);
@@ -71,10 +116,15 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = await authorizeApi(["partner", "admin"]);
+  const auth = await authorizeApi(["client", "partner", "admin"]);
   if (!auth.ok) return authError(auth.status);
 
   try {
+    if (shouldUseClientProfile(auth.roles)) {
+      const data = await updateClientProfile(request, auth.userId as string);
+      return NextResponse.json({ data });
+    }
+
     const body = await readJson(request);
 
     if (shouldUseAdminScope(request, auth.roles)) {
@@ -88,6 +138,7 @@ export async function PATCH(request: Request) {
     const data = await updatePartnerAccountSettings(auth.userId as string, input);
     return NextResponse.json({ data });
   } catch (error) {
+    if (shouldUseClientProfile(auth.roles)) return mapClientProfileError(error);
     return mapUserSettingsError(error);
   }
 }

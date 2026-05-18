@@ -25,6 +25,7 @@ export default function ListingResultCard({
         category: listing.category,
         checkInDate: searchParams?.checkInDate ?? '',
         checkOutDate: searchParams?.checkOutDate ?? '',
+        destination: searchParams?.destination ?? '',
         guests: searchParams?.guests ?? '',
         id: listing.id,
         imageAlt: listing.image.alt,

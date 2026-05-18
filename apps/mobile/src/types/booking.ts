@@ -20,6 +20,7 @@ export type MyBooking = {
   checkIn: string;
   checkOut: string;
   daysRemaining?: number;
+  guestsCount?: number;
   hasReview?: boolean;
   hotelAddress?: string;
   hotelId?: number;
@@ -30,6 +31,7 @@ export type MyBooking = {
   paymentMethod?: BookingPaymentMethod | null;
   paymentStatus?: BookingPaymentStatus;
   reviewId?: number;
+  roomsCount?: number;
   roomType: string;
   status: BookingDisplayStatus;
   totalPrice: number;
@@ -46,4 +48,54 @@ export type ClientBookingsPage = {
   activeBooking: MyBooking | null;
   inactiveBookings: MyBooking[];
   pagination: ClientBookingsPagination;
+};
+
+export type BookingCancellationNotice = {
+  title: string;
+  message: string;
+};
+
+export type CancelBookingResult = {
+  bookingId: number;
+  status: BookingLifecycleStatus;
+  paymentMethod: BookingPaymentMethod | null;
+  paymentStatus: BookingPaymentStatus;
+  stripeRefundId?: string | null;
+  notification: BookingCancellationNotice;
+};
+
+export type CreateBookingHoldRequest = {
+  hotelId: number;
+  roomTypeId: number;
+  checkInDate: string;
+  checkOutDate: string;
+  guestsCount: number;
+  roomsCount: number;
+};
+
+export type CreateBookingHoldResponse = {
+  bookingId: number;
+  expiresAt: string;
+};
+
+export type BookingSummary = {
+  bookingId: number;
+  hotelId: number;
+  roomTypeId: number;
+  hotelName: string;
+  hotelLocation: string;
+  roomType: string;
+  roomCapacity: number;
+  checkInDate: string;
+  checkOutDate: string;
+  guestsCount: number;
+  roomsCount: number;
+  nights: number;
+  pricePerNight: number;
+  totalPrice: number;
+  paymentMethod: BookingPaymentMethod | null;
+  paymentStatus: BookingPaymentStatus;
+  status: BookingLifecycleStatus;
+  expiresAt: string | null;
+  supportedPaymentMethods: BookingPaymentMethod[];
 };

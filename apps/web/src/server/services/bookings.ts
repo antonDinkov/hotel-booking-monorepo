@@ -52,6 +52,7 @@ interface BookingRow {
   hotelId: number | null;
   checkInDate: string;
   checkOutDate: string;
+  guestsCount: number | null;
   roomsCount: number | null;
   status: string | null;
   paymentMethod: string | null;
@@ -1043,6 +1044,10 @@ async function cancelBookingRow(row: BookingDetailsRow): Promise<CancelBookingRe
     throw new Error("BOOKING_NOT_CANCELLABLE");
   }
 
+  if (!canRefundBooking(row)) {
+    throw new Error("BOOKING_ALREADY_STARTED");
+  }
+
   if (row.paymentMethod === "cash_on_arrival" && row.paymentStatus === "pending") {
     return cancelCashOnArrivalBooking(row);
   }
@@ -1203,6 +1208,7 @@ export async function getBookings(userId: string): Promise<MyBooking[]> {
       hotelId: hotels.id,
       checkInDate: bookings.checkInDate,
       checkOutDate: bookings.checkOutDate,
+      guestsCount: bookings.guestsCount,
       roomsCount: bookings.roomsCount,
       status: bookings.status,
       paymentMethod: bookings.paymentMethod,
@@ -1284,6 +1290,8 @@ function mapBookingRowsToMyBookings(rows: BookingRow[]): MyBooking[] {
       roomType: row.roomTypeName ?? "Room",
       checkIn: formatDate(checkIn),
       checkOut: formatDate(checkOut),
+      guestsCount: row.guestsCount ?? 1,
+      roomsCount: getRoomsCount(row.roomsCount),
       totalPrice,
       status,
       lifecycleStatus,
@@ -1347,6 +1355,7 @@ export async function getClientBookingsPage(
         hotelId: hotels.id,
         checkInDate: bookings.checkInDate,
         checkOutDate: bookings.checkOutDate,
+        guestsCount: bookings.guestsCount,
         roomsCount: bookings.roomsCount,
         status: bookings.status,
         paymentMethod: bookings.paymentMethod,
@@ -1427,6 +1436,7 @@ export async function getClientBookingsPage(
         hotelId: hotels.id,
         checkInDate: bookings.checkInDate,
         checkOutDate: bookings.checkOutDate,
+        guestsCount: bookings.guestsCount,
         roomsCount: bookings.roomsCount,
         status: bookings.status,
         paymentMethod: bookings.paymentMethod,

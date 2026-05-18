@@ -1,11 +1,29 @@
 import { fetchApi } from '@/lib/api';
-import type { ClientBookingsPage } from '@/types/booking';
-import type { HotelPanelData, ListingSearchResult, SearchHotelsInput } from '@/types/hotel-panel';
+import type {
+  BookingSummary,
+  CancelBookingResult,
+  ClientBookingsPage,
+  CreateBookingHoldRequest,
+  CreateBookingHoldResponse,
+} from '@/types/booking';
+import type { HotelPanelData, ListingDetails, ListingSearchResult, SearchHotelsInput } from '@/types/hotel-panel';
+import type { ProfileData, ProfileDataWithAvatarUrl } from '@/types/profile';
 import type { HotelAvailabilityResult } from '@/types/room-availability';
 
 type ApiResponse<T> = { data: T };
 type FavoriteIdsPayload = { hotelIds: number[] };
 type ReviewsCountPayload = { pagination?: { totalItems?: number }; reviews?: unknown[] };
+type StripeCheckoutPayload = { bookingId: number; url: string; expiresAt: string };
+type ReviewPayload = {
+  bookingId: number;
+  comment: string | null;
+  createdAt: string;
+  hotelId: number;
+  id: number;
+  moderationStatus: string;
+  rating: number;
+  userId: string;
+};
 
 export async function getHotelPanelData(): Promise<HotelPanelData> {
   const payload = await fetchApi<HotelPanelData | ApiResponse<HotelPanelData>>('/api/hotel-panel');
@@ -35,6 +53,60 @@ export async function getClientBookingsPage(page = 1, pageSize = 10): Promise<Cl
   return payload.data;
 }
 
+export async function cancelBooking(bookingId: string): Promise<CancelBookingResult> {
+  const payload = await fetchApi<ApiResponse<CancelBookingResult>>(`/api/bookings/${bookingId}/cancel`, {
+    method: 'PATCH',
+  });
+  return payload.data;
+}
+
+export async function submitBookingReview(input: {
+  bookingId: string;
+  comment: string;
+  rating: number;
+}): Promise<ReviewPayload> {
+  const payload = await fetchApi<ApiResponse<ReviewPayload>>('/api/reviews', {
+    body: JSON.stringify({
+      bookingId: Number(input.bookingId),
+      comment: input.comment.trim() || null,
+      rating: input.rating,
+    }),
+    headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
+  });
+  return payload.data;
+}
+
+export async function createPendingBookingHold(
+  input: CreateBookingHoldRequest,
+): Promise<CreateBookingHoldResponse> {
+  const payload = await fetchApi<ApiResponse<CreateBookingHoldResponse>>('/api/bookings', {
+    body: JSON.stringify(input),
+    headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
+  });
+  return payload.data;
+}
+
+export async function getBookingSummary(bookingId: string): Promise<BookingSummary> {
+  const payload = await fetchApi<ApiResponse<BookingSummary>>(`/api/bookings/${bookingId}`);
+  return payload.data;
+}
+
+export async function confirmCashOnArrival(bookingId: string): Promise<{ bookingId: number }> {
+  const payload = await fetchApi<ApiResponse<{ bookingId: number }>>(`/api/bookings/${bookingId}/cash-on-arrival`, {
+    method: 'POST',
+  });
+  return payload.data;
+}
+
+export async function startStripeCheckout(bookingId: string): Promise<StripeCheckoutPayload> {
+  const payload = await fetchApi<ApiResponse<StripeCheckoutPayload>>(`/api/bookings/${bookingId}/stripe-checkout`, {
+    method: 'POST',
+  });
+  return payload.data;
+}
+
 export async function getFavoriteHotelIds(): Promise<number[]> {
   const payload = await fetchApi<ApiResponse<FavoriteIdsPayload>>('/api/favorites?ids=1');
   return payload.data.hotelIds;
@@ -57,6 +129,40 @@ export async function getHotelAvailability(
   const payload = await fetchApi<ApiResponse<HotelAvailabilityResult>>(
     `/api/hotels/${hotelId}/availability?${params.toString()}`,
   );
+  return payload.data;
+}
+
+export async function getListingDetails(hotelId: string): Promise<ListingDetails> {
+  const payload = await fetchApi<ApiResponse<ListingDetails>>(`/api/hotels/${hotelId}`);
+  return payload.data;
+}
+
+export async function getCurrentProfile(): Promise<ProfileDataWithAvatarUrl> {
+  const payload = await fetchApi<ApiResponse<ProfileDataWithAvatarUrl>>('/api/users/me');
+  return payload.data;
+}
+
+export async function updateCurrentProfile(profile: ProfileData): Promise<ProfileDataWithAvatarUrl> {
+  const payload = await fetchApi<ApiResponse<ProfileDataWithAvatarUrl>>('/api/users/me', {
+    body: JSON.stringify(profile),
+    headers: { 'Content-Type': 'application/json' },
+    method: 'PATCH',
+  });
+  return payload.data;
+}
+
+export async function uploadProfileAvatar(formData: FormData): Promise<ProfileDataWithAvatarUrl> {
+  const payload = await fetchApi<ApiResponse<ProfileDataWithAvatarUrl>>('/api/users/me/avatar', {
+    body: formData,
+    method: 'POST',
+  });
+  return payload.data;
+}
+
+export async function removeProfileAvatar(): Promise<ProfileDataWithAvatarUrl> {
+  const payload = await fetchApi<ApiResponse<ProfileDataWithAvatarUrl>>('/api/users/me/avatar', {
+    method: 'DELETE',
+  });
   return payload.data;
 }
 

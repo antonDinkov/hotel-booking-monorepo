@@ -14,6 +14,7 @@ import {
   getAdminBookingDetails,
   updateAdminBookingStatus,
 } from "@/server/services/adminBookings";
+import { getBookingSummary } from "@/server/services/bookings";
 import {
   getPartnerBookingDetails,
   updatePartnerBookingStatus,
@@ -24,12 +25,22 @@ export async function GET(
   _request: Request,
   { params }: PartnerBookingApiRouteContext
 ) {
-  const auth = await authorizeApi(["partner", "admin"]);
+  const auth = await authorizeApi(["client", "partner", "admin"]);
   if (!auth.ok) return authError(auth.status);
 
   const { id } = await params;
   const bookingId = parseBookingId(id);
   if (!bookingId) return apiError("Invalid booking ID", "INVALID_BOOKING_ID", 400);
+
+  if (auth.roles?.includes("client") && !auth.roles.includes("partner") && !auth.roles.includes("admin")) {
+    try {
+      const booking = await getBookingSummary(bookingId, auth.userId as string);
+      if (!booking) return apiError("Booking not found", "BOOKING_NOT_FOUND", 404);
+      return NextResponse.json({ data: booking });
+    } catch (error) {
+      return mapPartnerBookingError(error);
+    }
+  }
 
   if (auth.roles?.includes("admin")) {
     try {

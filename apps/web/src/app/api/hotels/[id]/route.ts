@@ -7,6 +7,7 @@ import {
   getPartnerHotelDetails,
   updatePartnerHotel,
 } from "@/server/services/partnerHotels";
+import { getListingById } from "@/server/services/hotelPanel";
 import { mapPartnerHotelError, parseHotelMutationRequest } from "../hotel-api-helpers";
 
 export async function GET(
@@ -14,11 +15,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await authorizeApi(["partner"]);
-  if (!auth.ok) return authError(auth.status);
 
   const { id } = await params;
   const hotelId = parsePositiveInteger(id);
   if (!hotelId) return apiError("Invalid hotel ID", "INVALID_HOTEL_ID", 400);
+
+  if (!auth.ok) {
+    const listing = await getListingById(hotelId);
+    if (!listing) return apiError("Hotel not found", "HOTEL_NOT_FOUND", 404);
+    return NextResponse.json({ data: listing });
+  }
 
   try {
     const hotel = await getPartnerHotelDetails(auth.userId as string, hotelId);

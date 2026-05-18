@@ -56,7 +56,15 @@ export async function GET(request?: Request) {
       page: Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1,
       pageSize: Number.isInteger(pageSizeParam) && pageSizeParam > 0 ? pageSizeParam : undefined,
     });
-    return NextResponse.json({ data: result });
+    return NextResponse.json({
+      data: result,
+      meta: {
+        page: result.pagination.page,
+        limit: result.pagination.pageSize,
+        hasMore: result.pagination.page < result.pagination.totalPages,
+        total: result.pagination.totalItems,
+      },
+    });
   }
 
   const bookings = await getBookings(auth.userId as string);

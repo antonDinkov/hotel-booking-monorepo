@@ -87,7 +87,15 @@ export async function GET(request: Request) {
             pagination: { page, pageSize },
         });
 
-        return NextResponse.json({ data: results }, {
+        return NextResponse.json({
+            data: results,
+            meta: {
+                page: results.pagination.page,
+                limit: results.pagination.pageSize,
+                hasMore: results.pagination.page < results.pagination.totalPages,
+                total: results.pagination.totalItems,
+            },
+        }, {
             headers: {
                 "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
             },

@@ -22,7 +22,7 @@ const INITIAL_SEARCH: SearchHotelsInput = {
   guests: '',
 };
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 9;
 
 export default function SearchPanel({ ctaLabel = 'Search', favoriteHotelIds = [], footerContent }: SearchPanelProps) {
   const [searchValues, setSearchValues] = useState<SearchHotelsInput>(INITIAL_SEARCH);
