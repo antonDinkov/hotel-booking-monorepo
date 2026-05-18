@@ -14,6 +14,7 @@ const adminReportRanges = [
   "this_year",
   "custom",
 ] as const;
+const MAX_CUSTOM_ANALYTICS_DAYS = 366;
 
 const dateOnlySchema = z
   .string()
@@ -50,6 +51,20 @@ const adminReportFilterSchema = z
         path: ["dateTo"],
         message: "Date range end must be on or after the start date.",
       });
+      return;
+    }
+
+    if (value.range === "custom" && value.dateFrom && value.dateTo) {
+      const from = parseDateOnly(value.dateFrom);
+      const to = parseDateOnly(value.dateTo);
+      const dayCount = Math.floor((to.getTime() - from.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+      if (dayCount > MAX_CUSTOM_ANALYTICS_DAYS) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["dateTo"],
+          message: "Custom reports are limited to 366 days.",
+        });
+      }
     }
   });
 

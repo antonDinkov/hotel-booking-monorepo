@@ -8,6 +8,7 @@ import type {
   HotelReview,
   HotelReviewSummary,
   HotelReviewsPageData,
+  MyReviewsPage,
   MyReview,
   PaginatedHotelReviews,
   PartnerReviewReply,
@@ -490,6 +491,49 @@ export async function getMyReviews(userId: string): Promise<MyReview[]> {
     .orderBy(desc(reviews.createdAt));
 
   return rows.map(mapMyReview);
+}
+
+export async function getMyReviewsPage(
+  userId: string,
+  input: { page?: number; pageSize?: number } = {}
+): Promise<MyReviewsPage> {
+  await assertClientUser(userId);
+
+  const requestedPage = Number.isInteger(input.page) && (input.page as number) > 0 ? (input.page as number) : 1;
+  const pageSize = Number.isInteger(input.pageSize) && (input.pageSize as number) > 0
+    ? Math.min(input.pageSize as number, 24)
+    : 10;
+
+  const total = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(reviews)
+    .where(eq(reviews.userId, userId))
+    .then((result) => Number(result[0]?.total ?? 0));
+
+  const totalItems = Number(total ?? 0);
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(Math.max(1, requestedPage), totalPages);
+  const rows = await db
+    .select(MY_REVIEW_FIELDS)
+    .from(reviews)
+    .innerJoin(hotels, eq(hotels.id, reviews.hotelId))
+    .innerJoin(partners, eq(partners.id, hotels.partnerId))
+    .leftJoin(reviewerProfiles, eq(reviewerProfiles.userId, reviews.userId))
+    .leftJoin(replyAuthorProfiles, eq(replyAuthorProfiles.userId, reviews.partnerRepliedBy))
+    .where(eq(reviews.userId, userId))
+    .orderBy(desc(reviews.createdAt))
+    .limit(pageSize)
+    .offset((safePage - 1) * pageSize);
+
+  return {
+    reviews: rows.map(mapMyReview),
+    pagination: {
+      page: safePage,
+      pageSize,
+      totalItems,
+      totalPages,
+    },
+  };
 }
 
 export async function getMyReviewsCount(userId: string): Promise<number> {

@@ -53,6 +53,19 @@ export interface MyBooking {
   daysRemaining?: number;
 }
 
+export interface ClientBookingsPagination {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface ClientBookingsPage {
+  activeBooking: MyBooking | null;
+  inactiveBookings: MyBooking[];
+  pagination: ClientBookingsPagination;
+}
+
 export interface CreateBookingHoldRequest {
   hotelId: number;
   roomTypeId: number;

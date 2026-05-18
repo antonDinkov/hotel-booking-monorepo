@@ -84,3 +84,15 @@ export interface HotelReviewsPageData extends PaginatedHotelReviews {
   };
   summary: HotelReviewSummary;
 }
+
+export interface MyReviewsPagination {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface MyReviewsPage {
+  reviews: MyReview[];
+  pagination: MyReviewsPagination;
+}

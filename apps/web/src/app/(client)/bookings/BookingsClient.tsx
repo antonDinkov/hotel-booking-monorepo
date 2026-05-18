@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MyBookingCard } from "@/components/MyBookingCard";
 import { BookingDetailsModal } from "@/components/BookingDetailsModal";
-import { AppButton } from "@/components/AppButton";
+import { Pagination } from "@/components/Pagination";
 import type {
   BookingCancellationNotice,
   BookingPaymentMethod,
   BookingPaymentStatus,
   CancelBookingResult,
   CancelledBookingBadge,
+  ClientBookingsPagination,
   MyBooking,
 } from "@/types/booking";
 import type { Review } from "@/types/review";
@@ -18,9 +19,8 @@ import type { Review } from "@/types/review";
 interface BookingsClientProps {
   activeBooking: MyBooking | null;
   inactiveBookings: MyBooking[];
+  pagination?: ClientBookingsPagination;
 }
-
-const BOOKINGS_PER_PAGE = 3;
 
 type CancelBookingPayload = {
     data?: CancelBookingResult;
@@ -127,13 +127,12 @@ function toReviewedBooking(booking: MyBooking, review: Review): MyBooking {
     };
 }
 
-export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClientProps) {
+export function BookingsClient({ activeBooking, inactiveBookings, pagination }: BookingsClientProps) {
     const router = useRouter();
     const [currentActiveBooking, setCurrentActiveBooking] = useState(activeBooking);
     const [currentInactiveBookings, setCurrentInactiveBookings] = useState(inactiveBookings);
     const [selectedBooking, setSelectedBooking] = useState<MyBooking | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
     const [isCancelling, setIsCancelling] = useState(false);
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
     const [actionNotice, setActionNotice] = useState<BookingCancellationNotice | null>(null);
@@ -143,15 +142,6 @@ export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClie
         setCurrentActiveBooking(activeBooking);
         setCurrentInactiveBookings(inactiveBookings);
     }, [activeBooking, inactiveBookings]);
-
-    const totalPages = Math.ceil(currentInactiveBookings.length / BOOKINGS_PER_PAGE);
-    useEffect(() => {
-        setCurrentPage((page) => Math.min(Math.max(page, 1), Math.max(totalPages, 1)));
-    }, [totalPages]);
-
-    const startIndex = (currentPage - 1) * BOOKINGS_PER_PAGE;
-    const endIndex = startIndex + BOOKINGS_PER_PAGE;
-    const paginatedBookings = currentInactiveBookings.slice(startIndex, endIndex);
 
     const handleCardClick = (booking: MyBooking) => (e?: React.MouseEvent) => {
         e?.stopPropagation?.();
@@ -258,12 +248,18 @@ export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClie
         }
     };
 
-    const handlePreviousPage = () => {
-        setCurrentPage((p) => Math.max(1, p - 1));
+    const effectivePagination = pagination ?? {
+        page: 1,
+        pageSize: currentInactiveBookings.length,
+        totalItems: currentInactiveBookings.length,
+        totalPages: 1,
     };
 
-    const handleNextPage = () => {
-        setCurrentPage((p) => Math.min(totalPages, p + 1));
+    const handlePageChange = (page: number) => {
+        const safePage = Math.max(1, Math.min(page, effectivePagination.totalPages));
+        const params = new URLSearchParams(window.location.search);
+        params.set("page", String(safePage));
+        router.push(`/bookings?${params.toString()}`);
     };
 
     return (
@@ -307,7 +303,7 @@ export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClie
                 ) : (
                     <>
                         <div className="space-y-6">
-                            {paginatedBookings.map((booking) => (
+                            {currentInactiveBookings.map((booking) => (
                                 <MyBookingCard
                                     key={booking.id}
                                     {...booking}
@@ -317,31 +313,11 @@ export function BookingsClient({ activeBooking, inactiveBookings }: BookingsClie
                         </div>
 
                         {/* Pagination Controls */}
-                        {totalPages > 1 && (
-                            <div className="mt-8 flex items-center justify-between gap-4">
-                                <AppButton
-                                    variant="secondary"
-                                    size="md"
-                                    onClick={handlePreviousPage}
-                                    disabled={currentPage === 1}
-                                >
-                                    Previous
-                                </AppButton>
-
-                                <span className="text-sm text-slate-600">
-                                    Page {currentPage} of {totalPages}
-                                </span>
-
-                                <AppButton
-                                    variant="secondary"
-                                    size="md"
-                                    onClick={handleNextPage}
-                                    disabled={currentPage === totalPages}
-                                >
-                                    Next
-                                </AppButton>
-                            </div>
-                        )}
+                        <Pagination
+                            currentPage={effectivePagination.page}
+                            totalPages={effectivePagination.totalPages}
+                            onPageChange={handlePageChange}
+                        />
                     </>
                 )}
             </section>

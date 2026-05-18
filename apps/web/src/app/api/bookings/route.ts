@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { authorizeApi } from "@/app/api/auth/[...nextauth]/route";
-import { createPendingBookingHold, getBookings, getHotelPaymentMethods } from "@/server/services/bookings";
+import { createPendingBookingHold, getBookings, getClientBookingsPage, getHotelPaymentMethods } from "@/server/services/bookings";
 import {
   apiError,
   authError,
@@ -47,6 +47,16 @@ export async function GET(request?: Request) {
 
     const methods = await getHotelPaymentMethods(hotelId);
     return NextResponse.json({ data: { methods } });
+  }
+
+  const pageParam = Number(searchParams.get("page"));
+  const pageSizeParam = Number(searchParams.get("pageSize"));
+  if (Number.isInteger(pageParam) || Number.isInteger(pageSizeParam)) {
+    const result = await getClientBookingsPage(auth.userId as string, {
+      page: Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1,
+      pageSize: Number.isInteger(pageSizeParam) && pageSizeParam > 0 ? pageSizeParam : undefined,
+    });
+    return NextResponse.json({ data: result });
   }
 
   const bookings = await getBookings(auth.userId as string);

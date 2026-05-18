@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray, isNull, lt, lte, ne, or } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 
 import { db } from "../../db";
@@ -24,6 +24,7 @@ import type {
   BookingSummary,
   CreateBookingHoldRequest,
   CreateBookingHoldResponse,
+  ClientBookingsPage,
   MyBooking,
   BookingDisplayStatus,
 } from "@/types/booking";
@@ -61,6 +62,11 @@ interface BookingRow {
   hotelAddress: string | null;
   hotelImageUrl: string | null;
   reviewId: number | null;
+}
+
+interface ClientBookingsPageInput {
+  page?: number;
+  pageSize?: number;
 }
 
 interface BookingDetailsRow {
@@ -1244,7 +1250,11 @@ export async function getBookings(userId: string): Promise<MyBooking[]> {
     }
   }
 
-  return Array.from(uniqueBookings.values()).map((row) => {
+  return mapBookingRowsToMyBookings(Array.from(uniqueBookings.values())).sort(sortMyBookings);
+}
+
+function mapBookingRowsToMyBookings(rows: BookingRow[]): MyBooking[] {
+  return rows.map((row) => {
     const checkIn = parseDateOnly(String(row.checkInDate));
     const checkOut = parseDateOnly(String(row.checkOutDate));
     const paymentMethod = isSupportedMethod(row.paymentMethod ?? "") ? row.paymentMethod as BookingPaymentMethod : null;
@@ -1289,5 +1299,169 @@ export async function getBookings(userId: string): Promise<MyBooking[]> {
       reviewId: row.reviewId ?? undefined,
       daysRemaining: status === "active" ? computeDaysRemaining(checkOut) : undefined,
     };
-  }).sort(sortMyBookings);
+  });
+}
+
+function normalizeClientBookingsPageInput(input: ClientBookingsPageInput) {
+  const page = Number.isInteger(input.page) && (input.page as number) > 0 ? (input.page as number) : 1;
+  const pageSize = Number.isInteger(input.pageSize) && (input.pageSize as number) > 0
+    ? Math.min(input.pageSize as number, 24)
+    : 3;
+
+  return { page, pageSize };
+}
+
+function clientVisibleBookingsCondition() {
+  return or(
+    and(
+      inArray(bookings.status, ["confirmed", "completed"]),
+      or(
+        and(eq(bookings.paymentMethod, "stripe"), eq(bookings.paymentStatus, "paid")),
+        and(eq(bookings.paymentMethod, "cash_on_arrival"), eq(bookings.paymentStatus, "pending"))
+      )
+    ),
+    and(
+      eq(bookings.status, "cancelled"),
+      or(
+        and(eq(bookings.paymentMethod, "cash_on_arrival"), eq(bookings.paymentStatus, "cancelled")),
+        and(eq(bookings.paymentMethod, "stripe"), inArray(bookings.paymentStatus, [...STRIPE_CANCELLED_PAYMENT_STATUSES]))
+      )
+    )
+  );
+}
+
+export async function getClientBookingsPage(
+  userId: string,
+  input: ClientBookingsPageInput = {}
+): Promise<ClientBookingsPage> {
+  await normalizeExpiredPendingBookings();
+
+  const { page, pageSize } = normalizeClientBookingsPageInput(input);
+  const today = formatDate(new Date());
+  const baseCondition = and(eq(bookings.userId, userId), clientVisibleBookingsCondition());
+
+  const [activeRows, countRow] = await Promise.all([
+    db
+      .select({
+        id: bookings.id,
+        hotelId: hotels.id,
+        checkInDate: bookings.checkInDate,
+        checkOutDate: bookings.checkOutDate,
+        roomsCount: bookings.roomsCount,
+        status: bookings.status,
+        paymentMethod: bookings.paymentMethod,
+        paymentStatus: bookings.paymentStatus,
+        roomTypeName: roomTypes.name,
+        roomPrice: roomTypes.pricePerNight,
+        hotelName: hotels.name,
+        hotelAddress: hotels.location,
+        hotelImageUrl: hotelImages.imageKey,
+        reviewId: reviews.id,
+      })
+      .from(bookings)
+      .leftJoin(roomTypes, eq(roomTypes.id, bookings.roomTypeId))
+      .leftJoin(hotels, eq(hotels.id, roomTypes.hotelId))
+      .leftJoin(hotelImages, and(eq(hotelImages.hotelId, hotels.id), isNull(hotelImages.roomTypeId)))
+      .leftJoin(reviews, eq(reviews.bookingId, bookings.id))
+      .where(
+        and(
+          baseCondition,
+          eq(bookings.status, "confirmed"),
+          lte(bookings.checkInDate, today),
+          gt(bookings.checkOutDate, today)
+        )
+      )
+      .orderBy(desc(bookings.checkInDate), desc(bookings.id)),
+    db
+      .select({ value: sql<number>`count(*)::int` })
+      .from(bookings)
+      .where(
+        and(
+          baseCondition,
+          or(
+            ne(bookings.status, "confirmed"),
+            gt(bookings.checkInDate, today),
+            lte(bookings.checkOutDate, today)
+          )
+        )
+      )
+      .then((rows) => rows[0]),
+  ]);
+
+  const activeUnique = new Map<number, BookingRow>();
+  for (const row of activeRows) {
+    if (!activeUnique.has(row.id)) activeUnique.set(row.id, row as BookingRow);
+  }
+
+  const activeBooking = mapBookingRowsToMyBookings(Array.from(activeUnique.values()))
+    .find((booking) => booking.status === "active") ?? null;
+
+  const totalItems = Number(countRow?.value ?? 0);
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const offset = (safePage - 1) * pageSize;
+
+  const inactiveIds = await db
+    .select({ id: bookings.id })
+    .from(bookings)
+    .where(
+      and(
+        baseCondition,
+        or(
+          ne(bookings.status, "confirmed"),
+          gt(bookings.checkInDate, today),
+          lte(bookings.checkOutDate, today)
+        )
+      )
+    )
+    .orderBy(bookings.checkInDate)
+    .limit(pageSize)
+    .offset(offset);
+
+  const ids = inactiveIds.map((row) => row.id);
+  const inactiveRows = ids.length === 0
+    ? []
+    : await db
+      .select({
+        id: bookings.id,
+        hotelId: hotels.id,
+        checkInDate: bookings.checkInDate,
+        checkOutDate: bookings.checkOutDate,
+        roomsCount: bookings.roomsCount,
+        status: bookings.status,
+        paymentMethod: bookings.paymentMethod,
+        paymentStatus: bookings.paymentStatus,
+        roomTypeName: roomTypes.name,
+        roomPrice: roomTypes.pricePerNight,
+        hotelName: hotels.name,
+        hotelAddress: hotels.location,
+        hotelImageUrl: hotelImages.imageKey,
+        reviewId: reviews.id,
+      })
+      .from(bookings)
+      .leftJoin(roomTypes, eq(roomTypes.id, bookings.roomTypeId))
+      .leftJoin(hotels, eq(hotels.id, roomTypes.hotelId))
+      .leftJoin(hotelImages, and(eq(hotelImages.hotelId, hotels.id), isNull(hotelImages.roomTypeId)))
+      .leftJoin(reviews, eq(reviews.bookingId, bookings.id))
+      .where(inArray(bookings.id, ids));
+
+  const uniqueInactive = new Map<number, BookingRow>();
+  for (const row of inactiveRows) {
+    if (!uniqueInactive.has(row.id)) uniqueInactive.set(row.id, row as BookingRow);
+  }
+  const orderedInactiveRows = ids
+    .map((id) => uniqueInactive.get(id))
+    .filter((row): row is BookingRow => Boolean(row));
+  const inactiveBookings = mapBookingRowsToMyBookings(orderedInactiveRows).sort(sortMyBookings);
+
+  return {
+    activeBooking,
+    inactiveBookings,
+    pagination: {
+      page: safePage,
+      pageSize,
+      totalItems,
+      totalPages,
+    },
+  };
 }

@@ -15,6 +15,7 @@ const rangeSchema = z.enum([
   "this_year",
   "custom",
 ]);
+const MAX_CUSTOM_ANALYTICS_DAYS = 366;
 
 const statusSchema = z.enum([
   "pending",
@@ -92,6 +93,15 @@ function normalizeDateRange(input: {
 
   if (parseDateOnly(dateFrom).getTime() > parseDateOnly(dateTo).getTime()) {
     throw new Error("VALIDATION_ERROR");
+  }
+
+  if (input.range === "custom") {
+    const from = parseDateOnly(dateFrom);
+    const to = parseDateOnly(dateTo);
+    const dayCount = Math.floor((to.getTime() - from.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+    if (dayCount > MAX_CUSTOM_ANALYTICS_DAYS) {
+      throw new Error("VALIDATION_ERROR");
+    }
   }
 
   return { dateFrom, dateTo };
