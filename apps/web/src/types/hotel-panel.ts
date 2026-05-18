@@ -43,6 +43,8 @@ export interface Listing {
   reviewLabel: string;
   trustBadge?: HotelTrustBadge | null;
   image: ListingImage;
+  isFeatured?: boolean;
+  minPrice?: number | null;
 }
 
 export interface Amenity {

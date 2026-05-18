@@ -579,6 +579,89 @@ If migration fails:
 
 ---
 
+## 📱 Mobile Cross-Platform Rules (STRICT)
+
+The mobile application MUST work on:
+
+- Android
+- iOS
+- Web (Expo Web)
+
+Web compatibility is MANDATORY and MUST be treated as a first-class requirement.
+
+---
+
+## 📱 Mobile Architecture Rules
+
+* Use Expo
+* Mobile app MUST remain fully cross-platform
+* Mobile app MUST work consistently on:
+  - Android
+  - iOS
+  - Web
+
+* Do NOT duplicate backend logic
+* Only call API endpoints
+* Mobile app MUST consume the same API as the web application
+
+---
+
+## 🚫 Forbidden Native-Only Features
+
+The agent MUST NOT use or implement native-only functionality unless explicitly approved by the user.
+
+### Forbidden by default:
+* ❌ Camera APIs
+* ❌ Location / Geolocation
+* ❌ Vibration / Haptics
+* ❌ Push notifications
+* ❌ Contacts access
+* ❌ Biometrics / Face ID / Fingerprint
+* ❌ Native maps integrations
+* ❌ Bluetooth / NFC
+* ❌ Background services/tasks
+* ❌ Native secure storage
+* ❌ Platform-specific APIs that break Expo Web compatibility
+
+If the user requests a native feature:
+1. The agent MUST explain the impact on Web compatibility.
+2. The agent MUST wait for explicit confirmation before implementing it.
+
+---
+
+## ✅ Mobile MVP Principle
+
+For MVP stages:
+* Prioritize simplicity
+* Prioritize Web compatibility
+* Prioritize shared backend/API architecture
+* Avoid unnecessary native complexity
+
+The mobile app MUST remain:
+* easy to run
+* easy to test
+* easy to demo
+
+across Android, iOS, and Web simultaneously.
+
+---
+
+## 🔐 Mobile Authentication Rules
+
+* Mobile authentication MUST reuse the existing backend authentication system
+* The agent MUST NOT create a separate authentication backend for mobile
+* Temporary local auth state is allowed ONLY during explicitly approved scaffold/MVP stages
+
+---
+
+## 🚫 Forbidden
+
+* ❌ Do NOT implement mobile-only logic that cannot run on Web
+* ❌ Do NOT introduce native dependencies without user approval
+* ❌ Do NOT use platform-specific behavior unless explicitly requested
+
+---
+
 ## 🚫 What NOT to do
 * ❌ Do not create separate backend project
 * ❌ Do not mix business logic inside UI components

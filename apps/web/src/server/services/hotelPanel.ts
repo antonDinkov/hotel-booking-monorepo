@@ -12,11 +12,11 @@
  * - Makes logic reusable for mobile clients by exposing the same
  *   underlying behavior behind an HTTP API.
  */
-import { and, asc, desc, eq, isNull, lt, lte, gt, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
 
-import { db } from "../../db";
-import { hotelImages, hotels, roomTypes, bookings } from "../../db/schema";
 import { resolveImageUrl } from "@/lib/image-urls";
+import { db } from "../../db";
+import { bookings, hotelImages, hotels, roomTypes } from "../../db/schema";
 import type { HotelPanelData, Listing, ListingDetails, ListingSearchResult } from "../../types/hotel-panel";
 import type { RoomAvailability } from "../../types/room-availability";
 import { getHotelReviewSummariesByHotelIds } from "./reviews";
@@ -24,7 +24,7 @@ import { getHotelReviewSummariesByHotelIds } from "./reviews";
 type BookingRange = { checkInDate: string; checkOutDate: string; roomsCount: number | null };
 type SearchPaginationInput = { page?: number; pageSize?: number };
 type SearchCte = ReturnType<typeof sql>;
-type SearchHotelRow = { id: number; name: string; location: string };
+type SearchHotelRow = { id: number; name: string; location: string; isFeatured: boolean };
 type SearchPaginationState = { page: number; pageSize: number; totalItems: number; totalPages: number };
 
 const DEFAULT_HOTEL_IMAGE =
@@ -76,7 +76,7 @@ function buildSearchAvailabilityCte(input: {
 }) {
     return sql`
         with matching_hotels as (
-            select h.id, h.name, h.location, h.registered_at
+            select h.id, h.name, h.location, h.registered_at, h.is_featured
             from hotels h
             where h.location ilike ${input.destinationPattern}
         ),
@@ -178,7 +178,7 @@ async function getSearchHotelRows(cte: SearchCte, pagination: SearchPaginationSt
 
     const listResult = await db.execute<SearchHotelRow>(sql`
         ${cte}
-        select distinct mh.id, mh.name, mh.location
+        select distinct mh.id, mh.name, mh.location, mh.is_featured as "isFeatured"
         from matching_hotels mh
         inner join eligible_room_types ert on ert.hotel_id = mh.id
         order by mh.id asc
@@ -192,9 +192,10 @@ async function buildListingsFromHotels(hotelRows: SearchHotelRow[]): Promise<Lis
     if (hotelRows.length === 0) return [];
 
     const hotelIds = hotelRows.map((row) => row.id);
-    const [coverImages, reviewSummaries] = await Promise.all([
+    const [coverImages, reviewSummaries, minPrices] = await Promise.all([
         getCoverImagesByHotelIds(hotelIds),
         getHotelReviewSummariesByHotelIds(hotelIds),
+        getMinPricesByHotelIds(hotelIds),
     ]);
 
     return hotelRows
@@ -210,6 +211,8 @@ async function buildListingsFromHotels(hotelRows: SearchHotelRow[]): Promise<Lis
                 ratingLabel: summary.ratingLabel,
                 reviewLabel: summary.reviewLabel,
                 trustBadge: summary.trustBadge,
+                isFeatured: hotel.isFeatured,
+                minPrice: minPrices.get(hotel.id) ?? null,
                 image: {
                     src: coverImages.get(hotel.id) ?? DEFAULT_HOTEL_IMAGE,
                     alt: `${hotel.name} cover image`,
@@ -217,6 +220,28 @@ async function buildListingsFromHotels(hotelRows: SearchHotelRow[]): Promise<Lis
             } as Listing;
         })
         .filter((listing): listing is Listing => Boolean(listing));
+}
+
+async function getMinPricesByHotelIds(hotelIds: number[]): Promise<Map<number, number>> {
+    if (hotelIds.length === 0) return new Map();
+
+    const rows = await db
+        .select({
+            hotelId: roomTypes.hotelId,
+            minPrice: sql<number>`min(${roomTypes.pricePerNight})`,
+        })
+        .from(roomTypes)
+        .where(inArray(roomTypes.hotelId, hotelIds))
+        .groupBy(roomTypes.hotelId);
+
+    const minPrices = new Map<number, number>();
+    for (const row of rows) {
+        if (typeof row.minPrice === "number") {
+            minPrices.set(row.hotelId, row.minPrice);
+        }
+    }
+
+    return minPrices;
 }
 
 export async function getHotelPanelData(): Promise<HotelPanelData> {

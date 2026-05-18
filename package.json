@@ -1,8 +1,21 @@
 {
   "name": "hotel-booking",
   "private": true,
-  "workspaces": ["apps/*"],
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
     "dev:web": "npm run dev --workspace=web"
+  },
+  "dependencies": {
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "expo-router": "~55.0.14"
+  },
+  "overrides": {
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
   }
 }
