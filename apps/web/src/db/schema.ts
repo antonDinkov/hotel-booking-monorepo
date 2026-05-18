@@ -168,25 +168,44 @@ export const hotelPaymentMethods = pgTable("hotel_payment_methods", {
 	method: text("method").notNull(),
 });
 
-export const bookings = pgTable("bookings", {
-	id: serial("id").primaryKey(),
-	roomTypeId: integer("room_type_id")
-		.notNull()
-		.references(() => roomTypes.id),
-	userId: uuid("user_id").notNull().references(() => users.id),
-	checkInDate: date("check_in_date").notNull(),
-	checkOutDate: date("check_out_date").notNull(),
-	guestsCount: integer("guests_count").notNull(),
-	roomsCount: integer("rooms_count").notNull().default(1),
-	status: text("status").default("confirmed"),
-	paymentMethod: text("payment_method"),
-	paymentStatus: text("payment_status"),
-	stripeCheckoutSessionId: text("stripe_checkout_session_id"),
-	stripePaymentIntentId: text("stripe_payment_intent_id"),
-	stripeRefundId: text("stripe_refund_id"),
-	expiresAt: timestamp("expires_at"),
-	createdAt: timestamp("created_at").defaultNow(),
-});
+export const bookings = pgTable(
+	"bookings",
+	{
+		id: serial("id").primaryKey(),
+		roomTypeId: integer("room_type_id")
+			.notNull()
+			.references(() => roomTypes.id),
+		userId: uuid("user_id").notNull().references(() => users.id),
+		checkInDate: date("check_in_date").notNull(),
+		checkOutDate: date("check_out_date").notNull(),
+		guestsCount: integer("guests_count").notNull(),
+		roomsCount: integer("rooms_count").notNull().default(1),
+		status: text("status").default("confirmed"),
+		paymentMethod: text("payment_method"),
+		paymentStatus: text("payment_status"),
+		stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+		stripePaymentIntentId: text("stripe_payment_intent_id"),
+		stripeRefundId: text("stripe_refund_id"),
+		expiresAt: timestamp("expires_at"),
+		createdAt: timestamp("created_at").defaultNow(),
+	},
+	(table) => [
+		index("bookings_user_check_in_idx").on(table.userId, table.checkInDate),
+		index("bookings_room_type_check_in_out_idx").on(
+			table.roomTypeId,
+			table.checkInDate,
+			table.checkOutDate
+		),
+		index("bookings_created_at_idx").on(table.createdAt),
+		index("bookings_status_created_at_idx").on(table.status, table.createdAt),
+		index("bookings_payment_status_created_at_idx").on(table.paymentStatus, table.createdAt),
+		index("bookings_payment_method_status_idx").on(table.paymentMethod, table.paymentStatus),
+		index("bookings_status_expires_at_idx").on(table.status, table.expiresAt),
+		index("bookings_stripe_checkout_session_id_idx").on(table.stripeCheckoutSessionId),
+		index("bookings_stripe_payment_intent_id_idx").on(table.stripePaymentIntentId),
+		index("bookings_stripe_refund_id_idx").on(table.stripeRefundId),
+	]
+);
 
 export const reviews = pgTable(
 	"reviews",
