@@ -3,7 +3,6 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { BookingsClient } from "./BookingsClient";
 import { getBookings } from "@/server/services/bookings";
-import type { MyBooking } from "@/types/booking";
 
 export default async function BookingsPage() {
     const session = await getServerSession(authOptions);

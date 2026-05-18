@@ -39,7 +39,10 @@ jest.mock("./BookingsClient", () => ({
   BookingsClient: (props: any) => mockBookingsClient(props),
 })); */
 
-const mockBookingsClient = jest.fn((props: any) => null);
+const mockBookingsClient = jest.fn((props: any) => {
+  void props;
+  return null;
+});
 
 jest.mock("./BookingsClient", () => ({
   BookingsClient: (props: any) => mockBookingsClient(props),

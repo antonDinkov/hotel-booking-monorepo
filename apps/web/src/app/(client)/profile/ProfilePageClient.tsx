@@ -7,7 +7,6 @@ import { uploadAvatarAction, removeAvatarAction } from "./actions";
 import type {
     ProfileData,
     EditableField,
-    InputType,
     EditableFieldConfig
 } from "@/types/profile";
 
@@ -126,10 +125,25 @@ export default function ProfilePageClient({ initialProfile, onSaveProfile }: Pro
         profileRef.current = profileData;
     }, [profileData]);
 
+    const getErrorMessage = (error: unknown, fallback: string) => (
+        error instanceof Error ? error.message : fallback
+    );
+
     const persistProfile = async (nextProfile: ProfileWithAvatarUrl) => {
         if (!onSaveProfile) return;
 
-        const { avatarUrl, ...profileWithoutAvatarUrl } = nextProfile;
+        const profileWithoutAvatarUrl: ProfileData = {
+            name: nextProfile.name,
+            email: nextProfile.email,
+            phone: nextProfile.phone,
+            nationality: nextProfile.nationality,
+            dateOfBirth: nextProfile.dateOfBirth,
+            gender: nextProfile.gender,
+            passportNumber: nextProfile.passportNumber,
+            avatarKey: nextProfile.avatarKey,
+            preferences: nextProfile.preferences,
+            address: nextProfile.address,
+        };
         const updated = await onSaveProfile(profileWithoutAvatarUrl);
         if (updated) {
             setProfileData({ ...updated, avatarUrl: profileRef.current.avatarUrl });
@@ -200,8 +214,8 @@ export default function ProfilePageClient({ initialProfile, onSaveProfile }: Pro
                             formData.append("avatar", file);
                             const updated = await uploadAvatarAction(formData);
                             if (updated) setProfileData(updated as ProfileWithAvatarUrl);
-                        } catch (err: any) {
-                            setUploadError(err?.message ?? "Upload failed");
+                        } catch (err: unknown) {
+                            setUploadError(getErrorMessage(err, "Upload failed"));
                         } finally {
                             setUploading(false);
                         }
@@ -215,9 +229,9 @@ export default function ProfilePageClient({ initialProfile, onSaveProfile }: Pro
                         try {
                             const updated = await removeAvatarAction();
                             if (updated) setProfileData(updated as ProfileWithAvatarUrl);
-                        } catch (err: any) {
+                        } catch (err: unknown) {
                             // restore on error
-                            setUploadError(err?.message ?? "Remove failed");
+                            setUploadError(getErrorMessage(err, "Remove failed"));
                             setProfileData((p) => ({ ...p, avatarUrl: prev } as ProfileWithAvatarUrl));
                         } finally {
                             setRemoving(false);

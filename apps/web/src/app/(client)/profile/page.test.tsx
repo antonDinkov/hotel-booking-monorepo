@@ -50,7 +50,6 @@ jest.mock("./ProfilePageClient", () => ({
 const { getCurrentUserProfile } = require("../../../server/services/profile");
 const { getUserRoles } = require("../../../server/services/auth");
 const { getServerSession } = require("next-auth/next");
-const ProfilePageClient = require("./ProfilePageClient").default as jest.MockedFunction<any>;
 const { redirect } = require("next/navigation");
 
 const ProfilePage = require("./page").default;

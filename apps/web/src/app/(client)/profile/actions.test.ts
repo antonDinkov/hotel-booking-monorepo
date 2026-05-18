@@ -10,9 +10,8 @@ jest.mock("../../../server/services/profile", () => ({
     updateCurrentUserProfile: jest.fn(),
 }));
 
-jest.mock("next-auth", () => ({
+jest.mock("next-auth/next", () => ({
     getServerSession: jest.fn(),
-    default: { getServerSession: jest.fn() },
 }));
 
 jest.mock("@/app/api/auth/[...nextauth]/route", () => ({
@@ -27,7 +26,7 @@ jest.mock("@/server/lib/r2", () => ({
 import { saveCurrentUserProfile } from "./actions";
 import { uploadAvatarAction } from "./actions";
 import { getCurrentUserProfile, updateCurrentUserProfile } from "../../../server/services/profile";
-import { getServerSession } from "next-auth";
+import { getServerSession } from "next-auth/next";
 import { uploadAvatar } from "@/server/lib/r2";
 
 const mockGet = getCurrentUserProfile as jest.MockedFunction<any>;
@@ -94,13 +93,6 @@ describe("uploadAvatarAction server action", () => {
 
         const mockSession = { user: { id: "1" } } as any;
         (getServerSession as jest.Mock).mockResolvedValue(mockSession);
-        const nextAuth = (await import("next-auth")) as any;
-        if (nextAuth?.getServerSession) {
-            nextAuth.getServerSession.mockResolvedValue(mockSession);
-        }
-        if (nextAuth?.default?.getServerSession) {
-            nextAuth.default.getServerSession.mockResolvedValue(mockSession);
-        }
 
         const returnedKey = "avatars/user_1/avatar.jpg";
         (uploadAvatar as jest.Mock).mockResolvedValue(returnedKey);

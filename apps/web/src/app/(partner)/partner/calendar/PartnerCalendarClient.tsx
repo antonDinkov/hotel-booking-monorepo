@@ -3,7 +3,7 @@
 import { CalendarDaysIcon, FunnelIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 import PartnerBadge from "@/components/partner/PartnerBadge";
 import PartnerCard from "@/components/partner/PartnerCard";
@@ -106,12 +106,16 @@ function getEventPlacement(event: PartnerCalendarEvent, dates: string[]) {
 
 export default function PartnerCalendarClient({ initialResult }: PartnerCalendarClientProps) {
   const router = useRouter();
+  const calendarScrollRef = useRef<HTMLDivElement | null>(null);
+  const bottomScrollRef = useRef<HTMLDivElement | null>(null);
+  const isSyncingScroll = useRef(false);
   const [view, setView] = useState(initialResult.filters.view);
   const [hotelId, setHotelId] = useState(initialResult.filters.hotelId?.toString() ?? "all");
   const [roomTypeId, setRoomTypeId] = useState(initialResult.filters.roomTypeId?.toString() ?? "all");
   const [status, setStatus] = useState(initialResult.filters.status ?? "all");
   const [dateFrom, setDateFrom] = useState(initialResult.filters.dateFrom);
   const [dateTo, setDateTo] = useState(initialResult.filters.dateTo);
+  const gridMinWidth = 220 + initialResult.dates.length * 92;
 
   const applyFilters = () => {
     router.push(buildCalendarPath({ view, hotelId, roomTypeId, status, dateFrom, dateTo }));
@@ -128,6 +132,16 @@ export default function PartnerCalendarClient({ initialResult }: PartnerCalendar
     setDateFrom(range.dateFrom);
     setDateTo(range.dateTo);
     router.push(buildCalendarPath({ view: nextView, hotelId, roomTypeId, status, ...range }));
+  };
+
+  const syncHorizontalScroll = (source: HTMLDivElement | null, target: HTMLDivElement | null) => {
+    if (!source || !target || isSyncingScroll.current) return;
+
+    isSyncingScroll.current = true;
+    target.scrollLeft = source.scrollLeft;
+    window.requestAnimationFrame(() => {
+      isSyncingScroll.current = false;
+    });
   };
 
   const gridStyle = {
@@ -187,11 +201,17 @@ export default function PartnerCalendarClient({ initialResult }: PartnerCalendar
         </form>
       </PartnerCard>
 
-      <PartnerCard className="overflow-hidden p-0">
-        <div className="overflow-x-auto">
-          <div style={{ minWidth: `${220 + initialResult.dates.length * 92}px` }}>
+      <PartnerCard className="overflow-visible p-0">
+        <div
+          ref={calendarScrollRef}
+          className="overflow-x-auto"
+          onScroll={() => syncHorizontalScroll(calendarScrollRef.current, bottomScrollRef.current)}
+        >
+          <div style={{ minWidth: `${gridMinWidth}px` }}>
             <div className="grid border-b border-white/10 bg-white/[0.04] text-xs uppercase tracking-[0.14em] text-slate-500" style={gridStyle}>
-              <div className="px-4 py-3 font-semibold">Room</div>
+              <div className="sticky left-0 z-20 bg-slate-950/95 px-4 py-3 font-semibold shadow-[8px_0_18px_rgba(2,6,23,0.35)]">
+                Room
+              </div>
               {initialResult.dates.map((date) => (
                 <div key={date} className="border-l border-white/10 px-3 py-3 font-semibold">
                   {formatHeaderDate(date)}
@@ -201,7 +221,7 @@ export default function PartnerCalendarClient({ initialResult }: PartnerCalendar
 
             {initialResult.rows.map((row) => (
               <div key={row.roomTypeId} className="grid border-b border-white/10 last:border-b-0" style={gridStyle}>
-                <div className="px-4 py-4">
+                <div className="sticky left-0 z-10 bg-slate-950/95 px-4 py-4 shadow-[8px_0_18px_rgba(2,6,23,0.35)]">
                   <p className="font-semibold text-white">{row.roomTypeName}</p>
                   <p className="mt-1 text-xs text-slate-500">{row.hotelName}</p>
                   <p className="mt-2 text-xs text-slate-400">{row.totalRooms} total rooms</p>
@@ -247,6 +267,19 @@ export default function PartnerCalendarClient({ initialResult }: PartnerCalendar
             ))}
           </div>
         </div>
+
+        {initialResult.rows.length > 0 ? (
+          <div className="sticky bottom-0 z-30 border-t border-white/10 bg-slate-950/95 px-4 py-3 backdrop-blur">
+            <div
+              ref={bottomScrollRef}
+              className="overflow-x-auto"
+              onScroll={() => syncHorizontalScroll(bottomScrollRef.current, calendarScrollRef.current)}
+              aria-label="Calendar horizontal scroll"
+            >
+              <div className="h-3" style={{ width: `${gridMinWidth}px` }} />
+            </div>
+          </div>
+        ) : null}
 
         {initialResult.rows.length === 0 ? (
           <div className="px-4 py-12 text-center">

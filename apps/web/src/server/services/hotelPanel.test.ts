@@ -57,35 +57,6 @@ const createSimpleQuery = (result: any) => ({
   from: jest.fn().mockResolvedValue(result),
 });
 
-// Advanced mock for complex queries with multiple calls
-const createAdvancedMock = () => {
-  let callCount = 0;
-  const mockSelect = jest.fn();
-
-  mockSelect.mockImplementation(() => {
-    callCount++;
-    return {
-      from: jest.fn().mockReturnValue({
-        where: jest.fn().mockImplementation(() => {
-          // Handle different query types based on call count
-          if (callCount === 1) {
-            // Hotels query
-            return Promise.resolve([]);
-          } else if (callCount === 2) {
-            // Images query
-            return Promise.resolve([]);
-          } else {
-            // Room types or bookings queries
-            return Promise.resolve([]);
-          }
-        }),
-      }),
-    };
-  });
-
-  return mockSelect;
-};
-
 describe("hotelPanel service", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -578,15 +549,6 @@ describe("hotelPanel service", () => {
       const mockHotels = [{ id: 1, name: "Hotel with Pending", location: "Test City" }];
       const mockImages = [{ hotelId: 1, url: "image.jpg" }];
       const mockRoomTypes = [{ id: 1, hotelId: 1, capacity: 2, totalRooms: 1 }];
-      const mockBookings = [
-        {
-          roomTypeId: 1,
-          status: "pending", // Not confirmed
-          checkInDate: "2026-06-01",
-          checkOutDate: "2026-06-03",
-        },
-      ];
-
       let callCount = 0;
       mockDb.select = jest.fn().mockImplementation(() => {
         callCount++;

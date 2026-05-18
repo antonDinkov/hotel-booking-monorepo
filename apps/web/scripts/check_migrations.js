@@ -17,7 +17,7 @@ const { Client } = require('pg');
     process.exit(0);
   } catch (err) {
     console.error('error querying migrations:', err);
-    try { await client.end(); } catch (e) {}
+    try { await client.end(); } catch {}
     process.exit(2);
   }
 })();

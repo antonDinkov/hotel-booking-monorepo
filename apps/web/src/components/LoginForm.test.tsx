@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 const routerPushMock = jest.fn();
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: routerPushMock }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 import LoginForm from "./LoginForm";
 
@@ -25,7 +26,7 @@ describe("LoginForm", () => {
 
   it("shows an error message when credentials are invalid", async () => {
     const signInMock = signIn as jest.Mock;
-    signInMock.mockResolvedValue({ error: "Invalid" });
+    signInMock.mockResolvedValue({ error: "CredentialsSignin" });
 
     render(<LoginForm />);
 
@@ -41,6 +42,7 @@ describe("LoginForm", () => {
     expect(signInMock).toHaveBeenCalledWith("credentials", {
       email: "guest@example.com",
       password: "bad-pass",
+      loginContext: "client",
       redirect: false,
       callbackUrl: "/dashboard",
     });

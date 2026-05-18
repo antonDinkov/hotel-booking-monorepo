@@ -28,23 +28,28 @@ jest.resetModules();
 
 jest.mock("next/image", () => ({
 	__esModule: true,
-	default: ({ src, alt, fill, priority, ...props }) =>
-		React.createElement("img", {
+	default: ({ src, alt, ...props }) => {
+		delete props.fill;
+		delete props.priority;
+		return React.createElement("img", {
 			src: typeof src === "string" ? src : src?.src ?? "",
 			alt,
 			...props,
-		}),
+		});
+	},
 }));
 
 jest.mock("next/link", () => ({
 	__esModule: true,
-	default: ({ href, children, prefetch, ...props }) =>
-		React.createElement(
+	default: ({ href, children, ...props }) => {
+		delete props.prefetch;
+		return React.createElement(
 			"a",
 			{
 				href: typeof href === "string" ? href : href?.pathname ?? "",
 				...props,
 			},
 			children
-		),
+		);
+	},
 }));

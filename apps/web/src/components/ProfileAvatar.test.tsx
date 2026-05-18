@@ -23,7 +23,8 @@ describe("ProfileAvatar", () => {
     class MockFileReader {
       onload: any = null;
       result: any = null;
-      readAsDataURL(_f: any) {
+      readAsDataURL(file: any) {
+        void file;
         this.result = "data:image/png;base64,FAKE";
         if (this.onload) this.onload();
       }

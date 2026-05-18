@@ -16,12 +16,12 @@ jest.mock("next-auth/providers/github", () => jest.fn((opts) => ({ githubProvide
 jest.mock("@/server/services/auth", () => ({
   getUserRoles: jest.fn(),
   ensureOAuthUser: jest.fn(),
-  validateCredentials: jest.fn(),
+  validateCredentialsForRole: jest.fn(),
 }));
 
 import { authOptions, authorize, authorizeApi, redirectToRoleDashboard } from "./route";
 import { getServerSession } from "next-auth/next";
-import { getUserRoles, ensureOAuthUser, validateCredentials } from "@/server/services/auth";
+import { getUserRoles, ensureOAuthUser, validateCredentialsForRole } from "@/server/services/auth";
 
 const mockGetServerSession = getServerSession as jest.MockedFunction<any>;
 const mockGetUserRoles = getUserRoles as jest.MockedFunction<any>;
@@ -125,6 +125,7 @@ describe("auth route", () => {
   it("signIn callback handles github provider and upserts oauth user", async () => {
     const user: any = {};
     mockEnsureOAuthUser.mockResolvedValue({ user: { id: "oauth1", email: "o@example.com" }, created: true });
+    mockGetUserRoles.mockResolvedValue(["client"]);
 
     const allowed = await callbacks.signIn({ user, account: { provider: "github" }, profile: { email: "o@example.com" } } as any);
 
@@ -136,6 +137,7 @@ describe("auth route", () => {
   it("signIn callback handles github provider when existing oauth user (created=false)", async () => {
     const user: any = {};
     mockEnsureOAuthUser.mockResolvedValue({ user: { id: "oauth2", email: "o2@example.com" }, created: false });
+    mockGetUserRoles.mockResolvedValue(["client"]);
 
     const allowed = await callbacks.signIn({ user, account: { provider: "github" }, profile: { email: "o2@example.com" } } as any);
 
@@ -156,12 +158,12 @@ describe("auth route", () => {
     const resMissing = await credsProvider.authorize?.({} as any);
     expect(resMissing).toBeNull();
 
-    // valid credentials -> calls validateCredentials
-    const mockValidate = validateCredentials as jest.MockedFunction<any>;
+    // valid credentials -> calls validateCredentialsForRole
+    const mockValidate = validateCredentialsForRole as jest.MockedFunction<any>;
     mockValidate.mockResolvedValue({ id: "cred-user", email: "cred@example.com" });
 
     const resValid = await credsProvider.authorize?.({ email: "cred@example.com", password: "secret" } as any);
-    expect(mockValidate).toHaveBeenCalledWith("cred@example.com", "secret");
+    expect(mockValidate).toHaveBeenCalledWith("cred@example.com", "secret", "client");
     expect(resValid).toEqual({ id: "cred-user", email: "cred@example.com" });
   });
 
@@ -172,7 +174,7 @@ describe("auth route", () => {
   });
 
   it("redirect callback returns the provided baseUrl", async () => {
-    const out = await callbacks.redirect({ baseUrl: "http://example.com" } as any);
+    const out = await callbacks.redirect({ url: "http://other.example/login", baseUrl: "http://example.com" } as any);
     expect(out).toBe("http://example.com");
   });
 });

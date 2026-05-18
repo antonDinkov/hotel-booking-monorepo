@@ -2,7 +2,10 @@
 
 import type { ProfileData } from "@/types/profile";
 import { getCurrentUserProfile, updateCurrentUserProfile } from "../../../server/services/profile";
-// note: dynamic import of auth/session helpers to avoid loading heavy modules at module-eval time
+import { getServerSession } from "next-auth/next";
+import type { Session } from "next-auth";
+
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { uploadAvatar, getPublicImageUrl, deleteAvatar } from "@/server/lib/r2";
 
 export async function saveCurrentUserProfile(profile: ProfileData) {
@@ -21,12 +24,7 @@ export async function uploadAvatarAction(input: FormData | File) {
         throw new Error("No file provided");
     }
 
-    const nextAuth: any = await import("next-auth");
-    const getServerSession = (nextAuth.getServerSession ?? nextAuth.default?.getServerSession) as (
-        ...args: any[]
-    ) => Promise<any>;
-    const { authOptions } = await import("@/app/api/auth/[...nextauth]/route");
-    const session = await getServerSession(authOptions);
+    const session: Session | null = await getServerSession(authOptions);
     console.info("[uploadAvatarAction] session", {
         user: session?.user,
         expires: session?.expires,
@@ -62,12 +60,7 @@ export async function uploadAvatarAction(input: FormData | File) {
 export async function removeAvatarAction() {
     console.info("[removeAvatarAction] entered");
 
-    const nextAuth: any = await import("next-auth");
-    const getServerSession = (nextAuth.getServerSession ?? nextAuth.default?.getServerSession) as (
-        ...args: any[]
-    ) => Promise<any>;
-    const { authOptions } = await import("@/app/api/auth/[...nextauth]/route");
-    const session = await getServerSession(authOptions);
+    const session: Session | null = await getServerSession(authOptions);
     console.info("[removeAvatarAction] session", { user: session?.user });
     const userId = session?.user?.id ? String(session.user.id) : null;
 

@@ -7,12 +7,13 @@ import { getUserRoles } from "../../../server/services/auth";
 import { getPublicImageUrl } from "@/server/lib/r2";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import type { Session } from "next-auth";
 
 export default async function ProfilePage() {
     // Check if partner — redirect to partner dashboard
-    const session: any = await getServerSession(authOptions);
+    const session: Session | null = await getServerSession(authOptions);
     if (session?.user?.id) {
-        const roles = await getUserRoles(session.user.id as string);
+        const roles = await getUserRoles(session.user.id);
         if (roles.includes("partner")) {
             redirect("/partner/dashboard");
         }
@@ -26,7 +27,7 @@ export default async function ProfilePage() {
 
     // attach a computed public URL for client preview if avatarKey exists
     const profileForClient = userProfile
-        ? { ...(userProfile as any), avatarUrl: userProfile.avatarKey ? getPublicImageUrl(userProfile.avatarKey) : undefined }
+        ? { ...userProfile, avatarUrl: userProfile.avatarKey ? getPublicImageUrl(userProfile.avatarKey) : undefined }
         : null;
 
     return <ProfilePageClient initialProfile={profileForClient!} onSaveProfile={saveCurrentUserProfile} />;

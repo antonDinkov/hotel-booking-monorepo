@@ -113,7 +113,7 @@ describe("HeaderNavigation", () => {
       render(
         <HeaderNavigation
           brandName="BookYourStay"
-          session={{ user: { email: "guest@example.com" } }}
+          session={{ user: { email: "guest@example.com", roles: ["client"] } }}
         />
       );
 
@@ -133,7 +133,7 @@ describe("HeaderNavigation", () => {
       render(
         <HeaderNavigation
           brandName="BookYourStay"
-          session={{ user: { name: "Guest User" } }}
+          session={{ user: { name: "Guest User", roles: ["client"] } }}
         />
       );
 
@@ -143,7 +143,7 @@ describe("HeaderNavigation", () => {
     it("does not render user email when session has no email or name", () => {
       usePathnameMock.mockReturnValue("/dashboard");
 
-      render(<HeaderNavigation brandName="BookYourStay" session={{ user: {} }} />);
+      render(<HeaderNavigation brandName="BookYourStay" session={{ user: { roles: ["client"] } }} />);
 
       expect(screen.queryByText("guest@example.com")).not.toBeInTheDocument();
     });
@@ -154,7 +154,7 @@ describe("HeaderNavigation", () => {
       render(
         <HeaderNavigation
           brandName="BookYourStay"
-          session={{ user: { email: "me@example.com" } }}
+          session={{ user: { email: "me@example.com", roles: ["client"] } }}
         />
       );
 
@@ -164,7 +164,7 @@ describe("HeaderNavigation", () => {
 
     it("marks My Bookings active when logged in and pathname is /bookings", () => {
       usePathnameMock.mockReturnValue("/bookings");
-      render(<HeaderNavigation brandName="BookYourStay" session={{ user: { email: "me@example.com" } }} />);
+      render(<HeaderNavigation brandName="BookYourStay" session={{ user: { email: "me@example.com", roles: ["client"] } }} />);
 
       const bookingsBtn = screen.getByRole("button", { name: "My Bookings" });
       expect(bookingsBtn).toHaveClass("btn-active");
@@ -172,7 +172,7 @@ describe("HeaderNavigation", () => {
 
     it("marks Profile active when logged in and pathname is /profile", () => {
       usePathnameMock.mockReturnValue("/profile");
-      render(<HeaderNavigation brandName="BookYourStay" session={{ user: { email: "me@example.com" } }} />);
+      render(<HeaderNavigation brandName="BookYourStay" session={{ user: { email: "me@example.com", roles: ["client"] } }} />);
 
       const profileBtn = screen.getByRole("button", { name: "Profile" });
       expect(profileBtn).toHaveClass("btn-active");
@@ -180,7 +180,7 @@ describe("HeaderNavigation", () => {
 
     it("executes onClick handlers for logged-in buttons", () => {
       usePathnameMock.mockReturnValue("/dashboard");
-      render(<HeaderNavigation brandName="BookYourStay" session={{ user: { email: "me@example.com" } }} />);
+      render(<HeaderNavigation brandName="BookYourStay" session={{ user: { email: "me@example.com", roles: ["client"] } }} />);
 
       const dashboardBtn = screen.getByRole("button", { name: "Dashboard" });
       const bookingsBtn = screen.getByRole("button", { name: "My Bookings" });
@@ -204,7 +204,7 @@ describe("HeaderNavigation", () => {
 
       // logged-in dashboard
       usePathnameMock.mockReturnValue("/dashboard");
-      rerender(<HeaderNavigation brandName="BookYourStay" session={{ user: { email: "me@example.com" } }} />);
+      rerender(<HeaderNavigation brandName="BookYourStay" session={{ user: { email: "me@example.com", roles: ["client"] } }} />);
       const brandLink2 = screen.getByRole("link", { name: "BookYourStay" });
       expect(brandLink2).toHaveAttribute("aria-current", "page");
     });
@@ -259,7 +259,7 @@ describe("HeaderNavigation", () => {
       render(
         <HeaderNavigation
           brandName="BookYourStay"
-          session={{ user: { email: "guest@example.com" } }}
+          session={{ user: { email: "guest@example.com", roles: ["client"] } }}
         />
       );
 
@@ -290,7 +290,7 @@ describe("HeaderNavigation", () => {
       render(
         <HeaderNavigation
           brandName="BookYourStay"
-          session={{ user: { email: "guest@example.com" } }}
+          session={{ user: { email: "guest@example.com", roles: ["client"] } }}
         />
       );
 
@@ -314,7 +314,7 @@ describe("HeaderNavigation", () => {
       render(
         <HeaderNavigation
           brandName="BookYourStay"
-          session={{ user: { email: "guest@example.com" } }}
+          session={{ user: { email: "guest@example.com", roles: ["client"] } }}
         />
       );
 

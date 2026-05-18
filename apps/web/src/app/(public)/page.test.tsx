@@ -49,7 +49,7 @@ describe("Home page", () => {
 
     await expect(Home()).rejects.toThrow("NEXT_REDIRECT");
 
-    expect(mockAuthorize).toHaveBeenCalledWith(["client", "admin"]);
+    expect(mockAuthorize).toHaveBeenCalledWith(["client", "partner", "admin"]);
     expect(mockedRedirect).toHaveBeenCalledWith("/dashboard");
     expect(mockGetHotelPanelData).not.toHaveBeenCalled();
   });
@@ -79,7 +79,7 @@ describe("Home page", () => {
 
     const result = await Home();
 
-    expect(mockAuthorize).toHaveBeenCalledWith(["client", "admin"]);
+    expect(mockAuthorize).toHaveBeenCalledWith(["client", "partner", "admin"]);
     expect(mockedRedirect).not.toHaveBeenCalled();
     expect(mockGetHotelPanelData).toHaveBeenCalledTimes(1);
     expect(result).not.toBeNull();

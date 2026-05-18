@@ -3,6 +3,7 @@
 import { Fragment, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import Image from "next/image";
 import { AppButton } from "./AppButton";
 import type { BookingCancellationNotice, MyBooking } from "@/types/booking";
 
@@ -107,9 +108,11 @@ export function BookingDetailsModal({
 
                 <div className="mt-4">
                   {booking.hotelImage && (
-                    <img
+                    <Image
                       src={booking.hotelImage}
                       alt={booking.hotelName}
+                      width={384}
+                      height={192}
                       className="w-full h-48 object-cover rounded-lg mb-4"
                     />
                   )}

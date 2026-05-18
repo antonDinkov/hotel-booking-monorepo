@@ -7,7 +7,12 @@ import type { Hero } from "../types/hotel-panel";
 
 jest.mock("next/image", () => ({
   __esModule: true,
-  default: ({ fill, priority, ...props }: any) => <img {...props} />,
+  default: (props: any) => {
+    const imageProps = { ...props };
+    delete imageProps.fill;
+    delete imageProps.priority;
+    return <img {...imageProps} />;
+  },
 }));
 
 describe("HeroSection", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { InputType } from "@/types/profile";
 
 interface ProfileFieldProps {
@@ -29,10 +29,6 @@ export default function ProfileField({
     const [isEditing, setIsEditing] = useState(false);
     const [tempValue, setTempValue] = useState(value ?? "");
     const canEdit = isEditable ?? true;
-
-    useEffect(() => {
-        setTempValue(value ?? "");
-    }, [value]);
 
     const startEditing = () => {
         if (!canEdit) return;
