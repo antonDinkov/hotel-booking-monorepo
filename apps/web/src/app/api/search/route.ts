@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { searchAvailableHotels } from "../../../server/services/hotelPanel";
+import { searchAvailableHotelsPage } from "../../../server/services/hotelPanel";
+
+function parsePositiveInt(value: string | null): number | undefined {
+    if (!value) return undefined;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
 
 export async function GET(request: Request) {
     try {
@@ -70,14 +76,18 @@ export async function GET(request: Request) {
             );
         }
 
-        const results = await searchAvailableHotels(
+        const page = parsePositiveInt(searchParams.get("page"));
+        const pageSize = parsePositiveInt(searchParams.get("pageSize"));
+
+        const results = await searchAvailableHotelsPage({
             destination,
             checkInDate,
             checkOutDate,
-            guestsCount
-        );
+            guestsCount,
+            pagination: { page, pageSize },
+        });
 
-        return NextResponse.json(results, {
+        return NextResponse.json({ data: results }, {
             headers: {
                 "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
             },

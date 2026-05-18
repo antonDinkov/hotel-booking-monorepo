@@ -12,16 +12,25 @@
  * - Makes logic reusable for mobile clients by exposing the same
  *   underlying behavior behind an HTTP API.
  */
-import { and, eq, ilike, isNull, lt, lte, gt, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, lte, gt, inArray, or, sql } from "drizzle-orm";
 
 import { db } from "../../db";
 import { hotelImages, hotels, roomTypes, bookings } from "../../db/schema";
 import { resolveImageUrl } from "@/lib/image-urls";
-import type { HotelPanelData, Listing, ListingDetails } from "../../types/hotel-panel";
+import type { HotelPanelData, Listing, ListingDetails, ListingSearchResult } from "../../types/hotel-panel";
 import type { RoomAvailability } from "../../types/room-availability";
 import { getHotelReviewSummariesByHotelIds } from "./reviews";
 
 type BookingRange = { checkInDate: string; checkOutDate: string; roomsCount: number | null };
+type SearchPaginationInput = { page?: number; pageSize?: number };
+type SearchCte = ReturnType<typeof sql>;
+type SearchHotelRow = { id: number; name: string; location: string };
+type SearchPaginationState = { page: number; pageSize: number; totalItems: number; totalPages: number };
+
+const DEFAULT_HOTEL_IMAGE =
+    "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80";
+const DEFAULT_SEARCH_PAGE_SIZE = 9;
+const MAX_SEARCH_PAGE_SIZE = 24;
 
 function formatDateKey(date: Date): string {
     const year = date.getFullYear();
@@ -44,6 +53,170 @@ async function normalizeExpiredPendingBookings(now = new Date()): Promise<void> 
                 lte(bookings.expiresAt, now)
             )
         );
+}
+
+function normalizeSearchPagination(input?: SearchPaginationInput) {
+    if (!input) return null;
+
+    const requestedPage = input.page ?? 1;
+    const requestedPageSize = input.pageSize ?? DEFAULT_SEARCH_PAGE_SIZE;
+    const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+    const pageSize = Number.isInteger(requestedPageSize) && requestedPageSize > 0
+        ? Math.min(requestedPageSize, MAX_SEARCH_PAGE_SIZE)
+        : DEFAULT_SEARCH_PAGE_SIZE;
+
+    return { page, pageSize };
+}
+
+function buildSearchAvailabilityCte(input: {
+    destinationPattern: string;
+    checkInDate: string;
+    checkOutDate: string;
+    guestsCount: number;
+}) {
+    return sql`
+        with matching_hotels as (
+            select h.id, h.name, h.location, h.registered_at
+            from hotels h
+            where h.location ilike ${input.destinationPattern}
+        ),
+        date_range as (
+            select generate_series(
+                ${input.checkInDate}::date,
+                (${input.checkOutDate}::date - interval '1 day'),
+                interval '1 day'
+            )::date as day
+        ),
+        active_bookings as (
+            select
+                b.room_type_id,
+                b.check_in_date,
+                b.check_out_date,
+                coalesce(b.rooms_count, 1) as rooms_count
+            from bookings b
+            inner join room_types rt on rt.id = b.room_type_id
+            inner join matching_hotels mh on mh.id = rt.hotel_id
+            where b.check_in_date < ${input.checkOutDate}::date
+              and b.check_out_date > ${input.checkInDate}::date
+              and (
+                b.status = 'confirmed'
+                or (b.status in ('pending', 'pending_payment') and b.expires_at > now())
+              )
+        ),
+        booked_per_day as (
+            select
+                ab.room_type_id,
+                d.day,
+                sum(ab.rooms_count)::int as booked_rooms
+            from date_range d
+            inner join active_bookings ab
+              on d.day >= ab.check_in_date
+             and d.day < ab.check_out_date
+            group by ab.room_type_id, d.day
+        ),
+        max_booked as (
+            select
+                rt.id as room_type_id,
+                rt.hotel_id,
+                rt.total_rooms,
+                rt.capacity,
+                coalesce(max(bpd.booked_rooms), 0)::int as max_booked
+            from room_types rt
+            inner join matching_hotels mh on mh.id = rt.hotel_id
+            left join booked_per_day bpd on bpd.room_type_id = rt.id
+            group by rt.id
+        ),
+        eligible_room_types as (
+            select room_type_id, hotel_id
+            from max_booked
+            where (total_rooms - max_booked) >= ceil(${input.guestsCount}::numeric / greatest(capacity, 1))
+        )
+    `;
+}
+
+async function getCoverImagesByHotelIds(hotelIds: number[]): Promise<Map<number, string>> {
+    if (hotelIds.length === 0) return new Map();
+
+    const rows = await db
+        .select({ hotelId: hotelImages.hotelId, imageKey: hotelImages.imageKey })
+        .from(hotelImages)
+        .where(and(inArray(hotelImages.hotelId, hotelIds), isNull(hotelImages.roomTypeId)))
+        .orderBy(desc(hotelImages.isCover), asc(hotelImages.sortOrder), asc(hotelImages.id));
+
+    const imagesByHotelId = new Map<number, string>();
+    for (const row of rows) {
+        if (!imagesByHotelId.has(row.hotelId)) {
+            imagesByHotelId.set(row.hotelId, resolveImageUrl(row.imageKey));
+        }
+    }
+
+    return imagesByHotelId;
+}
+
+async function getSearchTotalItems(cte: SearchCte): Promise<number> {
+    const countResult = await db.execute<{ value: number }>(sql`
+        ${cte}
+        select count(distinct mh.id)::int as value
+        from matching_hotels mh
+        inner join eligible_room_types ert on ert.hotel_id = mh.id
+    `);
+
+    return Number(countResult.rows[0]?.value ?? 0);
+}
+
+function buildSearchPaginationState(totalItems: number, pagination: { page: number; pageSize: number } | null): SearchPaginationState {
+    const pageSize = pagination?.pageSize ?? Math.max(totalItems, 1);
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const page = pagination ? Math.min(pagination.page, totalPages) : 1;
+
+    return { page, pageSize, totalItems, totalPages };
+}
+
+async function getSearchHotelRows(cte: SearchCte, pagination: SearchPaginationState, isPaginated: boolean): Promise<SearchHotelRow[]> {
+    const offset = isPaginated ? (pagination.page - 1) * pagination.pageSize : 0;
+    const limitClause = isPaginated ? sql`limit ${pagination.pageSize} offset ${offset}` : sql``;
+
+    const listResult = await db.execute<SearchHotelRow>(sql`
+        ${cte}
+        select distinct mh.id, mh.name, mh.location
+        from matching_hotels mh
+        inner join eligible_room_types ert on ert.hotel_id = mh.id
+        order by mh.id asc
+        ${limitClause}
+    `);
+
+    return listResult.rows ?? [];
+}
+
+async function buildListingsFromHotels(hotelRows: SearchHotelRow[]): Promise<Listing[]> {
+    if (hotelRows.length === 0) return [];
+
+    const hotelIds = hotelRows.map((row) => row.id);
+    const [coverImages, reviewSummaries] = await Promise.all([
+        getCoverImagesByHotelIds(hotelIds),
+        getHotelReviewSummariesByHotelIds(hotelIds),
+    ]);
+
+    return hotelRows
+        .map((hotel) => {
+            const summary = reviewSummaries.get(hotel.id);
+            if (!summary) return null;
+
+            return {
+                id: String(hotel.id),
+                name: hotel.name,
+                category: hotel.location,
+                rating: summary.averageRating,
+                ratingLabel: summary.ratingLabel,
+                reviewLabel: summary.reviewLabel,
+                trustBadge: summary.trustBadge,
+                image: {
+                    src: coverImages.get(hotel.id) ?? DEFAULT_HOTEL_IMAGE,
+                    alt: `${hotel.name} cover image`,
+                },
+            } as Listing;
+        })
+        .filter((listing): listing is Listing => Boolean(listing));
 }
 
 export async function getHotelPanelData(): Promise<HotelPanelData> {
@@ -309,103 +482,41 @@ export async function searchAvailableHotels(
     checkOutDate: string,
     guestsCount: number
 ): Promise<Listing[]> {
+    const result = await searchAvailableHotelsPage({
+        destination,
+        checkInDate,
+        checkOutDate,
+        guestsCount,
+    });
+
+    return result.listings;
+}
+
+export async function searchAvailableHotelsPage(input: {
+    destination: string;
+    checkInDate: string;
+    checkOutDate: string;
+    guestsCount: number;
+    pagination?: SearchPaginationInput;
+}): Promise<ListingSearchResult> {
     await normalizeExpiredPendingBookings();
 
-    const hotelsData = await db
-        .select()
-        .from(hotels)
-        .where(ilike(hotels.location, `%${destination}%`));
+    const destinationPattern = `%${input.destination.trim()}%`;
+    const pagination = normalizeSearchPagination(input.pagination);
+    const cte = buildSearchAvailabilityCte({
+        destinationPattern,
+        checkInDate: input.checkInDate,
+        checkOutDate: input.checkOutDate,
+        guestsCount: input.guestsCount,
+    });
 
-    const reviewSummaries = await getHotelReviewSummariesByHotelIds(hotelsData.map((hotel) => hotel.id));
+    const totalItems = await getSearchTotalItems(cte);
+    const paginationState = buildSearchPaginationState(totalItems, pagination);
+    const hotelRows = await getSearchHotelRows(cte, paginationState, Boolean(pagination));
+    const listings = await buildListingsFromHotels(hotelRows);
 
-    // 👉 взимаме всички images
-    const images = await db
-        .select({
-            hotelId: hotelImages.hotelId,
-            url: hotelImages.imageKey,
-            roomTypeId: hotelImages.roomTypeId,
-        })
-        .from(hotelImages);
-
-    // 👉 map: hotelId -> first image
-    const imageMap = new Map<number, string>();
-
-    for (const img of images) {
-        if (img.roomTypeId !== null && img.roomTypeId !== undefined) continue;
-
-        if (!imageMap.has(img.hotelId)) {
-            imageMap.set(img.hotelId, resolveImageUrl(img.url));
-        }
-    }
-
-    const results: Listing[] = [];
-
-    for (const hotel of hotelsData) {
-        const roomTypesData = await db
-            .select()
-            .from(roomTypes)
-            .where(eq(roomTypes.hotelId, hotel.id));
-
-        let hasAvailability = false;
-
-        for (const roomType of roomTypesData) {
-            const bookingsData = await db
-                .select({
-                    checkInDate: bookings.checkInDate,
-                    checkOutDate: bookings.checkOutDate,
-                    roomsCount: bookings.roomsCount,
-                })
-                .from(bookings)
-                .where(
-                    and(
-                        eq(bookings.roomTypeId, roomType.id),
-                        or(
-                            eq(bookings.status, "confirmed"),
-                            and(or(eq(bookings.status, "pending_payment"), eq(bookings.status, "pending")), gt(bookings.expiresAt, new Date()))
-                        ),
-                        lt(bookings.checkInDate, checkOutDate),
-                        gt(bookings.checkOutDate, checkInDate)
-                    )
-                );
-
-            const availableRooms = calculateAvailableRooms(
-                roomType.totalRooms,
-                bookingsData.map((booking) => ({
-                    checkInDate: String(booking.checkInDate),
-                    checkOutDate: String(booking.checkOutDate),
-                    roomsCount: booking.roomsCount,
-                })),
-                checkInDate,
-                checkOutDate
-            );
-
-            if (availableRooms >= getRequiredRoomsForGuests(guestsCount, roomType.capacity)) {
-                hasAvailability = true;
-                break;
-            }
-        }
-
-        if (hasAvailability) {
-            const summary = reviewSummaries.get(hotel.id);
-            if (!summary) continue;
-
-            results.push({
-                id: String(hotel.id),
-                name: hotel.name,
-                category: hotel.location,
-                rating: summary.averageRating,
-                ratingLabel: summary.ratingLabel,
-                reviewLabel: summary.reviewLabel,
-                trustBadge: summary.trustBadge,
-                image: {
-                    src:
-                        imageMap.get(hotel.id) ??
-                        "https://images.unsplash.com/photo-1566073771259-6a8506099945",
-                    alt: `${hotel.name} cover image`,
-                },
-            });
-        }
-    }
-
-    return results;
+    return {
+        listings,
+        pagination: paginationState,
+    };
 }

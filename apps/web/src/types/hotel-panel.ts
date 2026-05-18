@@ -60,6 +60,18 @@ export interface ListingDetails extends Listing {
   highlights: string[];
 }
 
+export interface ListingSearchPagination {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface ListingSearchResult {
+  listings: Listing[];
+  pagination: ListingSearchPagination;
+}
+
 export interface FeaturedHeading {
   title: string;
   subtitle: string;

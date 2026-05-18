@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useMemo } from "react";
 import { SearchEngine } from "./SearchEngine";
 import { ListingCard } from "./ListingCard";
 import { Pagination } from "./Pagination";
-import type { SearchField, Listing } from "../types/hotel-panel";
+import type { SearchField, Listing, ListingSearchPagination } from "../types/hotel-panel";
 
 export function SearchEngineWrapper({
     searchFields,
@@ -19,6 +19,7 @@ export function SearchEngineWrapper({
     canFavorite?: boolean;
 }) {
     const [searchResults, setSearchResults] = useState<Listing[]>([]);
+    const [pagination, setPagination] = useState<ListingSearchPagination | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [activeSearchParams, setActiveSearchParams] = useState<{ checkInDate?: string; checkOutDate?: string; guests?: string }>({});
@@ -26,7 +27,7 @@ export function SearchEngineWrapper({
     const [favoriteIds, setFavoriteIds] = useState<number[]>(() => favoriteHotelIds ?? []);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 9;
+    const pageSize = 9;
     const resultsRef = useRef<HTMLElement | null>(null);
 
     const handleFavoriteChange = useCallback((hotelId: number, isFavorite: boolean) => {
@@ -36,28 +37,19 @@ export function SearchEngineWrapper({
         });
     }, []);
 
-    const handlePageChange = useCallback((p: number) => {
-        setCurrentPage(p);
-        const el = resultsRef.current;
-        if (el && typeof el.scrollIntoView === "function") {
-            el.scrollIntoView({ behavior: "smooth", block: "start" });
-        } else if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-    }, [setCurrentPage]);
-
     const performSearch = useCallback(
-        async (destination: string, checkInDate: string, checkOutDate: string, guestsCount: string) => {
+        async (destination: string, checkInDate: string, checkOutDate: string, guestsCount: string, page = 1) => {
             if (!destination.trim() || !checkInDate || !checkOutDate || !guestsCount) {
                 setCurrentPage(1);
                 setSearchResults([]);
+                setPagination(null);
                 setSearchQuery("");
                 setError(null);
                 setActiveSearchParams({});
                 return;
             }
 
-            setCurrentPage(1);
+            setCurrentPage(page);
             setIsSearching(true);
             setError(null);
             setSearchQuery(destination);
@@ -69,6 +61,8 @@ export function SearchEngineWrapper({
                     checkInDate,
                     checkOutDate,
                     guests: guestsCount,
+                    page: String(page),
+                    pageSize: String(pageSize),
                 });
 
                 const response = await fetch(`/api/search?${params.toString()}`);
@@ -79,20 +73,49 @@ export function SearchEngineWrapper({
                     );
                 }
 
-                const results: Listing[] = await response.json();
-                setSearchResults(results);
+                const payload = await response.json().catch(() => null) as { data?: { listings?: Listing[]; pagination?: ListingSearchPagination } } | null;
+
+                if (!payload?.data?.listings || !payload.data.pagination) {
+                    throw new Error("Search response is missing data.");
+                }
+
+                setSearchResults(payload.data.listings);
+                setPagination(payload.data.pagination);
+                setCurrentPage(payload.data.pagination.page);
             } catch (err) {
                 const errorMessage =
                     err instanceof Error ? err.message : "An error occurred during search";
                 setError(errorMessage);
                 console.error("Search error:", err);
                 setSearchResults([]);
+                setPagination(null);
             } finally {
                 setIsSearching(false);
             }
         },
-        []
+        [pageSize]
     );
+
+    const handlePageChange = useCallback((p: number) => {
+        if (!searchQuery || !activeSearchParams.checkInDate || !activeSearchParams.checkOutDate || !activeSearchParams.guests) {
+            return;
+        }
+
+        setCurrentPage(p);
+        performSearch(
+            searchQuery,
+            activeSearchParams.checkInDate,
+            activeSearchParams.checkOutDate,
+            activeSearchParams.guests,
+            p
+        );
+        const el = resultsRef.current;
+        if (el && typeof el.scrollIntoView === "function") {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+    }, [activeSearchParams.checkInDate, activeSearchParams.checkOutDate, activeSearchParams.guests, performSearch, searchQuery]);
 
     const handleSearch = useCallback(
         (searchParams: {
@@ -119,11 +142,6 @@ export function SearchEngineWrapper({
         [performSearch]
     );
     const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
-    const paginatedListings = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        return searchResults.slice(startIndex, startIndex + itemsPerPage);
-    }, [currentPage, searchResults, itemsPerPage]);
-
     return (
         <>
             {/* Placement container: pages should render this component immediately under header/navigation */}
@@ -143,7 +161,9 @@ export function SearchEngineWrapper({
                             Search results for <span>{searchQuery}</span>
                         </h2>
                         <p className="mt-2 text-slate-600">
-                            {isSearching ? "Loading..." : `Found ${searchResults.length} properties`}
+                            {isSearching
+                                ? "Loading..."
+                                : `Found ${pagination?.totalItems ?? searchResults.length} properties`}
                         </p>
                     </div>
 
@@ -161,7 +181,7 @@ export function SearchEngineWrapper({
                     ) : searchResults.length > 0 ? (
                         <>
                             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                                {paginatedListings.map((listing) => (
+                                {searchResults.map((listing) => (
                                         <ListingCard
                                             key={listing.id}
                                             listing={listing}
@@ -174,8 +194,8 @@ export function SearchEngineWrapper({
                             </div>
 
                             <Pagination
-                                currentPage={currentPage}
-                                totalPages={Math.max(1, Math.ceil(searchResults.length / itemsPerPage))}
+                                currentPage={pagination?.page ?? currentPage}
+                                totalPages={pagination?.totalPages ?? 1}
                                 onPageChange={handlePageChange}
                             />
                         </>
