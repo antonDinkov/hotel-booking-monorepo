@@ -450,7 +450,7 @@ DELETE /api/bookings/:id
   - **Admin** – manage users, hotels, rooms, bookings, reviews
 * Separate panels for each role:
   - Web: Client, Partner, Admin
-  - Mobile: Client, Partner
+  - Mobile: Client
 
 ---
 
@@ -576,7 +576,6 @@ If migration fails:
 * Store JWT securely
 * Panels:
   - Client: login, hotel list, booking
-  - Partner: add/edit hotels & rooms, view bookings
 
 ---
 
