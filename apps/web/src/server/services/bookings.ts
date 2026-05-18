@@ -5,6 +5,7 @@ import { db } from "../../db";
 import { bookings, hotelImages, hotelPaymentMethods, hotels, reviews, roomTypes } from "../../db/schema";
 import { resolveImageUrl } from "@/lib/image-urls";
 import { getStripe } from "@/server/lib/stripe";
+import { getPartnerIdForUser } from "@/server/services/partnerHotels";
 import {
   calculateBookingNights,
   calculateBookingTotal,
@@ -171,6 +172,10 @@ function canRefundBooking(row: BookingDetailsRow): boolean {
 
 function getRefundStatus(refund: Stripe.Refund): "refund_pending" | "refunded" {
   return refund.status === "succeeded" ? "refunded" : "refund_pending";
+}
+
+function isStripeRefundStatus(status: string | null): status is "refund_pending" | "refunded" | "refund_denied" {
+  return status === "refund_pending" || status === "refunded" || status === "refund_denied";
 }
 
 function normalizeBookingStatus(row: BookingDetailsRow, now = new Date()): BookingStatus {
@@ -371,12 +376,8 @@ async function getAvailableRoomsForRoomType(
   return calculateAvailableRooms(totalRooms, claims, checkInDate, checkOutDate);
 }
 
-async function getBookingDetails(bookingId: number, userId?: string): Promise<BookingDetailsRow | null> {
-  const conditions = userId
-    ? and(eq(bookings.id, bookingId), eq(bookings.userId, userId))
-    : eq(bookings.id, bookingId);
-
-  const row = await db
+function selectBookingDetailsRows() {
+  return db
     .select({
       bookingId: bookings.id,
       userId: bookings.userId,
@@ -402,8 +403,27 @@ async function getBookingDetails(bookingId: number, userId?: string): Promise<Bo
     })
     .from(bookings)
     .innerJoin(roomTypes, eq(roomTypes.id, bookings.roomTypeId))
-    .innerJoin(hotels, eq(hotels.id, roomTypes.hotelId))
+    .innerJoin(hotels, eq(hotels.id, roomTypes.hotelId));
+}
+
+async function getBookingDetails(bookingId: number, userId?: string): Promise<BookingDetailsRow | null> {
+  const conditions = userId
+    ? and(eq(bookings.id, bookingId), eq(bookings.userId, userId))
+    : eq(bookings.id, bookingId);
+
+  const row = await selectBookingDetailsRows()
     .where(conditions)
+    .then((rows) => rows[0]);
+
+  return row ?? null;
+}
+
+async function getPartnerBookingDetailsForCancellation(
+  bookingId: number,
+  partnerId: string
+): Promise<BookingDetailsRow | null> {
+  const row = await selectBookingDetailsRows()
+    .where(and(eq(bookings.id, bookingId), eq(hotels.partnerId, partnerId)))
     .then((rows) => rows[0]);
 
   return row ?? null;
@@ -813,6 +833,76 @@ async function cancelCashOnArrivalBooking(row: BookingDetailsRow): Promise<Cance
   });
 }
 
+function getExistingCancellationResult(row: BookingDetailsRow): CancelBookingResult | null {
+  if (row.paymentStatus === "cancelled") {
+    const method = isSupportedMethod(row.paymentMethod ?? "")
+      ? row.paymentMethod as BookingPaymentMethod
+      : null;
+
+    return buildCancelResult(row, method, "cancelled", {
+      title: "Booking cancelled",
+      message: method === "cash_on_arrival" ? "No payment was collected." : "Reservation hold cancelled.",
+    });
+  }
+
+  if (row.paymentMethod !== "stripe") {
+    return null;
+  }
+
+  if (!row.stripeRefundId && !isStripeRefundStatus(row.paymentStatus)) {
+    return null;
+  }
+
+  const paymentStatus = isStripeRefundStatus(row.paymentStatus)
+    ? row.paymentStatus
+    : "refund_pending";
+
+  return buildCancelResult(
+    row,
+    "stripe",
+    paymentStatus,
+    {
+      title: "Booking cancelled",
+      message: paymentStatus === "refunded"
+        ? "Your refund has been issued."
+        : paymentStatus === "refund_denied"
+          ? "Refund is not available for this booking."
+          : "Your refund is being processed.",
+    },
+    row.stripeRefundId
+  );
+}
+
+async function resolveExistingCancellation(row: BookingDetailsRow): Promise<CancelBookingResult | null> {
+  const result = getExistingCancellationResult(row);
+  if (!result) {
+    return null;
+  }
+
+  if (row.status === "cancelled" && row.paymentStatus === result.paymentStatus) {
+    return result;
+  }
+
+  const update = {
+    status: "cancelled",
+    paymentStatus: result.paymentStatus,
+    expiresAt: null,
+    stripeRefundId: result.stripeRefundId ?? row.stripeRefundId,
+  };
+
+  const updated = await db
+    .update(bookings)
+    .set(update)
+    .where(and(eq(bookings.id, row.bookingId), eq(bookings.userId, row.userId)))
+    .returning({ id: bookings.id });
+
+  if (!updated.length) {
+    throw new Error("BOOKING_NOT_FOUND");
+  }
+
+  return result;
+}
+
 async function createStripeRefundForBooking(row: BookingDetailsRow): Promise<Stripe.Refund> {
   if (!row.stripePaymentIntentId) {
     throw new Error("BOOKING_REFUND_PAYMENT_INTENT_MISSING");
@@ -830,13 +920,28 @@ async function createStripeRefundForBooking(row: BookingDetailsRow): Promise<Str
 }
 
 async function cancelStripePaidBooking(row: BookingDetailsRow): Promise<CancelBookingResult> {
+  const existingResult = await resolveExistingCancellation(row);
+  if (existingResult) {
+    return existingResult;
+  }
+
   if (!canRefundBooking(row)) {
     throw new Error("BOOKING_ALREADY_STARTED");
   }
 
   const refund = await createStripeRefundForBooking(row);
   if (refund.status === "failed" || refund.status === "canceled") {
-    throw new Error("STRIPE_REFUND_FAILED");
+    await markStripeRefundDenied(row, refund.id);
+    return buildCancelResult(
+      row,
+      "stripe",
+      "refund_denied",
+      {
+        title: "Booking cancelled",
+        message: "Refund is not available for this booking.",
+      },
+      refund.id
+    );
   }
 
   const refundStatus = getRefundStatus(refund);
@@ -889,12 +994,38 @@ async function markStripeRefunded(bookingId: number, refundId: string): Promise<
     .where(eq(bookings.id, bookingId));
 }
 
+async function markStripeRefundDenied(row: BookingDetailsRow, refundId: string): Promise<void> {
+  const updated = await db
+    .update(bookings)
+    .set({
+      status: "cancelled",
+      paymentStatus: "refund_denied",
+      stripeRefundId: refundId,
+      expiresAt: null,
+    })
+    .where(and(eq(bookings.id, row.bookingId), eq(bookings.userId, row.userId)))
+    .returning({ id: bookings.id });
+
+  if (!updated.length) {
+    throw new Error("BOOKING_NOT_FOUND");
+  }
+}
+
 export async function cancelBooking(bookingId: number, userId: string): Promise<CancelBookingResult> {
   await expirePendingBookingHoldIfNeeded(bookingId, userId);
 
   const row = await getBookingDetails(bookingId, userId);
   if (!row) {
     throw new Error("BOOKING_NOT_FOUND");
+  }
+
+  return cancelBookingRow(row);
+}
+
+async function cancelBookingRow(row: BookingDetailsRow): Promise<CancelBookingResult> {
+  const existingResult = await resolveExistingCancellation(row);
+  if (existingResult) {
+    return existingResult;
   }
 
   const bookingStatus = normalizeBookingStatus(row);
@@ -915,6 +1046,34 @@ export async function cancelBooking(bookingId: number, userId: string): Promise<
   }
 
   throw new Error("BOOKING_NOT_CANCELLABLE");
+}
+
+export async function cancelPartnerBooking(bookingId: number, userId: string): Promise<CancelBookingResult> {
+  const partnerId = await getPartnerIdForUser(userId);
+  const row = await getPartnerBookingDetailsForCancellation(bookingId, partnerId);
+  if (!row) {
+    throw new Error("BOOKING_NOT_FOUND");
+  }
+
+  await expirePendingBookingHoldIfNeeded(bookingId, row.userId);
+
+  const refreshedRow = await getPartnerBookingDetailsForCancellation(bookingId, partnerId);
+  if (!refreshedRow) {
+    throw new Error("BOOKING_NOT_FOUND");
+  }
+
+  return cancelBookingRow(refreshedRow);
+}
+
+export async function cancelAdminBooking(bookingId: number): Promise<CancelBookingResult> {
+  await expirePendingBookingHoldIfNeeded(bookingId);
+
+  const row = await getBookingDetails(bookingId);
+  if (!row) {
+    throw new Error("BOOKING_NOT_FOUND");
+  }
+
+  return cancelBookingRow(row);
 }
 
 function getRefundMatchCondition(refund: Stripe.Refund) {

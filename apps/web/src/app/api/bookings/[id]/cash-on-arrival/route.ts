@@ -8,7 +8,7 @@ export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await authorizeApi(["client", "admin"]);
+  const auth = await authorizeApi(["client"]);
   if (!auth.ok) return authError(auth.status);
 
   const { id } = await params;

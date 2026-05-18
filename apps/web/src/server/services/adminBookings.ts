@@ -28,6 +28,7 @@ import {
   calculateBookingTotal,
   getBookingRoomsCount,
 } from "@/server/services/bookingCalculations";
+import { cancelAdminBooking } from "@/server/services/bookings";
 import type {
   AdminBookingCounts,
   AdminBookingDetails,
@@ -380,7 +381,14 @@ export async function updateAdminBookingStatus(
   bookingId: number,
   input: AdminBookingUpdateInput
 ): Promise<AdminBookingDetails> {
-  const update = input.status === "cancelled" || input.status === "expired"
+  if (input.status === "cancelled") {
+    await cancelAdminBooking(bookingId);
+    const cancelledBooking = await getAdminBookingDetails(bookingId);
+    if (!cancelledBooking) throw new Error("BOOKING_NOT_FOUND");
+    return cancelledBooking;
+  }
+
+  const update = input.status === "expired"
     ? { status: input.status, expiresAt: null }
     : { status: input.status };
 

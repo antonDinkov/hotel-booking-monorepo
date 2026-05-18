@@ -27,6 +27,7 @@ import {
   formatDateOnly,
   getBookingRoomsCount,
 } from "@/server/services/bookingCalculations";
+import { cancelPartnerBooking } from "@/server/services/bookings";
 import { getPartnerIdForUser } from "@/server/services/partnerHotels";
 import type {
   PartnerBookingDetails,
@@ -338,6 +339,18 @@ export async function updatePartnerBookingStatus(
 
   if (!canTransitionStatus(row, status)) {
     throw new Error("INVALID_STATUS_TRANSITION");
+  }
+
+  if (status === "cancelled") {
+    const result = await cancelPartnerBooking(bookingId, userId);
+    return {
+      id: result.bookingId,
+      status: "cancelled",
+      paymentMethod: result.paymentMethod,
+      paymentStatus: result.paymentStatus,
+      stripeRefundId: result.stripeRefundId ?? null,
+      notification: result.notification,
+    };
   }
 
   const update = status === "pending"

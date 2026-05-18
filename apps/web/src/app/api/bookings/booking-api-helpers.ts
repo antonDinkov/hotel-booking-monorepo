@@ -157,6 +157,7 @@ export function mapCancelBookingError(error: unknown) {
   const code = error instanceof Error ? error.message : "UNKNOWN_ERROR";
 
   if (code === "BOOKING_NOT_FOUND") return apiError("Booking not found", code, 404);
+  if (code === "PARTNER_PROFILE_NOT_FOUND") return apiError("Partner profile not found", code, 403);
   if (code === "BOOKING_NOT_CANCELLABLE") return apiError("Booking cannot be cancelled automatically", code, 400);
   if (code === "BOOKING_ALREADY_STARTED") {
     return apiError(
@@ -186,6 +187,14 @@ export function mapPartnerBookingError(error: unknown) {
   if (code === "INVALID_STATUS_TRANSITION") {
     return apiError("This booking status transition is not allowed", code, 400);
   }
+  if (code === "BOOKING_NOT_CANCELLABLE") return apiError("Booking cannot be cancelled automatically", code, 400);
+  if (code === "BOOKING_ALREADY_STARTED") {
+    return apiError("This booking has already started and cannot be cancelled automatically.", code, 400);
+  }
+  if (code === "BOOKING_REFUND_PAYMENT_INTENT_MISSING" || code === "STRIPE_REFUND_FAILED") {
+    return apiError("Refund could not be processed automatically.", code, 502);
+  }
+  if (code === "STRIPE_SECRET_KEY_MISSING") return apiError("Stripe is not configured", code, 500);
 
   console.error("Partner booking request failed:", error);
   return apiError("Partner booking request failed", "PARTNER_BOOKING_REQUEST_FAILED", 500);
@@ -198,6 +207,14 @@ export function mapAdminBookingError(error: unknown) {
   if (code === "INVALID_JSON") return apiError("Invalid JSON body", code, 400);
   if (code === "INVALID_BOOKING_ID") return apiError("Invalid booking ID", code, 400);
   if (code === "BOOKING_NOT_FOUND") return apiError("Booking not found", code, 404);
+  if (code === "BOOKING_NOT_CANCELLABLE") return apiError("Booking cannot be cancelled automatically", code, 400);
+  if (code === "BOOKING_ALREADY_STARTED") {
+    return apiError("This booking has already started and cannot be cancelled automatically.", code, 400);
+  }
+  if (code === "BOOKING_REFUND_PAYMENT_INTENT_MISSING" || code === "STRIPE_REFUND_FAILED") {
+    return apiError("Refund could not be processed automatically.", code, 502);
+  }
+  if (code === "STRIPE_SECRET_KEY_MISSING") return apiError("Stripe is not configured", code, 500);
 
   console.error("Admin booking request failed:", error);
   return apiError("Admin booking request failed", "ADMIN_BOOKING_REQUEST_FAILED", 500);

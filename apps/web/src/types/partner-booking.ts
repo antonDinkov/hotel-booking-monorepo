@@ -130,6 +130,13 @@ export type PartnerBookingStatusUpdateInput = {
 export type PartnerBookingStatusUpdateResult = {
   id: number;
   status: PartnerBookingStatus;
+  paymentMethod?: BookingPaymentMethod | null;
+  paymentStatus?: BookingPaymentStatus;
+  stripeRefundId?: string | null;
+  notification?: {
+    title: string;
+    message: string;
+  };
 };
 
 export type PartnerBookingStatusUpdatePayload = {

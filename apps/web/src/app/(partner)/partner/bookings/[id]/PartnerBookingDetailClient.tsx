@@ -8,6 +8,7 @@ import {
   HomeModernIcon,
   PhoneIcon,
   UserIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import Link from "next/link";
@@ -20,11 +21,24 @@ import PartnerPageHeader from "@/components/partner/PartnerPageHeader";
 import PartnerSection from "@/components/partner/PartnerSection";
 import type { PartnerBadgeTone } from "@/types/partner";
 import type {
+  BookingPaymentMethod,
+  BookingPaymentStatus,
+  CancelBookingResult,
+} from "@/types/booking";
+import type {
   PartnerBookingActionNotice,
   PartnerBookingDetailClientProps,
   PartnerBookingStatus,
   PartnerBookingStatusUpdatePayload,
 } from "@/types/partner-booking";
+
+type CancelBookingPayload = {
+  data?: CancelBookingResult;
+  error?: {
+    message?: string;
+    code?: string;
+  };
+};
 
 const statusOptions: Array<{ label: string; value: PartnerBookingStatus }> = [
   { label: "Pending", value: "pending" },
@@ -81,15 +95,87 @@ function formatPaymentMethod(value: string | null): string {
   return formatLabel(value);
 }
 
+function isFutureDate(value: string): boolean {
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const checkIn = dateOnlyMatch
+    ? new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]))
+    : new Date(value);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return checkIn > today;
+}
+
+function canCancelBooking(
+  status: PartnerBookingStatus,
+  paymentMethod: BookingPaymentMethod | null,
+  paymentStatus: BookingPaymentStatus,
+  stripeRefundId: string | null,
+  checkInDate: string
+): boolean {
+  if (status === "pending") return true;
+  if (status !== "confirmed") return false;
+  if (paymentMethod === "cash_on_arrival" && paymentStatus === "pending") return true;
+  if (paymentMethod !== "stripe" || paymentStatus !== "paid") return false;
+  return !stripeRefundId && isFutureDate(checkInDate);
+}
+
+function getCancelActionLabel(
+  paymentMethod: BookingPaymentMethod | null,
+  paymentStatus: BookingPaymentStatus
+): string {
+  if (paymentMethod === "stripe" && paymentStatus === "paid") return "Cancel and refund";
+  if (paymentStatus === "pending") return "Cancel hold";
+  return "Cancel booking";
+}
+
 export default function PartnerBookingDetailClient({ booking }: PartnerBookingDetailClientProps) {
   const router = useRouter();
   const [status, setStatus] = useState(booking.status);
   const [selectedStatus, setSelectedStatus] = useState(booking.status);
+  const [paymentMethod, setPaymentMethod] = useState(booking.paymentMethod);
+  const [paymentStatus, setPaymentStatus] = useState(booking.paymentStatus);
+  const [stripeRefundId, setStripeRefundId] = useState(booking.stripeRefundId);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [notice, setNotice] = useState<PartnerBookingActionNotice | null>(null);
   const imageUrl = booking.roomImageUrls[0] ?? booking.hotelCoverImageUrl;
+  const canCancel = canCancelBooking(status, paymentMethod, paymentStatus, stripeRefundId, booking.checkInDate);
+  const cancelActionLabel = getCancelActionLabel(paymentMethod, paymentStatus);
+
+  const cancelBooking = async () => {
+    setIsCancelling(true);
+    setNotice(null);
+
+    try {
+      const response = await fetch(`/api/bookings/${booking.id}/cancel`, { method: "PATCH" });
+      const payload = await response.json().catch(() => null) as CancelBookingPayload | null;
+
+      if (!response.ok || !payload?.data) {
+        setNotice({ tone: "error", message: payload?.error?.message ?? "Cancellation failed." });
+        return;
+      }
+
+      setStatus("cancelled");
+      setSelectedStatus("cancelled");
+      setPaymentMethod(payload.data.paymentMethod);
+      setPaymentStatus(payload.data.paymentStatus);
+      setStripeRefundId(payload.data.stripeRefundId ?? null);
+      setNotice({ tone: "success", message: payload.data.notification.message });
+      router.refresh();
+    } catch {
+      setNotice({ tone: "error", message: "Cancellation failed." });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   const updateStatus = async () => {
+    if (selectedStatus === "cancelled") {
+      await cancelBooking();
+      return;
+    }
+
     setIsUpdating(true);
     setNotice(null);
 
@@ -108,7 +194,13 @@ export default function PartnerBookingDetailClient({ booking }: PartnerBookingDe
 
       setStatus(payload.data.status);
       setSelectedStatus(payload.data.status);
-      setNotice({ tone: "success", message: "Booking status updated." });
+      setPaymentMethod(payload.data.paymentMethod ?? paymentMethod);
+      setPaymentStatus(payload.data.paymentStatus ?? paymentStatus);
+      setStripeRefundId(payload.data.stripeRefundId ?? stripeRefundId);
+      setNotice({
+        tone: "success",
+        message: payload.data.notification?.message ?? "Booking status updated.",
+      });
       router.refresh();
     } catch {
       setNotice({ tone: "error", message: "Status update failed." });
@@ -278,8 +370,8 @@ export default function PartnerBookingDetailClient({ booking }: PartnerBookingDe
                   <p className="text-sm text-slate-400">Total</p>
                   <p className="mt-1 text-2xl font-semibold text-white">{formatCurrency(booking.totalPrice)}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <PartnerBadge tone={paymentTone(booking.paymentStatus)}>
-                      {formatLabel(booking.paymentStatus)}
+                    <PartnerBadge tone={paymentTone(paymentStatus)}>
+                      {formatLabel(paymentStatus)}
                     </PartnerBadge>
                     <PartnerBadge tone={statusTone(status)}>{formatLabel(status)}</PartnerBadge>
                   </div>
@@ -289,7 +381,7 @@ export default function PartnerBookingDetailClient({ booking }: PartnerBookingDe
               <div className="mt-5 space-y-4 border-t border-white/10 pt-5">
                 <div>
                   <p className="text-sm text-slate-400">Payment method</p>
-                  <p className="mt-1 font-semibold text-white">{formatPaymentMethod(booking.paymentMethod)}</p>
+                  <p className="mt-1 font-semibold text-white">{formatPaymentMethod(paymentMethod)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-slate-400">Stripe checkout session</p>
@@ -301,7 +393,7 @@ export default function PartnerBookingDetailClient({ booking }: PartnerBookingDe
                 </div>
                 <div>
                   <p className="text-sm text-slate-400">Stripe refund</p>
-                  <p className="mt-1 break-all text-sm font-semibold text-white">{booking.stripeRefundId ?? "Not present"}</p>
+                  <p className="mt-1 break-all text-sm font-semibold text-white">{stripeRefundId ?? "Not present"}</p>
                 </div>
               </div>
             </PartnerCard>
@@ -326,12 +418,27 @@ export default function PartnerBookingDetailClient({ booking }: PartnerBookingDe
                     <button
                       type="button"
                       onClick={() => void updateStatus()}
-                      disabled={isUpdating || selectedStatus === status}
+                      disabled={isUpdating || isCancelling || selectedStatus === status}
                       className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <ArrowPathIcon className={["h-4 w-4", isUpdating ? "animate-spin" : ""].join(" ")} aria-hidden="true" />
                       {isUpdating ? "Updating..." : "Update status"}
                     </button>
+                    {canCancel ? (
+                      <button
+                        type="button"
+                        onClick={() => void cancelBooking()}
+                        disabled={isUpdating || isCancelling}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-rose-300/30 px-4 py-2.5 text-sm font-semibold text-rose-100 transition hover:bg-rose-300/10 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <XCircleIcon className={["h-4 w-4", isCancelling ? "animate-spin" : ""].join(" ")} aria-hidden="true" />
+                        {isCancelling ? "Processing..." : cancelActionLabel}
+                      </button>
+                    ) : (
+                      <p className="text-xs leading-5 text-slate-500">
+                        Cancel/refund actions are available only for pending holds or refundable confirmed bookings.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

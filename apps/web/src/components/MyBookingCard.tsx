@@ -1,4 +1,9 @@
-import type { BookingDisplayStatus, CancelledBookingBadge } from "@/types/booking";
+import type {
+  BookingDisplayStatus,
+  BookingPaymentMethod,
+  BookingPaymentStatus,
+  CancelledBookingBadge,
+} from "@/types/booking";
 
 interface MyBookingCardProps {
   hotelName: string;
@@ -7,6 +12,8 @@ interface MyBookingCardProps {
   checkOut: string;
   totalPrice: number;
   status: BookingDisplayStatus;
+  paymentMethod?: BookingPaymentMethod | null;
+  paymentStatus?: BookingPaymentStatus;
   cancelledBadge?: CancelledBookingBadge;
   canReview?: boolean;
   hasReview?: boolean;
@@ -45,6 +52,17 @@ function getCancelledDetails(label?: CancelledBookingBadge): string {
   return "No payment was collected.";
 }
 
+function formatPaymentMethod(method?: BookingPaymentMethod | null): string {
+  if (method === "stripe") return "Card";
+  if (method === "cash_on_arrival") return "Pay on arrival";
+  return "Not selected";
+}
+
+function formatPaymentStatus(status?: BookingPaymentStatus): string {
+  if (!status) return "Pending";
+  return status.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export function MyBookingCard({
   hotelName,
   roomType,
@@ -52,6 +70,8 @@ export function MyBookingCard({
   checkOut,
   totalPrice,
   status,
+  paymentMethod,
+  paymentStatus,
   cancelledBadge,
   canReview,
   hasReview,
@@ -88,10 +108,18 @@ export function MyBookingCard({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl bg-white/80 p-4 text-sm text-slate-600 shadow-sm ring-1 ring-slate-100">
           <p className="font-semibold text-slate-900">Dates</p>
           <p className="mt-2">{checkIn} → {checkOut}</p>
+        </div>
+
+        <div className="rounded-2xl bg-white/80 p-4 text-sm text-slate-600 shadow-sm ring-1 ring-slate-100">
+          <p className="font-semibold text-slate-900">Payment</p>
+          <p className="mt-2 text-slate-700">{formatPaymentMethod(paymentMethod)}</p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {formatPaymentStatus(paymentStatus)}
+          </p>
         </div>
 
         <div className="rounded-2xl bg-white/80 p-4 text-sm text-slate-600 shadow-sm ring-1 ring-slate-100">

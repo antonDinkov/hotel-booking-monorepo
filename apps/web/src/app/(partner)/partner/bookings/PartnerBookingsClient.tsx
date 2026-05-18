@@ -163,9 +163,19 @@ export default function PartnerBookingsClient({ initialResult }: PartnerBookings
       }
 
       setBookings((items) => items.map((item) => (
-        item.id === bookingId ? { ...item, status: payload.data!.status } : item
+        item.id === bookingId
+          ? {
+              ...item,
+              status: payload.data!.status,
+              paymentMethod: payload.data!.paymentMethod ?? item.paymentMethod,
+              paymentStatus: payload.data!.paymentStatus ?? item.paymentStatus,
+            }
+          : item
       )));
-      setNotice({ tone: "success", message: "Booking status updated." });
+      setNotice({
+        tone: "success",
+        message: payload.data.notification?.message ?? "Booking status updated.",
+      });
       router.refresh();
     } catch {
       setNotice({ tone: "error", message: "Status update failed." });
