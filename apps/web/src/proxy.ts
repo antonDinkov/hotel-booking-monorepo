@@ -11,7 +11,15 @@ import {
 } from "@/lib/auth/role-routing";
 
 const API_CORS_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
-const API_CORS_HEADERS = "Content-Type, Authorization, X-Requested-With";
+const API_CORS_HEADERS =
+    "Accept, Authorization, Content-Type, Origin, X-CSRF-Token, X-Requested-With, X-Auth-Return-Redirect";
+const API_CORS_ORIGINS = [
+    "https://bookyourstaymobile.netlify.app",
+    "http://localhost:8081",
+    "http://localhost:19006",
+    "http://localhost:3000",
+    "http://localhost:3001",
+] as const;
 
 function getTokenRoles(token: Awaited<ReturnType<typeof getToken>>) {
     if (!token || typeof token === "string") return [];
@@ -30,28 +38,12 @@ function isApiPath(pathname: string): boolean {
 }
 
 function getConfiguredCorsOrigins(): string[] {
-    return (process.env.MOBILE_CORS_ORIGINS ?? "")
+    const configuredOrigins = (process.env.MOBILE_CORS_ORIGINS ?? "")
         .split(",")
         .map((origin) => origin.trim())
         .filter(Boolean);
-}
 
-function isLocalDevelopmentOrigin(origin: string): boolean {
-    try {
-        const { hostname, protocol } = new URL(origin);
-        if (protocol !== "http:" && protocol !== "https:") return false;
-        if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") return true;
-        if (hostname.startsWith("10.")) return true;
-        if (hostname.startsWith("192.168.")) return true;
-
-        const match = hostname.match(/^172\.(\d{1,2})\./);
-        if (!match) return false;
-
-        const secondOctet = Number(match[1]);
-        return secondOctet >= 16 && secondOctet <= 31;
-    } catch {
-        return false;
-    }
+    return [...API_CORS_ORIGINS, ...configuredOrigins];
 }
 
 function getAllowedCorsOrigin(req: NextRequest): string | null {
@@ -59,9 +51,7 @@ function getAllowedCorsOrigin(req: NextRequest): string | null {
     if (!origin) return null;
 
     const configuredOrigins = getConfiguredCorsOrigins();
-    if (configuredOrigins.includes(origin)) return origin;
-
-    return isLocalDevelopmentOrigin(origin) ? origin : null;
+    return configuredOrigins.includes(origin) ? origin : null;
 }
 
 function withApiCorsHeaders(response: NextResponse, origin: string | null): NextResponse {
