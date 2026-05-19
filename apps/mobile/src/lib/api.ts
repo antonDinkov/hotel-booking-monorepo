@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-import { loadStoredSessionCookie } from '@/lib/sessionStorage';
+import { loadStoredAccessToken, loadStoredSessionCookie } from '@/lib/sessionStorage';
 
 const API_BASE_URL_ERROR =
   'EXPO_PUBLIC_API_BASE_URL must be configured for mobile API requests.';
@@ -51,7 +51,12 @@ export async function fetchApi<T>(path: string, init: RequestInit = {}): Promise
 
 function buildHeaders(headers?: HeadersInit): HeadersInit {
   const nextHeaders = new Headers(headers);
+  const accessToken = loadStoredAccessToken();
   const cookie = loadStoredSessionCookie();
+
+  if (accessToken && !nextHeaders.has('Authorization')) {
+    nextHeaders.set('Authorization', `Bearer ${accessToken}`);
+  }
 
   if (Platform.OS !== 'web' && cookie && !nextHeaders.has('Cookie')) {
     nextHeaders.set('Cookie', cookie);

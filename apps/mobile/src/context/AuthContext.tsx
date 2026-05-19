@@ -41,14 +41,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = useMemo<AuthContextValue>(() => ({
     authState,
     login: async (input) => {
-      const { user, sessionCookie } = await loginClient(input);
-      await saveStoredSession(user, sessionCookie);
+      const { accessToken, user, sessionCookie } = await loginClient(input);
+      await saveStoredSession(user, sessionCookie, accessToken);
       setAuthState({ isAuthenticated: true, isLoading: false, user });
     },
     register: async (input) => {
       await registerClient(input);
-      const { user, sessionCookie } = await loginClient(input, input.fullName);
-      await saveStoredSession(user, sessionCookie);
+      const { accessToken, user, sessionCookie } = await loginClient(input, input.fullName);
+      await saveStoredSession(user, sessionCookie, accessToken);
       setAuthState({ isAuthenticated: true, isLoading: false, user });
     },
     logout: async () => {
@@ -73,7 +73,7 @@ async function initializeAuth(): Promise<AuthState> {
   }
 
   try {
-    const session = await fetchAuthSession(storedSession.sessionCookie);
+    const session = await fetchAuthSession(storedSession.sessionCookie, storedSession.accessToken);
     if (isInvalidSessionResponse(session.status, session.session)) {
       await clearStoredSession();
       return { isAuthenticated: false, isLoading: false, user: null };
@@ -88,7 +88,7 @@ async function initializeAuth(): Promise<AuthState> {
     }
 
     const user = mergeSessionUser(storedSession.user, session.session);
-    await saveStoredSession(user, storedSession.sessionCookie);
+    await saveStoredSession(user, storedSession.sessionCookie, storedSession.accessToken);
 
     return {
       isAuthenticated: true,

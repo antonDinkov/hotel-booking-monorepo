@@ -13,6 +13,10 @@ export function loadStoredSessionCookie(): string | null {
   return loadStoredSession()?.sessionCookie ?? null;
 }
 
+export function loadStoredAccessToken(): string | null {
+  return loadStoredSession()?.accessToken ?? null;
+}
+
 export function loadStoredSession(): StoredAuthSession | null {
   return memorySession;
 }
@@ -34,8 +38,12 @@ export async function restoreStoredSession(): Promise<StoredAuthSession | null> 
   }
 }
 
-export async function saveStoredSession(user: User, sessionCookie: string | null): Promise<void> {
-  const session = { user, sessionCookie };
+export async function saveStoredSession(
+  user: User,
+  sessionCookie: string | null,
+  accessToken: string | null = null,
+): Promise<void> {
+  const session = { accessToken, user, sessionCookie };
   memorySession = session;
 
   try {
@@ -70,8 +78,14 @@ export async function clearStoredUser(): Promise<void> {
 function parseStoredSession(value: string): StoredAuthSession | null {
   try {
     const parsed = JSON.parse(value) as unknown;
-    if (isStoredSession(parsed)) return parsed;
-    if (isStoredUser(parsed)) return { user: parsed, sessionCookie: null };
+    if (isStoredSession(parsed)) {
+      return {
+        accessToken: parsed.accessToken ?? null,
+        sessionCookie: parsed.sessionCookie,
+        user: parsed.user,
+      };
+    }
+    if (isStoredUser(parsed)) return { accessToken: null, user: parsed, sessionCookie: null };
     return null;
   } catch {
     return null;
@@ -79,13 +93,21 @@ function parseStoredSession(value: string): StoredAuthSession | null {
 }
 
 function isStoredSession(value: unknown): value is StoredAuthSession {
-  return (
+  if (
     typeof value === 'object' &&
     value !== null &&
     'user' in value &&
     'sessionCookie' in value &&
     isStoredUser((value as { user?: unknown }).user)
-  );
+  ) {
+    const candidate = value as { accessToken?: unknown; sessionCookie?: unknown };
+    return (
+      (candidate.sessionCookie === null || typeof candidate.sessionCookie === 'string') &&
+      (candidate.accessToken === undefined || candidate.accessToken === null || typeof candidate.accessToken === 'string')
+    );
+  }
+
+  return false;
 }
 
 function isStoredUser(value: unknown): value is User {

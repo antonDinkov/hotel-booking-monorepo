@@ -15,7 +15,13 @@ export type AuthSession = {
 } | null;
 
 export type StoredAuthSession = {
+  accessToken: string | null;
   sessionCookie: string | null;
+  user: User;
+};
+
+export type MobileLoginResult = {
+  accessToken: string;
   user: User;
 };
 

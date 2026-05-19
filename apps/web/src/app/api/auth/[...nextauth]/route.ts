@@ -1,5 +1,7 @@
 import NextAuth, { type NextAuthOptions } from "next-auth"
 import { getServerSession } from "next-auth/next"
+import { headers } from "next/headers"
+import { getToken, type JWT } from "next-auth/jwt"
 import CredentialsProvider from "next-auth/providers/credentials"
 import GitHubProvider from "next-auth/providers/github"
 
@@ -157,6 +159,9 @@ export const authOptions: NextAuthOptions = {
 export async function authorize(allowedRoles: string[]) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
+        const bearerAuth = await authorizeBearerToken(allowedRoles);
+        if (bearerAuth) return bearerAuth;
+
         return { ok: false, error: "unauthenticated" as const, session: null, roles: [] as string[], userId: null as string | null };
     }
 
@@ -194,6 +199,72 @@ export async function authorize(allowedRoles: string[]) {
     }
 
     return { ok: true, session, roles, userId };
+}
+
+async function authorizeBearerToken(allowedRoles: string[]) {
+    const token = await getBearerTokenFromCurrentRequest();
+    const userId = getTokenUserId(token);
+    if (!token || !userId) return null;
+
+    const tokenRoles = resolveRolesFromToken(token);
+    if (tokenRoles.length > 0) {
+        logAuthSession("authorize-bearer", {
+            userId,
+            role: getPrimaryRole(tokenRoles),
+            roles: tokenRoles,
+            source: "session",
+        });
+
+        if (!isRoleAllowed(tokenRoles, allowedRoles)) {
+            return { ok: false, error: "forbidden" as const, session: buildSessionFromToken(token, userId, tokenRoles), roles: tokenRoles, userId };
+        }
+
+        return { ok: true, session: buildSessionFromToken(token, userId, tokenRoles), roles: tokenRoles, userId };
+    }
+
+    const roles = normalizeRoles(await getUserRoles(userId));
+    logAuthSession("authorize-bearer", {
+        userId,
+        role: getPrimaryRole(roles),
+        roles,
+        source: "database",
+    });
+
+    if (!isRoleAllowed(roles, allowedRoles)) {
+        return { ok: false, error: "forbidden" as const, session: buildSessionFromToken(token, userId, roles), roles, userId };
+    }
+
+    return { ok: true, session: buildSessionFromToken(token, userId, roles), roles, userId };
+}
+
+async function getBearerTokenFromCurrentRequest(): Promise<JWT | null> {
+    try {
+        const requestHeaders = await headers();
+        const authorization = requestHeaders.get("authorization");
+        if (!authorization?.startsWith("Bearer ")) return null;
+
+        return getToken({
+            req: { headers: requestHeaders } as never,
+        });
+    } catch {
+        return null;
+    }
+}
+
+function getTokenUserId(token: JWT | null): string | null {
+    const userId = token?.sub ?? token?.id;
+    return typeof userId === "string" && userId.trim() ? userId : null;
+}
+
+function buildSessionFromToken(token: JWT, userId: string, roles: string[]) {
+    return {
+        user: {
+            id: userId,
+            email: typeof token.email === "string" ? token.email : undefined,
+            role: getPrimaryRole(roles),
+            roles,
+        },
+    };
 }
 
 function isRoleAllowed(userRoles: string[], allowedRoles: string[]) {

@@ -1,8 +1,10 @@
 import bcrypt from "bcryptjs";
 import { and, eq } from "drizzle-orm";
+import { encode } from "next-auth/jwt";
 
 import { db } from "@/db";
-import { users, roles, userRoles } from "@/db/schema";
+import { users, roles, userProfiles, userRoles } from "@/db/schema";
+import type { MobileLoginResult } from "@repo/types";
 
 type AuthUserRecord = {
     id: string;
@@ -10,6 +12,8 @@ type AuthUserRecord = {
     passwordHash: string | null;
     isActive: boolean;
 };
+
+const MOBILE_TOKEN_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 async function getAuthUserByEmail(email: string): Promise<AuthUserRecord | null> {
     const normalizedEmail = email.trim().toLowerCase();
@@ -81,6 +85,43 @@ export async function validateCredentials(email: string, password: string) {
     if (!isValid) return null;
 
     return { id: user.id, email: user.email };
+}
+
+export async function createMobileClientAuthSession(email: string, password: string): Promise<MobileLoginResult | null> {
+    const user = await validateMobileClientCredentials(email, password);
+    if (!user) return null;
+
+    const roles = await getUserRoles(user.id);
+    const accessToken = await encode({
+        maxAge: MOBILE_TOKEN_MAX_AGE_SECONDS,
+        secret: getNextAuthSecret(),
+        token: {
+            email: user.email,
+            id: user.id,
+            role: getPrimaryRole(roles),
+            roles,
+            sub: user.id,
+        },
+    });
+
+    return {
+        accessToken,
+        user: {
+            id: user.id,
+            email: user.email,
+            fullName: await getUserDisplayName(user.id, user.email),
+            roles,
+        },
+    };
+}
+
+async function validateMobileClientCredentials(email: string, password: string) {
+    try {
+        return await validateCredentialsForRole(email, password, "client");
+    } catch (error) {
+        if (error instanceof Error && error.message === roleMismatchMessages.client) return null;
+        throw error;
+    }
 }
 
 export async function ensureOAuthUser(email: string) {
@@ -155,4 +196,24 @@ export async function getUserRoles(userId: string) {
         .where(eq(userRoles.userId, userId));
 
     return rows.map((row) => row.name);
+}
+
+async function getUserDisplayName(userId: string, email: string): Promise<string> {
+    const profile = await db
+        .select({ fullName: userProfiles.fullName })
+        .from(userProfiles)
+        .where(eq(userProfiles.userId, userId))
+        .then((rows) => rows[0] ?? null);
+
+    return profile?.fullName?.trim() || email.split("@")[0] || email;
+}
+
+function getPrimaryRole(roles: string[]): string | null {
+    return roles[0] ?? null;
+}
+
+function getNextAuthSecret(): string {
+    const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
+    if (!secret) throw new Error("NEXTAUTH_SECRET_MISSING");
+    return secret;
 }
