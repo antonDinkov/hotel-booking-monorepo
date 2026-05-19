@@ -14,14 +14,10 @@
     "build:mobile:web": "npm run build:web --workspace=mobile"
   },
   "dependencies": {
-    "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
     "expo-router": "~55.0.14"
-  },
-  "overrides": {
-    "react": "19.2.0",
-    "react-dom": "19.2.0"
   }
 }
