@@ -13,6 +13,7 @@ type SearchPanelProps = {
   ctaLabel?: string;
   favoriteHotelIds?: number[];
   footerContent?: ReactNode;
+  showDatesAsPlain?: boolean;
 };
 
 const INITIAL_SEARCH: SearchHotelsInput = {
@@ -24,7 +25,7 @@ const INITIAL_SEARCH: SearchHotelsInput = {
 
 const PAGE_SIZE = 9;
 
-export default function SearchPanel({ ctaLabel = 'Search', favoriteHotelIds = [], footerContent }: SearchPanelProps) {
+export default function SearchPanel({ ctaLabel = 'Search', favoriteHotelIds = [], footerContent, showDatesAsPlain = false }: SearchPanelProps) {
   const [searchValues, setSearchValues] = useState<SearchHotelsInput>(INITIAL_SEARCH);
   const [missingFields, setMissingFields] = useState<Record<keyof SearchHotelsInput, boolean>>(getEmptyErrors());
   const [dateRangeError, setDateRangeError] = useState<string | null>(null);
@@ -184,10 +185,26 @@ export default function SearchPanel({ ctaLabel = 'Search', favoriteHotelIds = []
             value={searchValues.destination}
           />
           {missingFields.destination ? <Text style={styles.errorText}>Destination is required.</Text> : null}
-          <View style={styles.inlineFields}>
-            <DateField label="Check in" value={searchValues.checkInDate} error={missingFields.checkInDate} />
-            <DateField label="Check out" value={searchValues.checkOutDate} error={missingFields.checkOutDate} />
-          </View>
+          {!showDatesAsPlain ? (
+            <View style={styles.inlineFields}>
+              <DateField label="Check in" value={searchValues.checkInDate} error={missingFields.checkInDate} />
+              <DateField label="Check out" value={searchValues.checkOutDate} error={missingFields.checkOutDate} />
+            </View>
+          ) : (
+            <View style={styles.plainDatesWrap}>
+              <Text style={styles.plainDatesGuide}>Select dates:</Text>
+              <View style={styles.plainDatesRow}>
+                <View style={styles.plainDateItem}>
+                  <Text style={styles.plainDateLabel}>Check in</Text>
+                  <Text style={styles.plainDateValue}>{searchValues.checkInDate || '—'}</Text>
+                </View>
+                <View style={styles.plainDateItem}>
+                  <Text style={styles.plainDateLabel}>Check out</Text>
+                  <Text style={styles.plainDateValue}>{searchValues.checkOutDate || '—'}</Text>
+                </View>
+              </View>
+            </View>
+          )}
           {dateRangeError ? <Text style={styles.errorText}>{dateRangeError}</Text> : null}
           <DateRangeCalendar
             endDate={searchValues.checkOutDate}
@@ -425,6 +442,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  plainDatesWrap: {
+    gap: 8,
+    paddingVertical: 6,
+  },
+  plainDatesGuide: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  plainDatesRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  plainDateItem: {
+    flex: 1,
+  },
+  plainDateLabel: {
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  plainDateValue: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 4,
   },
   listContent: {
     paddingBottom: 12,

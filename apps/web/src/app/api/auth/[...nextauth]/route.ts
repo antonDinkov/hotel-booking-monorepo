@@ -6,6 +6,55 @@ import GitHubProvider from "next-auth/providers/github"
 import { getRoleDashboard } from "@/lib/auth/role-routing"
 import { ensureOAuthUser, getUserRoles, validateCredentialsForRole } from "@/server/services/auth"
 
+const AUTH_DEBUG_SESSION = process.env.AUTH_DEBUG_SESSION === "true";
+
+function normalizeRoles(input: unknown): string[] {
+    if (!Array.isArray(input)) return [];
+
+    const roles = new Set<string>();
+    for (const role of input) {
+        if (typeof role !== "string") continue;
+
+        const normalized = role.trim();
+        if (normalized) roles.add(normalized);
+    }
+
+    return Array.from(roles);
+}
+
+function resolveRolesFromToken(token: { roles?: unknown; role?: unknown } | null | undefined): string[] {
+    const roles = normalizeRoles(token?.roles);
+    if (roles.length > 0) return roles;
+
+    if (typeof token?.role === "string") {
+        const normalized = token.role.trim();
+        return normalized ? [normalized] : [];
+    }
+
+    return [];
+}
+
+function getPrimaryRole(roles: string[]): string | null {
+    return roles[0] ?? null;
+}
+
+function logAuthSession(stage: string, payload: {
+    userId: string | null;
+    role: string | null;
+    roles: string[];
+    source: "session" | "database";
+}) {
+    if (!AUTH_DEBUG_SESSION) return;
+
+    console.info("[auth] session", {
+        stage,
+        userId: payload.userId,
+        role: payload.role,
+        roles: payload.roles,
+        source: payload.source,
+    });
+}
+
 export const authOptions: NextAuthOptions = {
     providers: [
         CredentialsProvider({
@@ -74,18 +123,25 @@ export const authOptions: NextAuthOptions = {
 
         async jwt({ token, user }) {
             if (user) {
+                const roles = normalizeRoles(await getUserRoles(user.id as string));
                 token.id = user.id;
+                token.sub = user.id;
                 if (user.email) token.email = user.email;
-                token.roles = await getUserRoles(user.id as string);
+                token.roles = roles;
+                token.role = getPrimaryRole(roles);
             }
 
             return token;
         },
         async session({ session, token }) {
             if (session.user) {
-                session.user.id = token.id as string;
+                const roles = resolveRolesFromToken(token);
+                const primaryRole = getPrimaryRole(roles);
+
+                session.user.id = (token.sub ?? token.id ?? session.user.id) as string;
                 if (token.email) session.user.email = token.email as string;
-                session.user.roles = Array.isArray(token.roles) ? token.roles : [];
+                session.user.roles = roles;
+                session.user.role = primaryRole;
             }
 
             return session;
@@ -104,14 +160,40 @@ export async function authorize(allowedRoles: string[]) {
         return { ok: false, error: "unauthenticated" as const, session: null, roles: [] as string[], userId: null as string | null };
     }
 
-    const roles = await getUserRoles(session.user.id as string);
-    const hasRole = isRoleAllowed(roles, allowedRoles);
+    const userId = session.user.id;
+    const sessionRoles = normalizeRoles(session.user.roles);
+    const sessionPrimaryRole = typeof session.user.role === "string" ? session.user.role.trim() || null : null;
 
-    if (!hasRole) {
-        return { ok: false, error: "forbidden" as const, session, roles, userId: session.user.id };
+    if (sessionRoles.length > 0) {
+        const hasRole = isRoleAllowed(sessionRoles, allowedRoles);
+        logAuthSession("authorize", {
+            userId,
+            role: sessionPrimaryRole ?? getPrimaryRole(sessionRoles),
+            roles: sessionRoles,
+            source: "session",
+        });
+
+        if (!hasRole) {
+            return { ok: false, error: "forbidden" as const, session, roles: sessionRoles, userId };
+        }
+
+        return { ok: true, session, roles: sessionRoles, userId };
     }
 
-    return { ok: true, session, roles, userId: session.user.id };
+    const roles = normalizeRoles(await getUserRoles(userId));
+    const hasRole = isRoleAllowed(roles, allowedRoles);
+    logAuthSession("authorize", {
+        userId,
+        role: sessionPrimaryRole ?? getPrimaryRole(roles),
+        roles,
+        source: "database",
+    });
+
+    if (!hasRole) {
+        return { ok: false, error: "forbidden" as const, session, roles, userId };
+    }
+
+    return { ok: true, session, roles, userId };
 }
 
 function isRoleAllowed(userRoles: string[], allowedRoles: string[]) {

@@ -1,33 +1,33 @@
 import { and, desc, eq, gt, inArray, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 
-import { db } from "../../db";
-import { bookings, hotelImages, hotelPaymentMethods, hotels, reviews, roomTypes } from "../../db/schema";
 import { resolveImageUrl } from "@/lib/image-urls";
 import { getStripe } from "@/server/lib/stripe";
-import { getPartnerIdForUser } from "@/server/services/partnerHotels";
 import {
-  calculateBookingNights,
-  calculateBookingTotal,
-  formatDateOnly,
-  getBookingRoomsCount,
-  isDateOnly as isValidDateOnly,
-  parseDateOnly,
+    calculateBookingNights,
+    calculateBookingTotal,
+    formatDateOnly,
+    getBookingRoomsCount,
+    isDateOnly as isValidDateOnly,
+    parseDateOnly,
 } from "@/server/services/bookingCalculations";
+import { getPartnerIdForUser } from "@/server/services/partnerHotels";
 import type {
-  CancelBookingResult,
-  CancelledBookingBadge,
-  BookingConfirmation,
-  BookingPaymentMethod,
-  BookingPaymentStatus,
-  BookingStatus,
-  BookingSummary,
-  CreateBookingHoldRequest,
-  CreateBookingHoldResponse,
-  ClientBookingsPage,
-  MyBooking,
-  BookingDisplayStatus,
+    BookingConfirmation,
+    BookingDisplayStatus,
+    BookingPaymentMethod,
+    BookingPaymentStatus,
+    BookingStatus,
+    BookingSummary,
+    CancelBookingResult,
+    CancelledBookingBadge,
+    ClientBookingsPage,
+    CreateBookingHoldRequest,
+    CreateBookingHoldResponse,
+    MyBooking,
 } from "@/types/booking";
+import { db } from "../../db";
+import { bookings, hotelImages, hotelPaymentMethods, hotels, reviews, roomTypes } from "../../db/schema";
 
 const HOLD_MINUTES = 1;
 const STRIPE_HOLD_MINUTES = 30;
@@ -587,7 +587,8 @@ export async function confirmCashOnArrivalBooking(bookingId: number, userId: str
 export async function createStripeCheckoutForBooking(
   bookingId: number,
   userId: string,
-  appUrl: string
+  appUrl: string,
+  returnTo?: string
 ): Promise<{ bookingId: number; url: string; expiresAt: string }> {
   await expirePendingBookingHoldIfNeeded(bookingId, userId);
 
@@ -602,6 +603,17 @@ export async function createStripeCheckoutForBooking(
   const expiresAt = addMinutes(new Date(), STRIPE_HOLD_MINUTES);
   const stripe = getStripe();
   const totalPrice = getTotalPrice(row);
+  const appBaseUrl = normalizeAppUrl(appUrl);
+  const returnEndpoint = `${appBaseUrl}/api/stripe/return`;
+  const hasReturnTo = typeof returnTo === "string" && returnTo.trim().length > 0;
+  const encodedReturnTo = hasReturnTo ? encodeURIComponent(returnTo.trim()) : null;
+  const successUrl = hasReturnTo && encodedReturnTo
+    ? `${returnEndpoint}?bookingId=${bookingId}&stripe=success&returnTo=${encodedReturnTo}&session_id={CHECKOUT_SESSION_ID}`
+    : `${appBaseUrl}/bookings/${bookingId}/confirmation?stripe=success&session_id={CHECKOUT_SESSION_ID}`;
+  const cancelUrl = hasReturnTo && encodedReturnTo
+    ? `${returnEndpoint}?bookingId=${bookingId}&stripe=cancelled&returnTo=${encodedReturnTo}`
+    : `${appBaseUrl}/listings/${row.hotelId}/summary?bookingId=${bookingId}&stripe=cancelled`;
+
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     payment_method_types: ["card"],
@@ -615,8 +627,8 @@ export async function createStripeCheckoutForBooking(
         quantity: 1,
       },
     ],
-    success_url: `${normalizeAppUrl(appUrl)}/bookings/${bookingId}/confirmation?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${normalizeAppUrl(appUrl)}/listings/${row.hotelId}/summary?bookingId=${bookingId}&stripe=cancelled`,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
     expires_at: Math.ceil(expiresAt.getTime() / 1000),
     metadata: {
       bookingId: String(bookingId),

@@ -18,6 +18,18 @@ import {
 import type { ProfileData, ProfileDataWithAvatarUrl } from '@/types/profile';
 
 const GENDER_OPTIONS = ['Female', 'Male', 'Non-binary', 'Prefer not to say'];
+const EMPTY_ADDRESS: ProfileData['address'] = {
+  city: '',
+  country: '',
+  street: '',
+  zip: '',
+};
+const DEFAULT_PREFERENCES: ProfileData['preferences'] = {
+  notifications: true,
+  pets: true,
+  smoking: false,
+};
+const DEFAULT_GENDER = 'Prefer not to say';
 
 export default function Profile() {
   const router = useRouter();
@@ -35,7 +47,7 @@ export default function Profile() {
     setError(null);
 
     try {
-      setProfile(await getCurrentProfile());
+      setProfile(normalizeProfile(await getCurrentProfile()));
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Profile could not be loaded.');
     } finally {
@@ -64,7 +76,7 @@ export default function Profile() {
     setError(null);
 
     try {
-      setProfile(await updateCurrentProfile(stripAvatarUrl(profile)));
+      setProfile(normalizeProfile(await updateCurrentProfile(stripAvatarUrl(profile))));
       setNotice('Profile updated.');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Profile could not be saved.');
@@ -99,7 +111,7 @@ export default function Profile() {
 
       const formData = new FormData();
       appendAvatarFile(formData, result.assets[0]);
-      setProfile(await uploadProfileAvatar(formData));
+      setProfile(normalizeProfile(await uploadProfileAvatar(formData)));
       setNotice('Avatar updated.');
     } catch (avatarError) {
       setError(avatarError instanceof Error ? avatarError.message : 'Avatar upload failed.');
@@ -116,7 +128,7 @@ export default function Profile() {
     setNotice(null);
 
     try {
-      setProfile(await removeProfileAvatar());
+      setProfile(normalizeProfile(await removeProfileAvatar()));
       setNotice('Avatar removed.');
     } catch (removeError) {
       setError(removeError instanceof Error ? removeError.message : 'Avatar could not be removed.');
@@ -329,18 +341,56 @@ function validateProfile(profile: ProfileDataWithAvatarUrl): Record<string, stri
 }
 
 function stripAvatarUrl(profile: ProfileDataWithAvatarUrl): ProfileData {
+  const normalized = normalizeProfile(profile);
+
   return {
-    address: profile.address,
-    avatarKey: profile.avatarKey,
-    dateOfBirth: profile.dateOfBirth,
-    email: profile.email,
-    gender: profile.gender,
-    name: profile.name,
-    nationality: profile.nationality,
-    passportNumber: profile.passportNumber,
-    phone: profile.phone,
-    preferences: profile.preferences,
+    address: normalized.address,
+    avatarKey: normalized.avatarKey,
+    dateOfBirth: normalized.dateOfBirth,
+    email: normalized.email,
+    gender: normalized.gender,
+    name: normalized.name,
+    nationality: normalized.nationality,
+    passportNumber: normalized.passportNumber,
+    phone: normalized.phone,
+    preferences: normalized.preferences,
   };
+}
+
+function normalizeProfile(profile: ProfileDataWithAvatarUrl): ProfileDataWithAvatarUrl {
+  const address = profile.address ?? EMPTY_ADDRESS;
+  const preferences = profile.preferences ?? DEFAULT_PREFERENCES;
+
+  return {
+    address: {
+      city: normalizeText(address.city),
+      country: normalizeText(address.country),
+      street: normalizeText(address.street),
+      zip: normalizeText(address.zip),
+    },
+    avatarKey: typeof profile.avatarKey === 'string' ? profile.avatarKey : null,
+    avatarUrl: profile.avatarUrl ?? null,
+    dateOfBirth: normalizeText(profile.dateOfBirth),
+    email: normalizeText(profile.email),
+    gender: normalizeText(profile.gender) || DEFAULT_GENDER,
+    name: normalizeText(profile.name),
+    nationality: normalizeText(profile.nationality),
+    passportNumber: normalizeText(profile.passportNumber),
+    phone: normalizeText(profile.phone),
+    preferences: {
+      notifications: normalizeBoolean(preferences.notifications, DEFAULT_PREFERENCES.notifications),
+      pets: normalizeBoolean(preferences.pets, DEFAULT_PREFERENCES.pets),
+      smoking: normalizeBoolean(preferences.smoking, DEFAULT_PREFERENCES.smoking),
+    },
+  };
+}
+
+function normalizeText(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function normalizeBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
 }
 
 function getInitials(value: string): string {

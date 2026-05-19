@@ -1,14 +1,22 @@
 import { Redirect, Tabs } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/context/AuthContext';
 
 export default function ClientLayout() {
-  const { authState } = useAuth();
+  const { authState, logout } = useAuth();
   const insets = useSafeAreaInsets();
+  const isClient = Boolean(authState.user?.roles.includes('client'));
 
-  if (!authState.isLoading && !authState.isAuthenticated) {
+  useEffect(() => {
+    if (!authState.isLoading && authState.isAuthenticated && !isClient) {
+      void logout();
+    }
+  }, [authState.isAuthenticated, authState.isLoading, isClient, logout]);
+
+  if (!authState.isLoading && (!authState.isAuthenticated || !isClient)) {
     return <Redirect href="/login" />;
   }
 

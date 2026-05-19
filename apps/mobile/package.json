@@ -3,7 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "expo start",
+    "start": "set REACT_NATIVE_PACKAGER_HOSTNAME=172.26.78.77&& expo start --host lan",
     "reversePhone": "adb -s dcd9b811 reverse tcp:8081 tcp:8081",
     "reverse": "adb -s dcd9b811 reverse tcp:3001 tcp:3001",
     "startLocal": "expo start --localhost -c",

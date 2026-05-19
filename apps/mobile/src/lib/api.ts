@@ -1,12 +1,29 @@
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 import { loadStoredSessionCookie } from '@/lib/sessionStorage';
 
-const DEFAULT_API_URL = 'http://localhost:3001';
+const BACKEND_PORT = '3001';
+const LOCAL_API_URL = `http://localhost:${BACKEND_PORT}`;
+const DEFAULT_API_URL = Platform.select({
+  android: 'http://172.26.78.77:3001',
+  default: LOCAL_API_URL,
+});
 
 export function getApiUrl(path: string): string {
-  const baseUrl = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_URL;
-  return `${baseUrl.replace(/\/$/, '')}${path}`;
+  return `${getApiBaseUrl()}${path}`;
+}
+
+export function getApiBaseUrl(): string {
+  const envMobile = process.env.EXPO_PUBLIC_API_URL;
+  const envWeb = process.env.EXPO_PUBLIC_WEB_API_URL;
+  const baseForWeb = envWeb ?? envMobile ?? DEFAULT_API_URL ?? LOCAL_API_URL;
+
+  if (Platform.OS === 'web') {
+    return normalizeBaseUrl(baseForWeb);
+  }
+
+  return getNativeApiBaseUrl(envMobile);
 }
 
 export function getApiErrorMessage(payload: unknown, fallback: string): string {
@@ -58,4 +75,51 @@ function getNetworkErrorMessage(error: unknown): string {
   }
 
   return 'Unable to reach the backend.';
+}
+
+function getNativeApiBaseUrl(configuredUrl?: string): string {
+  if (configuredUrl && !isLoopbackUrl(configuredUrl)) {
+    return normalizeBaseUrl(configuredUrl);
+  }
+
+  const expoLanUrl = getExpoLanApiUrl();
+  if (expoLanUrl) return expoLanUrl;
+
+  return normalizeBaseUrl(DEFAULT_API_URL ?? LOCAL_API_URL);
+}
+
+function getExpoLanApiUrl(): string | null {
+  const hostUri = Constants.expoConfig?.hostUri ?? Constants.platform?.hostUri;
+  const hostname = getHostname(hostUri);
+
+  if (!hostname || isLoopbackHostname(hostname)) return null;
+
+  return `http://${formatHostname(hostname)}:${BACKEND_PORT}`;
+}
+
+function getHostname(value?: string): string | null {
+  if (!value) return null;
+
+  try {
+    const url = new URL(value.includes('://') ? value : `http://${value}`);
+    return url.hostname || null;
+  } catch {
+    return null;
+  }
+}
+
+function isLoopbackUrl(value: string): boolean {
+  return isLoopbackHostname(getHostname(value));
+}
+
+function isLoopbackHostname(hostname?: string | null): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+}
+
+function normalizeBaseUrl(value: string): string {
+  return value.trim().replace(/\/$/, '');
+}
+
+function formatHostname(hostname: string): string {
+  return hostname.includes(':') && !hostname.startsWith('[') ? `[${hostname}]` : hostname;
 }

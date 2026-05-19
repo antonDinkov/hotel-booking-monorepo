@@ -14,8 +14,15 @@ const API_CORS_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 const API_CORS_HEADERS = "Content-Type, Authorization, X-Requested-With";
 
 function getTokenRoles(token: Awaited<ReturnType<typeof getToken>>) {
-    if (!token || typeof token === "string" || !Array.isArray(token.roles)) return [];
-    return token.roles.filter((role: unknown): role is string => typeof role === "string");
+    if (!token || typeof token === "string") return [];
+
+    const roles = Array.isArray(token.roles)
+        ? token.roles
+        : typeof token.role === "string"
+            ? [token.role]
+            : [];
+
+    return roles.filter((role: unknown): role is string => typeof role === "string" && role.length > 0);
 }
 
 function isApiPath(pathname: string): boolean {

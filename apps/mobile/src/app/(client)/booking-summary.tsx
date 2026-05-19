@@ -1,7 +1,8 @@
-import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, StyleSheet, Text, View } from 'react-native';
 
 import AppButton from '@/components/AppButton';
 import EmptyState from '@/components/EmptyState';
@@ -9,21 +10,27 @@ import ScreenContainer from '@/components/ScreenContainer';
 import {
   cancelBooking,
   confirmCashOnArrival,
+  confirmStripeCheckout,
   getBookingSummary,
-  startStripeCheckout,
+  startStripeCheckoutWithReturnTo,
 } from '@/lib/clientApi';
 import type { BookingSummary } from '@/types/booking';
 
 type SummaryParams = {
   bookingId?: string;
   hotelId?: string;
+  session_id?: string;
+  stripe?: string;
 };
 
 export default function BookingSummaryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<SummaryParams>();
   const bookingId = String(params.bookingId ?? '');
+  const stripeStatus = params.stripe ? String(params.stripe) : null;
+  const stripeSessionId = params.session_id ? String(params.session_id) : null;
   const hasCancelledExpiredHoldRef = useRef(false);
+  const hasHandledStripeReturnRef = useRef(false);
   const [summary, setSummary] = useState<BookingSummary | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState(0);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -33,6 +40,7 @@ export default function BookingSummaryScreen() {
   const [isCancellingFlow, setIsCancellingFlow] = useState(false);
   const [isCashLoading, setIsCashLoading] = useState(false);
   const [isStripeLoading, setIsStripeLoading] = useState(false);
+  const [isStripeSyncing, setIsStripeSyncing] = useState(false);
 
   const loadSummary = useCallback(async () => {
     if (!bookingId) return;
@@ -54,25 +62,75 @@ export default function BookingSummaryScreen() {
     void loadSummary();
   }, [loadSummary]);
 
+  const syncStripeCheckout = useCallback(async (targetBookingId: string, sessionId: string): Promise<boolean> => {
+    setIsStripeSyncing(true);
+    setNotice('Confirming card payment...');
+    setError(null);
+
+    try {
+      await confirmStripeCheckout(targetBookingId, sessionId);
+      await loadSummary();
+      setNotice('Your reservation is secured and card payment is complete.');
+      return true;
+    } catch (stripeError) {
+      setNotice('Payment received. Waiting for confirmation...');
+      setError(stripeError instanceof Error ? stripeError.message : 'Failed to confirm card payment.');
+      return false;
+    } finally {
+      setIsStripeSyncing(false);
+    }
+  }, [loadSummary]);
+
   useEffect(() => {
+    if (!summary || hasHandledStripeReturnRef.current) return;
+
+    if (stripeStatus === 'cancelled') {
+      hasHandledStripeReturnRef.current = true;
+      setNotice('Payment was cancelled. Your reservation hold is still active.');
+      return;
+    }
+
+    if (
+      stripeStatus !== 'success' ||
+      !stripeSessionId ||
+      summary.status !== 'pending_payment' ||
+      summary.paymentStatus === 'paid'
+    ) {
+      return;
+    }
+
+    hasHandledStripeReturnRef.current = true;
+    void syncStripeCheckout(String(summary.bookingId), stripeSessionId);
+  }, [stripeSessionId, stripeStatus, summary, syncStripeCheckout]);
+
+  useEffect(() => {
+    if (isStripeLoading || isStripeSyncing) return;
+
     const timer = setInterval(() => {
       setSecondsRemaining(getSecondsRemaining(summary?.expiresAt ?? null));
     }, 1000);
     return () => clearInterval(timer);
-  }, [summary?.expiresAt]);
+  }, [isStripeLoading, isStripeSyncing, summary?.expiresAt]);
 
+  const isStripeFlowActive = isStripeLoading || isStripeSyncing;
   const holdExpired = Boolean(
     summary?.status === 'expired' ||
     summary?.status === 'cancelled' ||
-    (summary?.status === 'pending_payment' && secondsRemaining <= 0),
+    (summary?.status === 'pending_payment' && secondsRemaining <= 0 && !isStripeFlowActive),
   );
   const canPay = Boolean(summary?.status === 'pending_payment' && !holdExpired);
   const supportsStripe = Boolean(summary?.supportedPaymentMethods.includes('stripe'));
   const supportsCashOnArrival = Boolean(summary?.supportedPaymentMethods.includes('cash_on_arrival'));
-  const isActionLoading = isCashLoading || isStripeLoading || isCancellingFlow;
+  const isActionLoading = isCashLoading || isStripeLoading || isCancellingFlow || isStripeSyncing;
 
   useEffect(() => {
-    if (!summary || summary.status !== 'pending_payment' || secondsRemaining > 0 || hasCancelledExpiredHoldRef.current) {
+    if (
+      !summary ||
+      summary.status !== 'pending_payment' ||
+      secondsRemaining > 0 ||
+      isStripeFlowActive ||
+      hasCancelledExpiredHoldRef.current
+    ) {
       return;
     }
 
@@ -82,7 +140,7 @@ export default function BookingSummaryScreen() {
       .catch(() => {
         hasCancelledExpiredHoldRef.current = false;
       });
-  }, [loadSummary, secondsRemaining, summary]);
+  }, [isStripeFlowActive, loadSummary, secondsRemaining, summary]);
 
   async function cancelPendingHoldBeforeNavigation(target: 'dashboard' | 'dates' | 'hotel') {
     if (!summary) return;
@@ -133,10 +191,45 @@ export default function BookingSummaryScreen() {
     setNotice(null);
 
     try {
-      const checkout = await startStripeCheckout(String(summary.bookingId));
-      await WebBrowser.openBrowserAsync(checkout.url);
+      const returnTo = Linking.createURL('/booking-summary', {
+        queryParams: { bookingId: String(summary.bookingId) },
+      });
+      const checkout = await startStripeCheckoutWithReturnTo(String(summary.bookingId), returnTo);
+
       setShowPaymentModal(false);
-      setNotice('Checkout opened. Payment status is updated by Stripe after completion.');
+      setSummary((current) => (
+        current && current.bookingId === checkout.bookingId
+          ? { ...current, expiresAt: checkout.expiresAt, paymentMethod: 'stripe', paymentStatus: 'pending' }
+          : current
+      ));
+      setSecondsRemaining(getSecondsRemaining(checkout.expiresAt));
+      hasCancelledExpiredHoldRef.current = false;
+
+      if (Platform.OS === 'web') {
+        // Same-tab redirect (avoids popup/new window and ensures we come back here).
+        window.location.assign(checkout.url);
+        return;
+      }
+
+      const result = await WebBrowser.openAuthSessionAsync(checkout.url, returnTo);
+      if (result.type !== 'success') {
+        setNotice('Checkout closed. Your reservation hold is still active.');
+        return;
+      }
+
+      const stripeReturn = parseStripeReturnUrl(result.url);
+      if (stripeReturn.status === 'cancelled') {
+        setNotice('Payment was cancelled. Your reservation hold is still active.');
+        await loadSummary();
+        return;
+      }
+
+      if (stripeReturn.status === 'success' && stripeReturn.sessionId) {
+        await syncStripeCheckout(String(summary.bookingId), stripeReturn.sessionId);
+        return;
+      }
+
+      setNotice('Checkout returned without a confirmation result. Refreshing booking status...');
       await loadSummary();
     } catch (stripeError) {
       setError(stripeError instanceof Error ? stripeError.message : 'Failed to start card payment.');
@@ -172,6 +265,7 @@ export default function BookingSummaryScreen() {
         {notice ? <Text style={styles.successBox}>{notice}</Text> : null}
         {error ? <Text style={styles.errorBox}>{error}</Text> : null}
         {holdExpired ? <Text style={styles.errorBox}>This reservation hold has expired. Payment actions are disabled.</Text> : null}
+        {isStripeSyncing ? <Text style={styles.infoBox}>Syncing Stripe payment status...</Text> : null}
 
         <Detail label="Hotel" value={`${summary.hotelName}\n${summary.hotelLocation}`} />
         <Detail label="Room type" value={summary.roomType} />
@@ -282,6 +376,18 @@ function formatCountdown(seconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
+function parseStripeReturnUrl(url: string): { sessionId: string | null; status: string | null } {
+  try {
+    const parsed = new URL(url);
+    return {
+      sessionId: parsed.searchParams.get('session_id'),
+      status: parsed.searchParams.get('stripe'),
+    };
+  } catch {
+    return { sessionId: null, status: null };
+  }
+}
+
 const styles = StyleSheet.create({
   actions: {
     gap: 10,
@@ -314,6 +420,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
     textTransform: 'uppercase',
+  },
+  infoBox: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+    borderRadius: 8,
+    borderWidth: 1,
+    color: '#1d4ed8',
+    fontWeight: '800',
+    padding: 12,
   },
   modalBackdrop: {
     alignItems: 'center',

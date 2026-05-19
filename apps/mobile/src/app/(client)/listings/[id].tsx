@@ -9,9 +9,9 @@ import EmptyState from '@/components/EmptyState';
 import ScreenContainer from '@/components/ScreenContainer';
 import StatusBadge from '@/components/StatusBadge';
 import {
-  createPendingBookingHold,
-  getHotelAvailability,
-  getListingDetails,
+    createPendingBookingHold,
+    getHotelAvailability,
+    getListingDetails,
 } from '@/lib/clientApi';
 import type { ListingDetails } from '@/types/hotel-panel';
 import type { RoomAvailability } from '@/types/room-availability';
@@ -79,6 +79,11 @@ export default function ListingDetailsScreen() {
     checkOutDate: '',
     guests: String(guestsCount),
   });
+
+  const primaryImageSrc = useMemo(
+    () => getPrimaryImageSrc(listing, routeListing),
+    [listing, routeListing],
+  );
 
   useEffect(() => {
     let active = true;
@@ -199,7 +204,7 @@ export default function ListingDetailsScreen() {
           destination,
           guests: String(nextGuests),
           id: listing.id,
-          imageSrc: listing.image.src,
+          imageSrc: getPrimaryImageSrc(listing, routeListing) ?? '',
           name: listing.name,
           ratingLabel: listing.ratingLabel ?? '',
           reviewLabel: listing.reviewLabel,
@@ -236,7 +241,13 @@ export default function ListingDetailsScreen() {
   return (
     <ScreenContainer title={listing.name} subtitle={listing.location || listing.category}>
       <View style={styles.card}>
-        <Image source={{ uri: listing.images[0]?.src ?? listing.image.src }} style={styles.image} />
+        {primaryImageSrc ? (
+          <Image source={{ uri: primaryImageSrc }} style={styles.image} />
+        ) : (
+          <View style={styles.imageFallback}>
+            <Text style={styles.imageFallbackText}>Image unavailable</Text>
+          </View>
+        )}
         <View style={styles.body}>
           <View style={styles.metaRow}>
             <StatusBadge label={listing.ratingLabel ?? formatRating(listing.rating)} tone="green" />
@@ -450,6 +461,30 @@ function getRouteListing(params: ListingParams): ListingDetails | null {
   };
 }
 
+function getPrimaryImageSrc(listing: ListingDetails | null, fallback: ListingDetails | null): string | null {
+  const candidate = listing ?? fallback;
+  if (!candidate) return null;
+
+  const images = Array.isArray((candidate as { images?: unknown }).images)
+    ? (candidate as { images: unknown[] }).images
+    : [];
+
+  for (const item of images) {
+    if (item && typeof item === 'object' && typeof (item as { src?: unknown }).src === 'string') {
+      const src = String((item as { src: string }).src);
+      if (src.trim()) return src;
+    }
+  }
+
+  const image = (candidate as { image?: unknown }).image;
+  if (image && typeof image === 'object' && typeof (image as { src?: unknown }).src === 'string') {
+    const src = String((image as { src: string }).src);
+    if (src.trim()) return src;
+  }
+
+  return null;
+}
+
 function getDefaultRoomTypeId(rooms: RoomAvailability[], guestsCount: number): number | null {
   if (!rooms.length) return null;
   const sorted = [...rooms].sort(
@@ -557,6 +592,17 @@ const styles = StyleSheet.create({
     color: '#334155',
     fontSize: 16,
     lineHeight: 24,
+  },
+  imageFallback: {
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    height: 220,
+    justifyContent: 'center',
+    width: '100%',
+  },
+  imageFallbackText: {
+    color: '#64748b',
+    fontWeight: '800',
   },
   emptyText: {
     color: '#64748b',
