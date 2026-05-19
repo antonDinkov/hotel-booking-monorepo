@@ -12,7 +12,7 @@ https://bookyourstaymobile.netlify.app
 
 ### Android APK
 
-APK build in progress — link will be added shortly.
+https://expo.dev/accounts/antonexpo123/projects/mobile/builds/b2248435-bccf-46e5-910a-8c4e627426de
 
 ## Project Overview
 
