@@ -1,21 +1,18 @@
-import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 import { loadStoredSessionCookie } from '@/lib/sessionStorage';
 
-const DEV_BACKEND_PORT = '3000';
 const API_BASE_URL_ERROR =
-  'EXPO_PUBLIC_API_BASE_URL must be configured for production mobile builds.';
+  'EXPO_PUBLIC_API_BASE_URL must be configured for mobile API requests.';
 
 export function getApiUrl(path: string): string {
-  return `${getApiBaseUrl()}${path}`;
+  return `${getApiBaseUrl()}${normalizeApiPath(path)}`;
 }
 
 export function getApiBaseUrl(): string {
-  const configuredUrl = getConfiguredApiBaseUrl();
-  if (configuredUrl) return normalizeBaseUrl(configuredUrl);
+  const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
 
-  if (!isProductionEnvironment()) return getDevelopmentApiBaseUrl();
+  if (apiBaseUrl?.trim()) return normalizeBaseUrl(apiBaseUrl);
 
   throw new Error(API_BASE_URL_ERROR);
 }
@@ -71,66 +68,10 @@ function getNetworkErrorMessage(error: unknown): string {
   return 'Unable to reach the backend.';
 }
 
-function getConfiguredApiBaseUrl(): string | null {
-  const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
-  const legacyNativeUrl = process.env.EXPO_PUBLIC_API_URL;
-  const legacyWebUrl = process.env.EXPO_PUBLIC_WEB_API_URL;
-
-  if (apiBaseUrl) return apiBaseUrl;
-  if (Platform.OS === 'web') return legacyWebUrl ?? legacyNativeUrl ?? null;
-
-  return legacyNativeUrl ?? legacyWebUrl ?? null;
-}
-
-function getDevelopmentApiBaseUrl(): string {
-  if (Platform.OS === 'web') return getWebDevelopmentApiBaseUrl();
-
-  const expoLanUrl = getExpoLanApiUrl();
-  if (expoLanUrl) return expoLanUrl;
-
-  return Platform.OS === 'android'
-    ? `http://10.0.2.2:${DEV_BACKEND_PORT}`
-    : `http://localhost:${DEV_BACKEND_PORT}`;
-}
-
-function getWebDevelopmentApiBaseUrl(): string {
-  if (typeof window === 'undefined') return `http://localhost:${DEV_BACKEND_PORT}`;
-
-  return `${window.location.protocol}//${formatHostname(window.location.hostname)}:${DEV_BACKEND_PORT}`;
-}
-
-function getExpoLanApiUrl(): string | null {
-  const hostUri = Constants.expoConfig?.hostUri ?? Constants.platform?.hostUri;
-  const hostname = getHostname(hostUri);
-
-  if (!hostname || isLoopbackHostname(hostname)) return null;
-
-  return `http://${formatHostname(hostname)}:${DEV_BACKEND_PORT}`;
-}
-
-function getHostname(value?: string): string | null {
-  if (!value) return null;
-
-  try {
-    const url = new URL(value.includes('://') ? value : `http://${value}`);
-    return url.hostname || null;
-  } catch {
-    return null;
-  }
-}
-
-function isProductionEnvironment(): boolean {
-  return process.env.NODE_ENV === 'production';
-}
-
-function isLoopbackHostname(hostname?: string | null): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
-}
-
 function normalizeBaseUrl(value: string): string {
-  return value.trim().replace(/\/$/, '');
+  return value.trim().replace(/\/+$/, '');
 }
 
-function formatHostname(hostname: string): string {
-  return hostname.includes(':') && !hostname.startsWith('[') ? `[${hostname}]` : hostname;
+function normalizeApiPath(path: string): string {
+  return path.startsWith('/') ? path : `/${path}`;
 }
