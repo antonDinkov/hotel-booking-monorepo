@@ -1,8 +1,7 @@
 import { Platform } from 'react-native';
 
 import { getApiErrorMessage, getApiUrl, readJson } from '@/lib/api';
-import type { AuthSession, LoginInput, RegisterInput } from '@/types/auth';
-import type { User } from '@/types/user';
+import type { AuthSession, LoginInput, RegisterInput, User } from '@repo/types';
 
 type NextAuthProvider = { type: string };
 type NextAuthProviders = Record<string, NextAuthProvider>;

@@ -7,8 +7,7 @@ import {
   restoreStoredSession,
   saveStoredSession,
 } from '@/lib/sessionStorage';
-import type { AuthSession, AuthState, LoginInput, RegisterInput } from '@/types/auth';
-import type { User } from '@/types/user';
+import type { AuthSession, AuthState, LoginInput, RegisterInput, User } from '@repo/types';
 
 type AuthContextValue = {
   authState: AuthState;

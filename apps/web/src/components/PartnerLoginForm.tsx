@@ -5,6 +5,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { AppButton } from "./AppButton";
+import DemoLoginButton from "./DemoLoginButton";
 import { sanitizeCallbackUrl } from "@/lib/auth/role-routing";
 
 const inputClass =
@@ -26,8 +27,16 @@ export default function PartnerLoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [demoMessage, setDemoMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleDemoFill = (demoEmail: string, demoPassword: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setError(null);
+    setDemoMessage("Demo credentials loaded");
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -102,6 +111,26 @@ export default function PartnerLoginForm() {
                 {error}
               </p>
             ) : null}
+
+            {demoMessage ? (
+              <p className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-100" aria-live="polite">
+                {demoMessage}
+              </p>
+            ) : null}
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-inner shadow-black/10">
+              <div className="mb-3">
+                <p className="text-sm font-semibold text-white">Demo access</p>
+                <p className="text-xs text-white/70">Loads partner demo credentials into the form.</p>
+              </div>
+              <DemoLoginButton
+                label="Use Partner Demo Account"
+                email="maya.santoso@nusantarasummit.com"
+                password="123456"
+                onFill={handleDemoFill}
+                className="border-white/15 bg-white/95 text-slate-900 hover:border-white/20 hover:bg-white"
+              />
+            </div>
 
             <AppButton
               type="submit"

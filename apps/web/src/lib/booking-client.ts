@@ -1,4 +1,4 @@
-import type { CreateBookingHoldRequest, CreateBookingHoldResponse } from "@/types/booking";
+import type { CreateBookingHoldRequest, CreateBookingHoldResponse } from "@repo/types";
 
 type ApiErrorPayload = {
   error?: {

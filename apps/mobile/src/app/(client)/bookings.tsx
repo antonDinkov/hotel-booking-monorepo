@@ -6,7 +6,7 @@ import BookingCard from '@/components/BookingCard';
 import EmptyState from '@/components/EmptyState';
 import ScreenContainer from '@/components/ScreenContainer';
 import { getClientBookingsPage } from '@/lib/clientApi';
-import type { ClientBookingsPage, MyBooking } from '@/types/booking';
+import type { ClientBookingsPage, MyBooking } from '@repo/types';
 
 const PAGE_SIZE = 10;
 

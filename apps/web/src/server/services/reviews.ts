@@ -14,7 +14,7 @@ import type {
   PartnerReviewReply,
   Review,
   ReviewModerationStatus,
-} from "@/types/review";
+} from "@repo/types";
 
 const MAX_COMMENT_LENGTH = 2000;
 const DEFAULT_REVIEW_PAGE_LIMIT = 3;

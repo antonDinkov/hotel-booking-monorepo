@@ -14,7 +14,7 @@ import {
   getBookingSummary,
   startStripeCheckoutWithReturnTo,
 } from '@/lib/clientApi';
-import type { BookingSummary } from '@/types/booking';
+import type { BookingSummary } from '@repo/types';
 
 type SummaryParams = {
   bookingId?: string;

@@ -14,7 +14,7 @@ import type {
   BookingPaymentStatus,
   CancelBookingResult,
   MyBooking,
-} from '@/types/booking';
+} from '@repo/types';
 
 const ACTIVE_CANCEL_MESSAGE = 'Current reservations cannot be cancelled. Please contact the host directly.';
 

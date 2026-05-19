@@ -1,4 +1,4 @@
-import type { User } from './user';
+import type { User } from "./user";
 
 export type AuthState = {
   isAuthenticated: boolean;
@@ -29,4 +29,14 @@ export type RegisterInput = {
   email: string;
   password: string;
   confirmPassword: string;
+};
+
+export type ClientRegistrationInput = RegisterInput;
+
+export type ClientRegistrationResult = {
+  userId: string;
+  email: string;
+  fullName: string;
+  roles: string[];
+  redirectTo: string;
 };

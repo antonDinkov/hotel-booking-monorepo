@@ -1,45 +1,7 @@
 import type { ReactNode } from "react";
+export type { ProfileAddress, ProfileData, ProfileDataWithAvatarUrl, ProfilePreferences } from "@repo/types";
 
-/**
- * User preference flags shown on the profile page.
- */
-export interface ProfilePreferences {
-    smoking: boolean;
-    pets: boolean;
-    notifications: boolean;
-}
-
-/**
- * Postal address details shown on the profile page.
- */
-export interface ProfileAddress {
-    street: string;
-    city: string;
-    country: string;
-    zip: string;
-}
-
-/**
- * Profile data used by the client-side profile editor UI.
- */
-export interface ProfileData {
-    name: string;
-    email: string;
-    phone: string;
-    nationality: string;
-    dateOfBirth: string;
-    gender: string;
-    passportNumber: string;
-    avatarKey: string | null;
-    preferences: ProfilePreferences;
-    address: ProfileAddress;
-}
-
-export type ProfileDataWithAvatarUrl = ProfileData & {
-    avatarUrl?: string | null;
-};
-
-// Reusable editable field config used by the profile UI
+// Reusable editable field config used by the profile UI.
 export type InputType = "text" | "date" | "select" | "number";
 
 export interface EditableFieldConfig<T extends string = string> {

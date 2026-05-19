@@ -3,27 +3,21 @@ import { Platform } from 'react-native';
 
 import { loadStoredSessionCookie } from '@/lib/sessionStorage';
 
-const BACKEND_PORT = '3001';
-const LOCAL_API_URL = `http://localhost:${BACKEND_PORT}`;
-const DEFAULT_API_URL = Platform.select({
-  android: 'http://172.26.78.77:3001',
-  default: LOCAL_API_URL,
-});
+const DEV_BACKEND_PORT = '3000';
+const API_BASE_URL_ERROR =
+  'EXPO_PUBLIC_API_BASE_URL must be configured for production mobile builds.';
 
 export function getApiUrl(path: string): string {
   return `${getApiBaseUrl()}${path}`;
 }
 
 export function getApiBaseUrl(): string {
-  const envMobile = process.env.EXPO_PUBLIC_API_URL;
-  const envWeb = process.env.EXPO_PUBLIC_WEB_API_URL;
-  const baseForWeb = envWeb ?? envMobile ?? DEFAULT_API_URL ?? LOCAL_API_URL;
+  const configuredUrl = getConfiguredApiBaseUrl();
+  if (configuredUrl) return normalizeBaseUrl(configuredUrl);
 
-  if (Platform.OS === 'web') {
-    return normalizeBaseUrl(baseForWeb);
-  }
+  if (!isProductionEnvironment()) return getDevelopmentApiBaseUrl();
 
-  return getNativeApiBaseUrl(envMobile);
+  throw new Error(API_BASE_URL_ERROR);
 }
 
 export function getApiErrorMessage(payload: unknown, fallback: string): string {
@@ -77,15 +71,32 @@ function getNetworkErrorMessage(error: unknown): string {
   return 'Unable to reach the backend.';
 }
 
-function getNativeApiBaseUrl(configuredUrl?: string): string {
-  if (configuredUrl && !isLoopbackUrl(configuredUrl)) {
-    return normalizeBaseUrl(configuredUrl);
-  }
+function getConfiguredApiBaseUrl(): string | null {
+  const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+  const legacyNativeUrl = process.env.EXPO_PUBLIC_API_URL;
+  const legacyWebUrl = process.env.EXPO_PUBLIC_WEB_API_URL;
+
+  if (apiBaseUrl) return apiBaseUrl;
+  if (Platform.OS === 'web') return legacyWebUrl ?? legacyNativeUrl ?? null;
+
+  return legacyNativeUrl ?? legacyWebUrl ?? null;
+}
+
+function getDevelopmentApiBaseUrl(): string {
+  if (Platform.OS === 'web') return getWebDevelopmentApiBaseUrl();
 
   const expoLanUrl = getExpoLanApiUrl();
   if (expoLanUrl) return expoLanUrl;
 
-  return normalizeBaseUrl(DEFAULT_API_URL ?? LOCAL_API_URL);
+  return Platform.OS === 'android'
+    ? `http://10.0.2.2:${DEV_BACKEND_PORT}`
+    : `http://localhost:${DEV_BACKEND_PORT}`;
+}
+
+function getWebDevelopmentApiBaseUrl(): string {
+  if (typeof window === 'undefined') return `http://localhost:${DEV_BACKEND_PORT}`;
+
+  return `${window.location.protocol}//${formatHostname(window.location.hostname)}:${DEV_BACKEND_PORT}`;
 }
 
 function getExpoLanApiUrl(): string | null {
@@ -94,7 +105,7 @@ function getExpoLanApiUrl(): string | null {
 
   if (!hostname || isLoopbackHostname(hostname)) return null;
 
-  return `http://${formatHostname(hostname)}:${BACKEND_PORT}`;
+  return `http://${formatHostname(hostname)}:${DEV_BACKEND_PORT}`;
 }
 
 function getHostname(value?: string): string | null {
@@ -108,8 +119,8 @@ function getHostname(value?: string): string | null {
   }
 }
 
-function isLoopbackUrl(value: string): boolean {
-  return isLoopbackHostname(getHostname(value));
+function isProductionEnvironment(): boolean {
+  return process.env.NODE_ENV === 'production';
 }
 
 function isLoopbackHostname(hostname?: string | null): boolean {

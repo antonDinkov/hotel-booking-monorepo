@@ -25,7 +25,7 @@ import type {
     CreateBookingHoldRequest,
     CreateBookingHoldResponse,
     MyBooking,
-} from "@/types/booking";
+} from "@repo/types";
 import { db } from "../../db";
 import { bookings, hotelImages, hotelPaymentMethods, hotels, reviews, roomTypes } from "../../db/schema";
 

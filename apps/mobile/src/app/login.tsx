@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import AppButton from '@/components/AppButton';
 import AppTextInput from '@/components/AppTextInput';
+import DemoLoginButton from '@/components/DemoLoginButton';
 import ScreenContainer from '@/components/ScreenContainer';
 import { useAuth } from '@/context/AuthContext';
 
@@ -38,6 +39,17 @@ export default function Login() {
       <View style={styles.card}>
         <Text style={styles.title}>Sign in to your account</Text>
         <Text style={styles.subtitle}>Use your email and password to access your trips.</Text>
+        <View style={styles.demoSection}>
+          <DemoLoginButton
+            label="Use Client Demo Account"
+            email="peter@abv.bg"
+            password="123456"
+            onFill={(demoEmail, demoPassword) => {
+              setEmail(demoEmail);
+              setPassword(demoPassword);
+            }}
+          />
+        </View>
         <AppTextInput label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
         <AppTextInput label="Password" value={password} onChangeText={setPassword} secureTextEntry />
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -66,6 +78,13 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 14,
     lineHeight: 21,
+  },
+  demoSection: {
+    backgroundColor: '#ede9fe',
+    borderColor: '#e9d5ff',
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 12,
   },
   error: {
     backgroundColor: '#fef2f2',

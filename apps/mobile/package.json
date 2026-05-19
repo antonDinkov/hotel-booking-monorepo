@@ -3,17 +3,21 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "set REACT_NATIVE_PACKAGER_HOSTNAME=172.26.78.77&& expo start --host lan",
+    "start": "expo start",
+    "start:lan": "expo start --host lan",
     "reversePhone": "adb -s dcd9b811 reverse tcp:8081 tcp:8081",
-    "reverse": "adb -s dcd9b811 reverse tcp:3001 tcp:3001",
+    "reverse": "adb reverse tcp:3000 tcp:3000",
     "startLocal": "expo start --localhost -c",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
+    "build:web": "expo export --platform web --output-dir dist-web"
   },
   "dependencies": {
+    "@repo/types": "*",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.15.5",
     "@react-navigation/elements": "^2.9.10",

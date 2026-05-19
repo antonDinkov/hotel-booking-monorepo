@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { ClientRegistrationInput } from "@/types/client-registration";
+import type { ClientRegistrationInput } from "@repo/types";
 
 export const clientRegistrationSchema = z.object({
 	fullName: z.string()

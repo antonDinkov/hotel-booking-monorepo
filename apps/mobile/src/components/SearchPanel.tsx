@@ -7,7 +7,7 @@ import DateRangeCalendar from '@/components/DateRangeCalendar';
 import EmptyState from '@/components/EmptyState';
 import ListingResultCard from '@/components/ListingResultCard';
 import { searchHotels } from '@/lib/clientApi';
-import type { Listing, ListingSearchPagination, SearchHotelsInput } from '@/types/hotel-panel';
+import type { Listing, ListingSearchPagination, SearchHotelsInput } from '@repo/types';
 
 type SearchPanelProps = {
   ctaLabel?: string;

@@ -15,7 +15,7 @@ import {
   updateCurrentProfile,
   uploadProfileAvatar,
 } from '@/lib/clientApi';
-import type { ProfileData, ProfileDataWithAvatarUrl } from '@/types/profile';
+import type { ProfileData, ProfileDataWithAvatarUrl } from '@repo/types';
 
 const GENDER_OPTIONS = ['Female', 'Male', 'Non-binary', 'Prefer not to say'];
 const EMPTY_ADDRESS: ProfileData['address'] = {

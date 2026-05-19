@@ -1,10 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import StatusBadge from '@/components/StatusBadge';
-import type { Review } from '@/types/review';
+import type { ReviewCardData } from '@repo/types';
 
 type ReviewCardProps = {
-  review: Review;
+  review: ReviewCardData;
 };
 
 export default function ReviewCard({ review }: ReviewCardProps) {
@@ -19,7 +19,7 @@ export default function ReviewCard({ review }: ReviewCardProps) {
       {review.partnerReply ? (
         <View style={styles.reply}>
           <Text style={styles.replyLabel}>Partner reply</Text>
-          <Text style={styles.replyText}>{review.partnerReply}</Text>
+          <Text style={styles.replyText}>{review.partnerReply.comment}</Text>
         </View>
       ) : null}
     </View>

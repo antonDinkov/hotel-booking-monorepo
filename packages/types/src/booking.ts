@@ -1,54 +1,9 @@
-export type BookingStatus = 'pending_payment' | 'confirmed' | 'cancelled' | 'completed' | 'expired';
+import type { BookingPaymentMethod, BookingPaymentStatus } from "./payment";
+
+export type BookingStatus = "pending_payment" | "confirmed" | "cancelled" | "completed" | "expired";
 export type BookingLifecycleStatus = BookingStatus;
-export type BookingDisplayStatus = 'upcoming' | 'active' | 'past' | 'cancelled';
-export type BookingPaymentMethod = 'stripe' | 'cash_on_arrival';
-export type BookingPaymentStatus =
-  | 'pending'
-  | 'paid'
-  | 'failed'
-  | 'cancelled'
-  | 'refund_pending'
-  | 'refunded'
-  | 'refund_denied';
-
+export type BookingDisplayStatus = "upcoming" | "active" | "past" | "cancelled";
 export type CancelledBookingBadge = string;
-
-export type MyBooking = {
-  canCancel?: boolean;
-  canReview?: boolean;
-  cancelledBadge?: CancelledBookingBadge;
-  checkIn: string;
-  checkOut: string;
-  daysRemaining?: number;
-  guestsCount?: number;
-  hasReview?: boolean;
-  hotelAddress?: string;
-  hotelId?: number;
-  hotelImage?: string;
-  hotelName: string;
-  id: string;
-  lifecycleStatus?: BookingLifecycleStatus;
-  paymentMethod?: BookingPaymentMethod | null;
-  paymentStatus?: BookingPaymentStatus;
-  reviewId?: number;
-  roomsCount?: number;
-  roomType: string;
-  status: BookingDisplayStatus;
-  totalPrice: number;
-};
-
-export type ClientBookingsPagination = {
-  page: number;
-  pageSize: number;
-  totalItems: number;
-  totalPages: number;
-};
-
-export type ClientBookingsPage = {
-  activeBooking: MyBooking | null;
-  inactiveBookings: MyBooking[];
-  pagination: ClientBookingsPagination;
-};
 
 export type BookingCancellationNotice = {
   title: string;
@@ -62,6 +17,43 @@ export type CancelBookingResult = {
   paymentStatus: BookingPaymentStatus;
   stripeRefundId?: string | null;
   notification: BookingCancellationNotice;
+};
+
+export type MyBooking = {
+  id: string;
+  hotelId?: number;
+  hotelName: string;
+  hotelAddress?: string;
+  hotelImage?: string;
+  roomType: string;
+  checkIn: string;
+  checkOut: string;
+  guestsCount?: number;
+  roomsCount?: number;
+  totalPrice: number;
+  status: BookingDisplayStatus;
+  lifecycleStatus?: BookingLifecycleStatus;
+  paymentMethod?: BookingPaymentMethod | null;
+  paymentStatus?: BookingPaymentStatus;
+  cancelledBadge?: CancelledBookingBadge;
+  canCancel?: boolean;
+  canReview?: boolean;
+  hasReview?: boolean;
+  reviewId?: number;
+  daysRemaining?: number;
+};
+
+export type ClientBookingsPagination = {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+};
+
+export type ClientBookingsPage = {
+  activeBooking: MyBooking | null;
+  inactiveBookings: MyBooking[];
+  pagination: ClientBookingsPagination;
 };
 
 export type CreateBookingHoldRequest = {
@@ -99,3 +91,5 @@ export type BookingSummary = {
   expiresAt: string | null;
   supportedPaymentMethods: BookingPaymentMethod[];
 };
+
+export type BookingConfirmation = Omit<BookingSummary, "supportedPaymentMethods">;

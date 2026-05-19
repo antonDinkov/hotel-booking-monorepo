@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FaGithub } from "react-icons/fa";
 import { AppButton } from "./AppButton";
+import DemoLoginButton from "./DemoLoginButton";
 import { sanitizeCallbackUrl } from "@/lib/auth/role-routing";
 
 function getLoginErrorMessage(error: string) {
@@ -22,10 +23,18 @@ export default function LoginForm() {
     const searchParams = useSearchParams();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [demoMessage, setDemoMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(
         searchParams.get("error") ? getLoginErrorMessage(searchParams.get("error") as string) : null
     );
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleDemoFill = (demoEmail: string, demoPassword: string) => {
+        setEmail(demoEmail);
+        setPassword(demoPassword);
+        setError(null);
+        setDemoMessage("Demo credentials loaded");
+    };
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -101,6 +110,25 @@ export default function LoginForm() {
                                     {error}
                                 </p>
                             ) : null}
+
+                            {demoMessage ? (
+                                <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700" aria-live="polite">
+                                    {demoMessage}
+                                </p>
+                            ) : null}
+
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
+                                <div className="mb-3">
+                                    <p className="text-sm font-semibold text-slate-900">Demo access</p>
+                                    <p className="text-xs text-slate-500">Loads client demo credentials into the form.</p>
+                                </div>
+                                <DemoLoginButton
+                                    label="Use Client Demo Account"
+                                    email="peter@abv.bg"
+                                    password="123456"
+                                    onFill={handleDemoFill}
+                                />
+                            </div>
 
                             <AppButton
                                 type="submit"

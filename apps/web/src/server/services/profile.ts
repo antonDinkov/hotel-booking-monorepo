@@ -5,7 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { db } from "@/db";
 import { users, userProfiles } from "@/db/schema";
 import { resolveImageUrl } from "@/lib/image-urls";
-import type { ProfileData, ProfileDataWithAvatarUrl, ProfilePreferences } from "@/types/profile";
+import type { ProfileData, ProfileDataWithAvatarUrl, ProfilePreferences } from "@repo/types";
 
 const DEFAULT_PREFERENCES: ProfilePreferences = {
     smoking: false,

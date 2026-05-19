@@ -1,4 +1,4 @@
-import type { Hotel } from '@/types/hotel';
+import type { Hotel } from '@repo/types';
 
 export const hotels: Hotel[] = [
   {

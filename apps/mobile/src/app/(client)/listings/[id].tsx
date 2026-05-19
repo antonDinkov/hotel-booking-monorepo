@@ -13,8 +13,7 @@ import {
     getHotelAvailability,
     getListingDetails,
 } from '@/lib/clientApi';
-import type { ListingDetails } from '@/types/hotel-panel';
-import type { RoomAvailability } from '@/types/room-availability';
+import type { ListingDetails, RoomAvailability } from '@repo/types';
 
 type ListingParams = {
   category?: string;

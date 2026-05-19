@@ -17,8 +17,7 @@ import { and, asc, desc, eq, gt, inArray, isNull, lt, lte, or, sql } from "drizz
 import { resolveImageUrl } from "@/lib/image-urls";
 import { db } from "../../db";
 import { bookings, hotelImages, hotels, roomTypes } from "../../db/schema";
-import type { HotelPanelData, Listing, ListingDetails, ListingSearchResult } from "../../types/hotel-panel";
-import type { RoomAvailability } from "../../types/room-availability";
+import type { HotelPanelData, Listing, ListingDetails, ListingSearchResult, RoomAvailability } from "@repo/types";
 import { getHotelReviewSummariesByHotelIds } from "./reviews";
 
 type BookingRange = { checkInDate: string; checkOutDate: string; roomsCount: number | null };

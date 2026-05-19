@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import StatusBadge from '@/components/StatusBadge';
-import type { BookingDisplayStatus, MyBooking } from '@/types/booking';
+import type { BookingDisplayStatus, MyBooking } from '@repo/types';
 
 type BookingCardProps = {
   booking: MyBooking;

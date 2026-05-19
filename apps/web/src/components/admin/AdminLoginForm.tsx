@@ -9,6 +9,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import DemoLoginButton from "../DemoLoginButton";
 import { sanitizeCallbackUrl } from "@/lib/auth/role-routing";
 
 function getLoginErrorMessage(error: string) {
@@ -25,10 +26,18 @@ export default function AdminLoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [demoMessage, setDemoMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(
     searchParams.get("error") ? getLoginErrorMessage(searchParams.get("error") as string) : null
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleDemoFill = (demoEmail: string, demoPassword: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setError(null);
+    setDemoMessage("Demo credentials loaded");
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -116,6 +125,30 @@ export default function AdminLoginForm() {
                     {error}
                   </p>
                 ) : null}
+
+                {demoMessage ? (
+                  <p className="border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-200" aria-live="polite">
+                    {demoMessage}
+                  </p>
+                ) : null}
+
+                <div className="rounded-lg border border-slate-800 bg-slate-950/80 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Demo access
+                  </p>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Loads admin demo credentials into the form.
+                  </p>
+                  <div className="mt-3">
+                    <DemoLoginButton
+                      label="Use Admin Demo Account"
+                      email="admin@abv.bg"
+                      password="123456"
+                      onFill={handleDemoFill}
+                      className="border-slate-700 bg-slate-100 text-slate-900 hover:border-slate-500 hover:bg-white"
+                    />
+                  </div>
+                </div>
 
                 <button
                   type="submit"

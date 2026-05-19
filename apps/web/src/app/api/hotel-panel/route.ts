@@ -5,5 +5,5 @@ import { getHotelPanelData } from "../../../server/services/hotelPanel";
 // and delegates business logic to the service layer.
 export async function GET() {
   const panelData = await getHotelPanelData();
-  return NextResponse.json(panelData);
+  return NextResponse.json({ data: panelData });
 }

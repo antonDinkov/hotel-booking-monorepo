@@ -6,8 +6,7 @@ import ScreenContainer from '@/components/ScreenContainer';
 import SearchPanel from '@/components/SearchPanel';
 import { useAuth } from '@/context/AuthContext';
 import { getClientBookingsPage, getFavoriteHotelIds, getHotelPanelData, getMyReviewsCount } from '@/lib/clientApi';
-import type { ClientBookingsPage } from '@/types/booking';
-import type { HotelPanelData } from '@/types/hotel-panel';
+import type { ClientBookingsPage, HotelPanelData } from '@repo/types';
 
 type DashboardState = {
     bookingsPage: ClientBookingsPage | null;

@@ -1,3 +1,12 @@
+export type UserRole = "client" | "partner" | "admin";
+
+export type User = {
+  id: string;
+  email: string;
+  fullName: string;
+  roles: string[];
+};
+
 export type ProfilePreferences = {
   smoking: boolean;
   pets: boolean;

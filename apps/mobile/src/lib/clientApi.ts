@@ -1,19 +1,23 @@
 import { fetchApi, getApiBaseUrl } from '@/lib/api';
 import type {
+    ApiResponse,
     BookingSummary,
     CancelBookingResult,
     ClientBookingsPage,
     CreateBookingHoldRequest,
     CreateBookingHoldResponse,
-} from '@/types/booking';
-import type { HotelPanelData, ListingDetails, ListingSearchResult, SearchHotelsInput } from '@/types/hotel-panel';
-import type { ProfileData, ProfileDataWithAvatarUrl } from '@/types/profile';
-import type { HotelAvailabilityResult } from '@/types/room-availability';
+    HotelAvailabilityResult,
+    HotelPanelData,
+    ListingDetails,
+    ListingSearchResult,
+    ProfileData,
+    ProfileDataWithAvatarUrl,
+    SearchHotelsInput,
+    StripeCheckoutPayload,
+} from '@repo/types';
 
-type ApiResponse<T> = { data: T };
 type FavoriteIdsPayload = { hotelIds: number[] };
 type ReviewsCountPayload = { pagination?: { totalItems?: number }; reviews?: unknown[] };
-type StripeCheckoutPayload = { bookingId: number; url: string; expiresAt: string };
 type ReviewPayload = {
     bookingId: number;
     comment: string | null;

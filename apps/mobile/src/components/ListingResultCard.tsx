@@ -3,7 +3,7 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 
 import AppButton from '@/components/AppButton';
 import StatusBadge from '@/components/StatusBadge';
-import type { Listing, SearchHotelsInput } from '@/types/hotel-panel';
+import type { Listing, SearchHotelsInput } from '@repo/types';
 
 type ListingResultCardProps = {
   isFavorite?: boolean;

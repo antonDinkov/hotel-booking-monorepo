@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { StoredAuthSession } from '@/types/auth';
-import type { User } from '@/types/user';
+import type { StoredAuthSession, User } from '@repo/types';
 
 const STORAGE_KEY = 'hotel-booking-mobile-auth';
 let memorySession: StoredAuthSession | null = null;

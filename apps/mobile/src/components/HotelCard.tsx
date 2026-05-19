@@ -3,7 +3,7 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 
 import AppButton from '@/components/AppButton';
 import StatusBadge from '@/components/StatusBadge';
-import type { Hotel } from '@/types/hotel';
+import type { Hotel } from '@repo/types';
 
 type HotelCardProps = {
   hotel: Hotel;
