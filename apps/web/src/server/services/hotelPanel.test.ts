@@ -54,11 +54,6 @@ const createMockQuery = (result: any) => ({
   }),
 });
 
-// Mock for queries without where clause
-const createSimpleQuery = (result: any) => ({
-  from: jest.fn().mockResolvedValue(result),
-});
-
 const createOrderedQuery = (result: any) => ({
   from: jest.fn().mockReturnValue({
     where: jest.fn().mockReturnValue({

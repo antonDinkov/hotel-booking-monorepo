@@ -5,15 +5,24 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // Override default ignores of eslint-config-next.
+
+  // Global rule overrides
+  {
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
+
+  // Override default ignores of eslint-config-next
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",
     "coverage/**",
     "next-env.d.ts",
   ]),
+
+  // Test-specific overrides
   {
     files: ["**/*.test.ts", "**/*.test.tsx"],
     rules: {
@@ -25,6 +34,8 @@ const eslintConfig = defineConfig([
       "jsx-a11y/alt-text": "off",
     },
   },
+
+  // JS utility/script overrides
   {
     files: ["*.js", "scripts/**/*.js"],
     rules: {

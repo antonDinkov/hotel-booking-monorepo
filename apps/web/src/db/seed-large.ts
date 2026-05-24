@@ -2,7 +2,7 @@ import "dotenv/config";
 
 import bcrypt from "bcryptjs";
 import { neon } from "@neondatabase/serverless";
-import { asc, eq, inArray, like, or } from "drizzle-orm";
+import { asc, inArray, like, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-http";
 
 import {
