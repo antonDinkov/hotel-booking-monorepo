@@ -1,275 +1,515 @@
 # BookYourStay
 
-## Live Access
+Production-style multi-platform hotel booking platform built as a Full Stack Apps with AI capstone project.
 
-### Web Application
+The project implements:
 
-https://bookyourstay.netlify.app
+* Next.js full-stack Web platform
+* Expo React Native mobile application
+* PostgreSQL database with Drizzle ORM
+* Stripe payment integration
+* Role-based dashboards
+* Cloudflare R2 object storage
+* GitHub Actions CI and automated backups
 
-### Mobile Web Application
+---
 
-https://bookyourstaymobile.netlify.app
+# Live Projects
 
-### Android APK
+## Web Application
 
-https://expo.dev/accounts/antonexpo123/projects/mobile/builds/b2248435-bccf-46e5-910a-8c4e627426de
+[WEB_PROJECT_URL]
 
-## Project Overview
+## Expo Web Build
 
-BookYourStay is a production-style hotel booking platform built as a full-stack monorepo. The project includes a Next.js web application, a Next.js REST API backend, an Expo React Native mobile client, and a shared TypeScript package for cross-app contracts.
+[EXPO_WEB_URL]
 
-The platform supports client, partner, and admin roles. Clients can search hotels, reserve rooms, manage bookings, review stays, save favorites, and maintain profile data. Partners can manage hotels, rooms, images, bookings, reviews, calendars, analytics, and settings. Admin users can manage platform users, partners, hotels, bookings, reviews, payments, reports, analytics, and system status.
+## Android APK
 
-## Features
+The Android APK build is available in the repository Releases section.
 
-- Role-based authentication with Auth.js / NextAuth JWT sessions
-- Separate client, partner, and admin web flows
-- Mobile client authentication using backend-issued bearer JWTs
-- Hotel discovery, search, details, availability, room selection, and booking holds
-- Booking lifecycle support for pending payment, confirmed, completed, cancelled, and expired states
-- Stripe Checkout integration with webhook handling and refund status updates
-- Cash-on-arrival booking confirmation flow
-- Client profile management with avatar upload/removal
-- Cloudflare R2-compatible image storage for uploaded avatars and hotel images
-- Partner hotel, room, image, booking, review, calendar, analytics, and settings tools
-- Admin dashboards for operational data, users, partners, bookings, reviews, payments, reports, and system status
-- Drizzle migrations, seed data, and large-volume seed script for scalability validation
-- Shared TypeScript contracts through `@repo/types`
+GitHub → Releases
 
-## Architecture
+---
 
-```text
-Next.js Web App
-  Server Components -> service layer -> Drizzle ORM -> Neon PostgreSQL
-  Client Components -> REST API routes for user-triggered mutations
+# Demo Credentials
 
-Expo Mobile App
-  React Native screens -> REST API routes -> same service layer/database
+## Client Account
 
-Shared Package
-  packages/types -> API, auth, hotel, room, booking, review, payment, and user contracts
-```
+Email: [peter@abv.bg](mailto:peter@abv.bg)
+Password: 123456
 
-The web app owns both the browser UI and the backend API. Server-side web pages call service functions directly instead of calling internal API routes. The mobile app communicates with the same backend through REST endpoints configured by `EXPO_PUBLIC_API_BASE_URL`.
+## Partner Account
+
+Email: [maya.santoso@nusantarasummit.com](mailto:maya.santoso@nusantarasummit.com)
+Password: 123456
+
+## Admin Account
+
+Email: [admin@abv.bg](mailto:admin@abv.bg)
+Password: 123456
+
+All login forms also include quick demo account buttons for easier testing.
+
+---
+
+# Stripe Test Card
+
+Stripe test payments can be completed with:
+
+Card number:
+
+4242 4242 4242 4242
+
+Additional fields:
+
+* Any future expiration date
+* Any CVC
+* Any ZIP/postal code
+
+---
+
+# Project Overview
+
+BookYourStay is a production-oriented hotel booking platform that supports:
+
+* hotel discovery
+* advanced search
+* booking management
+* online payments
+* role-based dashboards
+* analytics
+* reviews
+* image uploads
+* mobile booking flows
+
+The platform is implemented as a Node.js monorepo with:
+
+* Next.js backend + Web client
+* Expo React Native mobile client
+
+The Web and Mobile clients share the same backend services and database.
+
+---
+
+# Architecture
 
 ## Monorepo Structure
 
 ```text
-.
-+-- apps
-|   +-- web                  # Next.js 16 web app and API backend
-|   |   +-- src/app          # App Router pages, layouts, route handlers, proxy
-|   |   +-- src/server       # Server-only services and integrations
-|   |   +-- src/db           # Drizzle schema, DB client, seed scripts
-|   |   +-- drizzle          # Committed SQL migrations and snapshots
-|   +-- mobile               # Expo React Native app for Android, iOS, and Web
-|       +-- src/app          # Expo Router screens
-|       +-- src/lib          # API/auth/session clients
-|       +-- eas.json         # EAS build profiles
-+-- packages
-|   +-- types                # Shared TypeScript-only package
-+-- docs                     # Deployment notes
-+-- AGENTS.md                # AI agent architecture instructions
-+-- package.json             # npm workspace scripts
+apps/
+  web/      -> Next.js backend + Web platform
+  mobile/   -> Expo React Native mobile app
 ```
 
-## Tech Stack
+## Backend Stack
 
-- Monorepo: npm workspaces
-- Web/backend: Next.js 16.2.3, React 19, TypeScript, Tailwind CSS
-- Mobile: Expo SDK 55, React Native 0.83, Expo Router
-- Database: Neon PostgreSQL, Drizzle ORM, Drizzle Kit migrations
-- Authentication: Auth.js / NextAuth credentials and GitHub provider, JWT sessions
-- Payments: Stripe Checkout and Stripe webhooks
-- File storage: Cloudflare R2-compatible S3 API
-- Testing: Jest and Testing Library in the web app
-- Deployment: Netlify for web and Expo Web export, EAS profile for Android APK builds
+* Next.js
+* TypeScript
+* Drizzle ORM
+* Neon PostgreSQL
+* Auth.js JWT authentication
+* RESTful API endpoints
+* Cloudflare R2 object storage
 
-## Authentication
+## Frontend Stack
 
-The web application uses Auth.js / NextAuth with JWT session strategy. Credentials-based login validates hashed passwords with `bcryptjs` and enforces role-specific access for client, partner, and admin areas. The mobile app uses `/api/auth/mobile-login` to receive a bearer access token and sends it on API requests through the `Authorization` header.
+### Web
 
-Demo seed credentials:
+* Next.js
+* React
+* Tailwind CSS
+
+### Mobile
+
+* React Native
+* Expo
+* Expo Router
+
+---
+
+# Client Panel
+
+The client panel implements a complete end-to-end hotel booking workflow.
+
+Clients can:
+
+* register and authenticate
+* search hotels
+* filter by destination, dates, guests, and price
+* view hotel details
+* browse room types and amenities
+* create bookings
+* complete Stripe payments
+* manage favorites
+* manage profile information and avatars
+* cancel bookings
+* submit hotel reviews
+* track active and completed reservations
+
+The booking flow performs real availability checks based on:
+
+* room inventory
+* room capacity
+* overlapping confirmed bookings
+* temporary booking holds
+
+Supported payment methods:
+
+* Stripe Checkout
+* Cash on Arrival
+
+---
+
+# Partner Panel
+
+The partner panel provides hotel-management functionality for property owners and operators.
+
+Partners can:
+
+* create and manage hotels
+* upload hotel and room images
+* manage room types
+* configure pricing and room capacity
+* monitor reservations
+* manage booking statuses
+* review analytics
+* monitor occupancy statistics
+* respond to guest reviews
+* manage company/account information
+
+The partner dashboard includes:
+
+* revenue analytics
+* booking summaries
+* review summaries
+* booking calendar visibility
+* operational metrics
+
+---
+
+# Admin Panel
+
+The admin panel acts as a platform operations dashboard.
+
+Admin users can:
+
+* manage users
+* manage partners
+* manage bookings
+* moderate reviews
+* review payment-related booking states
+* access operational reports
+* monitor system analytics
+* review platform metrics
+
+The admin dashboard aggregates platform-wide operational information across the entire system.
+
+---
+
+# Booking, Payment, and Review Lifecycle
+
+The platform implements a complete booking lifecycle shared between the Web and Mobile applications.
+
+Flow overview:
+
+1. Client searches hotel availability
+2. Availability checks validate:
+
+   * room inventory
+   * room capacity
+   * overlapping reservations
+   * pending booking holds
+3. Temporary booking hold is created
+4. Client selects payment method
+5. Stripe or cash booking flow completes
+6. Booking status updates automatically
+7. Completed stays become review-eligible
+8. Reviews become visible on hotel pages
+
+Supported booking states:
+
+* pending
+* confirmed
+* completed
+* cancelled
+* expired
+* refunded
+* refund-pending
+* refund-denied
+
+---
+
+# Mobile Application
+
+The project includes a dedicated Expo React Native mobile application connected to the same backend API used by the Web platform.
+
+The mobile application supports:
+
+* authentication
+* hotel search
+* hotel details
+* availability checks
+* booking creation
+* Stripe checkout flow
+* booking history
+* booking cancellation
+* reviews
+* profile management
+
+The mobile application focuses on the primary end-user booking workflow and intentionally omits some secondary administrative functionality available in the Web platform.
+
+---
+
+# Database
+
+The project uses:
+
+* Neon PostgreSQL
+* Drizzle ORM
+* Drizzle migrations
+
+The database schema includes relational entities such as:
+
+* users
+* hotels
+* rooms
+* bookings
+* reviews
+* payments
+* favorites
+* images
+
+Database migrations are fully committed in the repository.
+
+---
+
+# Scalability and Large Seed Data
+
+The project includes a dedicated large-scale seed system designed to validate scalability and operational workloads.
+
+The large seed dataset generates:
+
+* 4,500 users
+* 15,000 bookings
+* 10,050 reviews
+* active bookings
+* cancelled bookings
+* pending booking holds
+* future reservations
+* fully booked hotel scenarios
+
+The platform implements:
+
+* server-side pagination
+* optimized database queries
+* indexed relational queries
+* scalable booking retrieval
+* analytics aggregation
+
+The dataset is designed to simulate realistic production-style operational load.
+
+---
+
+# Authentication and Authorization
+
+Authentication is implemented with:
+
+* Auth.js
+* JWT-based sessions
+* secure password hashing
+
+Authorization is enforced through:
+
+* middleware
+* API access checks
+* role-based route protection
+* protected server-side components
+
+Supported roles:
+
+* Client
+* Partner
+* Admin
+
+---
+
+# File Storage
+
+The platform uses Cloudflare R2 object storage for:
+
+* hotel images
+* room images
+* profile avatars
+* uploaded media assets
+
+---
+
+# Automated Testing
+
+The project includes automated testing for critical functionality.
+
+Implemented test categories:
+
+* unit tests
+* integration-oriented service tests
+
+The automated test suite runs through GitHub Actions CI.
+
+---
+
+# GitHub Actions CI
+
+The repository includes automated GitHub Actions workflows.
+
+CI workflow features:
+
+* dependency installation
+* automated test execution
+* workflow validation on push and pull request
+
+Main CI command:
+
+```bash
+npm run test --workspace=web
+```
+
+Workflow location:
 
 ```text
-Client:  peter@abv.bg / 123456
-Admin:   admin@abv.bg / 123456
-Partner: maya.santoso@nusantarasummit.com / 123456
+.github/workflows/node.js.yml
 ```
 
-## Web Application
+The workflow history can be inspected from the repository Actions tab.
 
-The Next.js app uses the App Router and separates server-rendered pages from client interaction components. Public, client, partner, and admin routes are grouped separately. Protected route checks are enforced with `src/proxy.ts` and server-side authorization helpers.
+---
 
-Web areas include:
+# Automated PostgreSQL Backups
 
-- Public landing, login, register, about, privacy, terms, listings, listing details, date picking, reservation, and review pages
-- Client dashboard, bookings, booking confirmation, profile, favorites, and personal reviews
-- Partner dashboard, hotel/room management, bookings, reviews, calendar, analytics, and settings
-- Admin dashboard, users, partners, hotels, bookings, reviews, payments, reports, analytics, system, and settings
+Automated PostgreSQL backups are implemented through GitHub Actions and Cloudflare R2 object storage.
 
-## Mobile Application
+The backup workflow:
 
-The Expo app is organized with Expo Router and protected client routes. It supports login, registration, dashboard, hotel search from backend data, listing details, room availability, reservation hold creation, payment flow, booking management, review submission, and profile/avatar updates.
+* runs daily
+* supports manual execution
+* creates compressed PostgreSQL dumps
+* uploads timestamped backups to Cloudflare R2
 
-Some secondary MVP screens still use static helper data, including the standalone mobile listings and favorites screens. Core booking and account workflows use backend REST APIs.
+Workflow location:
 
-## API & Backend
-
-Backend route handlers live under `apps/web/src/app/api`. Routes are resource-oriented and delegate business logic to services under `apps/web/src/server/services`.
-
-Implemented API areas include:
-
-- `/api/auth/*`
-- `/api/hotel-panel`
-- `/api/search`
-- `/api/hotels`
-- `/api/rooms`
-- `/api/bookings`
-- `/api/reviews`
-- `/api/favorites`
-- `/api/users`
-- `/api/partners`
-- `/api/calendar`
-- `/api/analytics`
-- `/api/reports`
-- `/api/stripe/*`
-
-Responses use a consistent JSON shape:
-
-```json
-{ "data": {} }
+```text
+.github/workflows/backup.yml
 ```
 
-```json
-{ "error": { "message": "Human readable message", "code": "ERROR_CODE" } }
-```
+---
+
+# Deployment
+
+## Web Platform
+
+Deployed as a Next.js production application.
 
 ## Database
 
-The database layer uses Neon PostgreSQL with Drizzle ORM. The schema includes users, profiles, roles, user roles, partners, hotels, favorite hotels, hotel images, room types, hotel payment methods, bookings, and reviews.
+Hosted on Neon PostgreSQL.
 
-Drizzle migration files are committed in `apps/web/drizzle` from `0000` through `0016`. Seed scripts are available for demo data and load-oriented data:
+## Object Storage
+
+Hosted on Cloudflare R2.
+
+## Mobile Application
+
+Built with Expo and connected to the deployed backend APIs.
+
+## APK Distribution
+
+Android APK builds are distributed through GitHub Releases.
+
+---
+
+# Repository Structure
+
+```text
+apps/
+  web/
+    src/
+    public/
+    drizzle/
+    tests/
+
+  mobile/
+    src/
+    assets/
+
+docs/
+```
+
+---
+
+# Local Development Setup
+
+## Clone the repository
 
 ```bash
-npm run seed --workspace=web
-npm run seed:large --workspace=web
+git clone [REPO_URL]
 ```
 
-The large seed script creates thousands of users and bookings plus more than 10,000 reviews for pagination and performance validation.
-
-## Shared Packages
-
-`packages/types` publishes `@repo/types`, a TypeScript-only package shared by web and mobile. It centralizes API response shapes, auth models, booking contracts, hotel/listing data, payment types, review types, room availability, and user/profile types.
-
-## Deployment
-
-The web application is deployed as a single Next.js project containing both the web UI and REST API backend. The mobile web application is exported as static Expo Web output and deployed separately.
-
-The repository includes deployment guidance in `docs/deployment.md`. Environment variables are expected to be configured in the hosting dashboards. No root `netlify.toml` file is committed.
-
-Expo/EAS is configured in `apps/mobile/eas.json`. The `preview` profile builds an internal Android APK and sets:
-
-```env
-EXPO_PUBLIC_API_BASE_URL=https://bookyourstay.netlify.app
-```
-
-## Environment Variables
-
-Web app variables are documented in `apps/web/.env.example`:
-
-```env
-DATABASE_URL=
-NEXTAUTH_URL=
-NEXTAUTH_SECRET=
-BCRYPT_SALT_ROUNDS=
-GITHUB_ID=
-GITHUB_SECRET=
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-NEXT_PUBLIC_APP_URL=
-MOBILE_CORS_ORIGINS=
-R2_ENDPOINT=
-R2_BUCKET_NAME=
-R2_PUBLIC_URL=
-NEXT_PUBLIC_R2_PUBLIC_URL=
-R2_ACCESS_KEY_ID=
-R2_SECRET_ACCESS_KEY=
-```
-
-Mobile variables are documented in `apps/mobile/.env.example`:
-
-```env
-EXPO_PUBLIC_API_BASE_URL=
-```
-
-## Running Locally
-
-Install dependencies from the repository root:
+## Install dependencies
 
 ```bash
 npm install
 ```
 
-Run the web app:
+## Run the Web application
 
 ```bash
 npm run dev:web
 ```
 
-Run the mobile app:
+## Run the Mobile application
 
 ```bash
 npm run dev:mobile
 ```
 
-For local mobile-to-web API calls, configure:
+---
 
-```env
-EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
-```
+# AI-Assisted Development
 
-## Build Commands
+The project was developed using modern AI-assisted workflows with:
 
-```bash
-npm run typecheck:web
-npm run typecheck:mobile
-npm run build:web
-npm run build:mobile:web
-npm run lint --workspace=web
-npm run lint --workspace=mobile
-npm run test --workspace=web
-```
+* GitHub Copilot
+* AI agent workflows
+* structured iterative development
+* AGENTS.md project instructions
 
-Database commands:
+The repository includes a dedicated AGENTS.md file describing:
 
-```bash
-npm run db:generate --workspace=web
-npm run db:migrate --workspace=web
-```
+* architectural patterns
+* database workflow requirements
+* project conventions
+* AI agent development guidelines
 
-Run migrations only after reviewing generated SQL and verifying migration history.
+---
 
-## Production Notes
+# Capstone Project Coverage
 
-- Web and mobile TypeScript checks pass locally.
-- Expo Web export succeeds and writes static output to `apps/mobile/dist-web`.
-- Web production build requires complete production environment variables and may execute server-side database reads during prerendering.
-- Web lint currently needs cleanup for React 19 hook lint rules before being used as a blocking CI gate.
-- Existing Jest coverage is broad, but several suites need updates after recent API and pagination changes.
+This project fulfills the Full Stack Apps with AI capstone requirements through:
 
-## Challenges & Solutions
+* full-stack architecture
+* multi-platform support
+* backend API services
+* database persistence
+* authentication and authorization
+* role-based dashboards
+* scalable database operations
+* responsive Web platform
+* mobile application
+* object storage integration
+* automated testing
+* GitHub Actions CI
+* automated database backups
+* production deployment
+* APK distribution
 
-- Shared backend for two clients: the service layer keeps business logic reusable while exposing REST routes for mobile.
-- Role separation: route groups, proxy checks, server authorization helpers, and role-specific dashboards keep client, partner, and admin flows separated.
-- Booking consistency: pending holds, expiration handling, room capacity checks, and payment status transitions are handled in the service layer.
-- Cross-platform mobile auth: the mobile client uses backend-issued bearer tokens and avoids a separate mobile backend.
-- File storage: uploads use the S3-compatible Cloudflare R2 API while read URLs are normalized through a shared image URL helper.
-
-## Future Improvements
-
-- Add the completed Android APK release link.
-- Replace remaining static mobile helper screens with backend-backed favorites/listing data.
-- Add GitHub Actions for lint, typecheck, test, and build validation.
-- Add end-to-end tests for search, booking, payment, and role-based routing.
-- Add automated database and object storage backups.
+---
