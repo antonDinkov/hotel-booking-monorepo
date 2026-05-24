@@ -10,6 +10,16 @@ jest.mock("next-auth/next", () => ({
   getServerSession: jest.fn(),
 }));
 
+jest.mock("next-auth/jwt", () => ({
+  getToken: jest.fn(),
+}));
+
+jest.mock("next/headers", () => ({
+  headers: jest.fn(async () => ({
+    get: jest.fn(() => null),
+  })),
+}));
+
 jest.mock("next-auth/providers/credentials", () => jest.fn((opts) => ({ credentialsProvider: opts })));
 jest.mock("next-auth/providers/github", () => jest.fn((opts) => ({ githubProvider: opts })));
 

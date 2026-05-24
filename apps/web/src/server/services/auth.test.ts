@@ -10,6 +10,10 @@ jest.mock("@/db", () => ({
 
 jest.mock("bcryptjs");
 
+jest.mock("next-auth/jwt", () => ({
+    encode: jest.fn(),
+}));
+
 import bcrypt from "bcryptjs";
 import { validateCredentials, ensureOAuthUser, getUserRoles } from "./auth";
 import { db } from "@/db";

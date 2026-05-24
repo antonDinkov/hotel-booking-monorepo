@@ -32,6 +32,20 @@ function makeListing(i: number) {
     };
 }
 
+function makeSearchPayload(listings: any[], page = 1, pageSize = 9, totalItems = listings.length) {
+    return {
+        data: {
+            listings,
+            pagination: {
+                page,
+                pageSize,
+                totalItems,
+                totalPages: Math.max(1, Math.ceil(totalItems / pageSize)),
+            },
+        },
+    };
+}
+
 afterEach(() => {
     jest.clearAllMocks();
     jest.useRealTimers();
@@ -39,7 +53,7 @@ afterEach(() => {
 
 describe("SearchEngineWrapper behaviour", () => {
     it("debounces fetch calls - not called before 300ms, called after", async () => {
-        global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => [] });
+        global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => makeSearchPayload([]) });
 
         render(
             <SearchEngineWrapper
@@ -104,7 +118,7 @@ describe("SearchEngineWrapper behaviour", () => {
 
         // resolve fetch with empty results
         await act(async () => {
-            resolveFetch({ ok: true, json: async () => [] });
+            resolveFetch({ ok: true, json: async () => makeSearchPayload([]) });
         });
 
         // expect empty state text
@@ -214,7 +228,7 @@ describe("SearchEngineWrapper behaviour", () => {
             },
         ];
 
-        global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => listings });
+        global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => makeSearchPayload(listings) });
 
         render(
             <SearchEngineWrapper
@@ -246,8 +260,13 @@ describe("SearchEngineWrapper behaviour", () => {
     it("shows 9 results per page and navigates pages, scrolling into view on page change", async () => {
         const total = 20;
         const listings = Array.from({ length: total }, (_, i) => makeListing(i + 1));
+        const pageOneListings = listings.slice(0, 9);
+        const pageTwoListings = listings.slice(9, 18);
 
-        global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => listings });
+        global.fetch = jest
+            .fn()
+            .mockResolvedValueOnce({ ok: true, json: async () => makeSearchPayload(pageOneListings, 1, 9, total) })
+            .mockResolvedValueOnce({ ok: true, json: async () => makeSearchPayload(pageTwoListings, 2, 9, total) });
 
         const scrollSpy = jest.fn();
         Object.defineProperty(window.HTMLElement.prototype, "scrollIntoView", {
@@ -300,7 +319,7 @@ describe("SearchEngineWrapper behaviour", () => {
     });
 
     it("clears previous debounce timer when search is triggered again before timeout fires", async () => {
-        global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => [] });
+        global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => makeSearchPayload([]) });
 
         render(
             <SearchEngineWrapper
@@ -338,8 +357,13 @@ describe("SearchEngineWrapper behaviour", () => {
     it("uses window.scrollTo when element scrollIntoView is unavailable", async () => {
         const total = 20;
         const listings = Array.from({ length: total }, (_, i) => makeListing(i + 1));
+        const pageOneListings = listings.slice(0, 9);
+        const pageTwoListings = listings.slice(9, 18);
 
-        global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => listings });
+        global.fetch = jest
+            .fn()
+            .mockResolvedValueOnce({ ok: true, json: async () => makeSearchPayload(pageOneListings, 1, 9, total) })
+            .mockResolvedValueOnce({ ok: true, json: async () => makeSearchPayload(pageTwoListings, 2, 9, total) });
 
         const windowScrollSpy = jest.fn();
         Object.defineProperty(window, "scrollTo", {

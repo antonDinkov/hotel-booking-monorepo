@@ -22,7 +22,7 @@ jest.mock("next/navigation", () => ({
 }));
 
 jest.mock("@/server/services/bookings", () => ({
-  getBookings: jest.fn(),
+  getClientBookingsPage: jest.fn(),
 }));
 
 jest.mock("@/app/api/auth/[...nextauth]/route", () => ({
@@ -51,14 +51,14 @@ jest.mock("./BookingsClient", () => ({
 import BookingsPage from "./page";
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
-import { getBookings } from "@/server/services/bookings";
+import { getClientBookingsPage } from "@/server/services/bookings";
 import type { MyBooking } from "@/types/booking";
 import { render } from "@testing-library/react";
 
 const mockGetServerSession = getServerSession as jest.Mock;
 /* const mockRedirect = redirect as jest.Mock; */
 const mockedRedirect = jest.mocked(redirect);
-const mockGetBookings = getBookings as jest.Mock;
+const mockGetClientBookingsPage = getClientBookingsPage as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -100,13 +100,29 @@ describe("BookingsPage business logic", () => {
     },
   ];
 
+  const createBookingsPageResult = (bookings: MyBooking[]) => {
+    const activeBooking = bookings.find((booking) => booking.status === "active") ?? null;
+    const inactiveBookings = bookings.filter((booking) => booking.status !== "active");
+
+    return {
+      activeBooking,
+      inactiveBookings,
+      pagination: {
+        page: 1,
+        pageSize: 3,
+        totalItems: inactiveBookings.length,
+        totalPages: 1,
+      },
+    };
+  };
+
   it("should redirect to login when user is not authenticated", async () => {
     mockGetServerSession.mockResolvedValue(null);
 
     await expect(BookingsPage()).rejects.toThrow("NEXT_REDIRECT");
 
     expect(mockedRedirect).toHaveBeenCalledWith("/login");
-    expect(mockGetBookings).not.toHaveBeenCalled();
+    expect(mockGetClientBookingsPage).not.toHaveBeenCalled();
   });
 
   it("should redirect to login when session has no user id", async () => {
@@ -123,12 +139,12 @@ describe("BookingsPage business logic", () => {
         id: "user123",
       },
     });
-    mockGetBookings.mockResolvedValue(mockBookings);
+    mockGetClientBookingsPage.mockResolvedValue(createBookingsPageResult(mockBookings));
 
     const Page = await BookingsPage();
     render(Page);
 
-    expect(mockGetBookings).toHaveBeenCalledWith("user123");
+    expect(mockGetClientBookingsPage).toHaveBeenCalledWith("user123", { page: 1 });
   });
 
   it("should correctly filter active and inactive bookings", async () => {
@@ -137,7 +153,7 @@ describe("BookingsPage business logic", () => {
         id: "user123",
       },
     });
-    mockGetBookings.mockResolvedValue(mockBookings);
+    mockGetClientBookingsPage.mockResolvedValue(createBookingsPageResult(mockBookings));
 
     const Page = await BookingsPage();
     render(Page);
@@ -145,6 +161,12 @@ describe("BookingsPage business logic", () => {
     expect(mockBookingsClient).toHaveBeenCalledWith({
       activeBooking: mockBookings[0], // active booking
       inactiveBookings: [mockBookings[1], mockBookings[2]], // upcoming and past
+      pagination: {
+        page: 1,
+        pageSize: 3,
+        totalItems: 2,
+        totalPages: 1,
+      },
     });
   });
 
@@ -155,7 +177,7 @@ describe("BookingsPage business logic", () => {
         id: "user123",
       },
     });
-    mockGetBookings.mockResolvedValue(inactiveOnlyBookings);
+    mockGetClientBookingsPage.mockResolvedValue(createBookingsPageResult(inactiveOnlyBookings));
 
     const Page = await BookingsPage();
     render(Page);
@@ -163,6 +185,12 @@ describe("BookingsPage business logic", () => {
     expect(mockBookingsClient).toHaveBeenCalledWith({
       activeBooking: null,
       inactiveBookings: inactiveOnlyBookings,
+      pagination: {
+        page: 1,
+        pageSize: 3,
+        totalItems: 2,
+        totalPages: 1,
+      },
     });
   });
 
@@ -172,7 +200,7 @@ describe("BookingsPage business logic", () => {
         id: "user123",
       },
     });
-    mockGetBookings.mockResolvedValue([]);
+    mockGetClientBookingsPage.mockResolvedValue(createBookingsPageResult([]));
 
     const Page = await BookingsPage();
     render(Page);
@@ -180,6 +208,12 @@ describe("BookingsPage business logic", () => {
     expect(mockBookingsClient).toHaveBeenCalledWith({
       activeBooking: null,
       inactiveBookings: [],
+      pagination: {
+        page: 1,
+        pageSize: 3,
+        totalItems: 0,
+        totalPages: 1,
+      },
     });
   });
 });

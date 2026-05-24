@@ -12,13 +12,13 @@ jest.mock("next/server", () => ({
 }));
 
 jest.mock("../../../server/services/hotelPanel", () => ({
-  searchAvailableHotels: jest.fn(),
+  searchAvailableHotelsPage: jest.fn(),
 }));
 
 import { GET } from "./route";
-import { searchAvailableHotels } from "../../../server/services/hotelPanel";
+import { searchAvailableHotelsPage } from "../../../server/services/hotelPanel";
 
-const mockSearch = searchAvailableHotels as jest.MockedFunction<any>;
+const mockSearch = searchAvailableHotelsPage as jest.MockedFunction<any>;
 
 describe("Search API GET", () => {
   let logSpy: jest.SpyInstance;
@@ -48,12 +48,21 @@ describe("Search API GET", () => {
   });
 
   it("calls searchAvailableHotels and returns 200 on valid params", async () => {
-    mockSearch.mockResolvedValue({ data: [{ id: "1", name: "Hotel" }] });
+    mockSearch.mockResolvedValue({
+      listings: [{ id: "1", name: "Hotel" }],
+      pagination: { page: 1, pageSize: 9, totalItems: 1, totalPages: 1 },
+    });
 
     const req = { url: "http://localhost/api/search?destination=Paris&checkInDate=2026-05-20&checkOutDate=2026-05-21&guests=2" } as unknown as Request;
     const res = await GET(req);
 
-    expect(mockSearch).toHaveBeenCalledWith("Paris", "2026-05-20", "2026-05-21", 2);
+    expect(mockSearch).toHaveBeenCalledWith({
+      destination: "Paris",
+      checkInDate: "2026-05-20",
+      checkOutDate: "2026-05-21",
+      guestsCount: 2,
+      pagination: { page: undefined, pageSize: undefined },
+    });
     expect((res as any).status).toBe(200);
   });
 

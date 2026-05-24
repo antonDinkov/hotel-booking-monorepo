@@ -17,14 +17,16 @@ jest.mock("@/app/api/auth/[...nextauth]/route", () => ({
 
 jest.mock("@/server/services/bookings", () => ({
   getBookings: jest.fn(),
+  getClientBookingsPage: jest.fn(),
 }));
 
 import { GET } from "./route";
 import { authorizeApi } from "@/app/api/auth/[...nextauth]/route";
-import { getBookings } from "@/server/services/bookings";
+import { getBookings, getClientBookingsPage } from "@/server/services/bookings";
 
 const mockAuthorizeApi = authorizeApi as jest.MockedFunction<any>;
 const mockGetBookings = getBookings as jest.MockedFunction<any>;
+const mockGetClientBookingsPage = getClientBookingsPage as jest.MockedFunction<any>;
 
 describe("Bookings API GET", () => {
   beforeEach(() => jest.clearAllMocks());
@@ -38,11 +40,19 @@ describe("Bookings API GET", () => {
 
   it("returns bookings when authorized", async () => {
     mockAuthorizeApi.mockResolvedValue({ ok: true, userId: "user-1" });
-    mockGetBookings.mockResolvedValue([{ id: "b1" }]);
+    mockGetClientBookingsPage.mockResolvedValue({
+      activeBooking: null,
+      inactiveBookings: [{ id: "b1" }],
+      pagination: { page: 1, pageSize: 3, totalItems: 1, totalPages: 1 },
+    });
 
     const res = await GET();
 
-    expect(mockGetBookings).toHaveBeenCalledWith("user-1");
+    expect(mockGetClientBookingsPage).toHaveBeenCalledWith("user-1", {
+      page: 1,
+      pageSize: undefined,
+    });
+    expect(mockGetBookings).not.toHaveBeenCalled();
     expect((res as any).status).toBe(200);
   });
 });

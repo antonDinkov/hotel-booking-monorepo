@@ -5,9 +5,13 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { BookingsClient } from "./BookingsClient";
 import type { MyBooking } from "@/types/booking";
 
+const mockRouterPush = jest.fn();
+const mockRouterRefresh = jest.fn();
+
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
-    refresh: jest.fn(),
+    push: mockRouterPush,
+    refresh: mockRouterRefresh,
   }),
 }));
 
@@ -95,6 +99,18 @@ describe("BookingsClient", () => {
     },
   ];
 
+  const paginationPage1 = {
+    page: 1,
+    pageSize: 3,
+    totalItems: 4,
+    totalPages: 2,
+  };
+
+  const paginationPage2 = {
+    ...paginationPage1,
+    page: 2,
+  };
+
   it("renders active booking section when active booking exists", () => {
     render(<BookingsClient activeBooking={mockActiveBooking} inactiveBookings={[]} />);
 
@@ -136,32 +152,43 @@ describe("BookingsClient", () => {
   });
 
   it("paginates bookings correctly", () => {
-    render(<BookingsClient activeBooking={null} inactiveBookings={mockInactiveBookings} />);
+    render(
+      <BookingsClient
+        activeBooking={null}
+        inactiveBookings={mockInactiveBookings.slice(0, 3)}
+        pagination={paginationPage1}
+      />
+    );
 
-    // Should show first 3 bookings (BOOKINGS_PER_PAGE = 3)
     expect(screen.getAllByTestId("booking-card")).toHaveLength(3);
-    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "2" })).toBeInTheDocument();
   });
 
   it("handles pagination navigation", () => {
-    render(<BookingsClient activeBooking={null} inactiveBookings={mockInactiveBookings} />);
+    render(
+      <BookingsClient
+        activeBooking={null}
+        inactiveBookings={mockInactiveBookings.slice(0, 3)}
+        pagination={paginationPage1}
+      />
+    );
 
-    // Click next page
     fireEvent.click(screen.getByText("Next"));
-    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
-
-    // Should show the 4th booking
-    expect(screen.getAllByTestId("booking-card")).toHaveLength(1);
+    expect(mockRouterPush).toHaveBeenCalledWith("/bookings?page=2");
   });
 
   it("allows previous page navigation after next page", () => {
-    render(<BookingsClient activeBooking={null} inactiveBookings={mockInactiveBookings} />);
+    render(
+      <BookingsClient
+        activeBooking={null}
+        inactiveBookings={mockInactiveBookings.slice(3)}
+        pagination={paginationPage2}
+      />
+    );
 
-    fireEvent.click(screen.getByText("Next"));
-    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText("Previous"));
-    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Prev"));
+    expect(mockRouterPush).toHaveBeenCalledWith("/bookings?page=1");
   });
 
   it("opens modal when active booking card is clicked", () => {
@@ -174,17 +201,27 @@ describe("BookingsClient", () => {
   });
 
   it("disables previous button on first page", () => {
-    render(<BookingsClient activeBooking={null} inactiveBookings={mockInactiveBookings} />);
+    render(
+      <BookingsClient
+        activeBooking={null}
+        inactiveBookings={mockInactiveBookings.slice(0, 3)}
+        pagination={paginationPage1}
+      />
+    );
 
-    const prevButton = screen.getByText("Previous");
+    const prevButton = screen.getByText("Prev");
     expect(prevButton).toBeDisabled();
   });
 
   it("disables next button on last page", () => {
-    render(<BookingsClient activeBooking={null} inactiveBookings={mockInactiveBookings} />);
+    render(
+      <BookingsClient
+        activeBooking={null}
+        inactiveBookings={mockInactiveBookings.slice(3)}
+        pagination={paginationPage2}
+      />
+    );
 
-    // Go to last page
-    fireEvent.click(screen.getByText("Next"));
     const nextButton = screen.getByText("Next");
     expect(nextButton).toBeDisabled();
   });
