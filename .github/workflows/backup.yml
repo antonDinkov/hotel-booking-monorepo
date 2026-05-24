@@ -1,0 +1,36 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Install AWS CLI
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip -q awscliv2.zip
+          sudo ./aws/install --update
+
+      - name: Create compressed database backup
+        run: |
+          mkdir -p backups
+          pg_dump "${{ secrets.DATABASE_URL }}" | gzip > backups/db-backup-$(date -u +%Y-%m-%d-%H-%M-%S).sql.gz
+
+      - name: Upload backup to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          aws s3 cp backups/*.sql.gz s3://${{ secrets.BACKUP_R2_BUCKET }}/ \
+            --endpoint-url "${{ secrets.BACKUP_R2_ENDPOINT }}"
