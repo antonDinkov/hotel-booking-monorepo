@@ -18,11 +18,11 @@ The project implements:
 
 ## Web Application
 
-[WEB_PROJECT_URL]
+https://bookyourstay.netlify.app
 
 ## Expo Web Build
 
-[EXPO_WEB_URL]
+https://bookyourstaymobile.netlify.app 
 
 ## Android APK
 
