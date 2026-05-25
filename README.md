@@ -102,6 +102,22 @@ Additional fields:
 
 ---
 
+## Uptime Monitoring
+
+The deployed applications are monitored externally with UptimeRobot using periodic HTTP checks.
+
+The public landing page performs live database-backed data loading, allowing uptime monitoring to indirectly verify:
+- deployment availability
+- server responsiveness
+- database connectivity
+- production rendering flow
+
+Monitored deployments:
+- Web application
+- Mobile Web application
+
+---
+
 # Project Overview
 
 BookYourStay is a production-oriented hotel booking platform that supports:
