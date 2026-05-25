@@ -32,6 +32,39 @@ GitHub → Releases
 
 ---
 
+## Panel Access and Authorization
+
+All platform panels are protected through role-based authorization.
+
+### Client Panel
+
+Accessible through the public platform interface after authentication.
+
+### Partner Panel
+
+The Partner platform can be accessed through the **"For Partners"** button located on the public landing page.
+
+Only users with the `partner` role can access partner functionality.
+
+### Admin Panel
+
+The administrative dashboard is intentionally separated from the public navigation and can be accessed directly through:
+
+```text id="1q6v3y"
+/admin
+```
+
+Only users with the `admin` role can access administrative functionality.
+
+Authorization is enforced through:
+
+* middleware protection
+* server-side access checks
+* protected API endpoints
+* role validation logic
+
+---
+
 # Demo Credentials
 
 ## Client Account
